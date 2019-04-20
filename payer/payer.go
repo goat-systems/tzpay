@@ -1,4 +1,4 @@
-package payouts
+package payer
 
 import (
 	"strconv"
@@ -71,7 +71,9 @@ func (payer *Payer) calcPayments(rewards goTezos.DelegationServiceRewards, fee f
 			f, _ := strconv.ParseFloat(delegate.GrossRewards, 32)
 			amount := f * float64(net)
 			payment := goTezos.Payment{Address: delegate.DelegationPhk, Amount: amount}
-			payments = append(payments, payment)
+			if amount > 1500 {
+				payments = append(payments, payment)
+			}
 		}
 	}
 	return payments

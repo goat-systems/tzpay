@@ -1,17 +1,18 @@
 package cmd
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"regexp"
 	"strconv"
-	"time"
+
+	pay "github.com/DefinitelyNotAGoat/payman/payer"
+	"github.com/DefinitelyNotAGoat/payman/reporting"
+	"github.com/DefinitelyNotAGoat/payman/server"
 
 	goTezos "github.com/DefinitelyNotAGoat/go-tezos"
-	"github.com/DefinitelyNotAGoat/payman/logging"
-	"github.com/DefinitelyNotAGoat/payman/payouts"
 	"github.com/spf13/cobra"
 )
 
@@ -39,16 +40,27 @@ var payout = &cobra.Command{
 				  that demonstartes go-tezos,
 				  and also allows you to payout your delegations.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		log, f := logging.GetLogging(file)
+
+		f, err := os.Create(file)
+		if err != nil {
+			fmt.Printf("could not open logging file: %v\n", err)
+		}
+
+		log := log.New(f, "", log.Ldate|log.Ltime|log.Lshortfile)
+
+		reporter, err := reporting.NewReporter(log)
+		if err != nil {
+			reporter.Log(fmt.Sprintf("could not open file for reporting: %v\n", err))
+		}
 
 		if delegate == "" {
-			log.Info("you need to specify the delegate that is paying out")
+			reporter.Log("you need to specify the delegate that is paying out")
 			os.Exit(0)
 		} else if secret == "" {
-			log.Info("you need to set the encrypted secret to the wallet paying")
+			reporter.Log("you need to set the encrypted secret to the wallet paying")
 			os.Exit(0)
 		} else if password == "" {
-			log.Info("you need to set the password to the wallet paying")
+			reporter.Log("you need to set the password to the wallet paying")
 			os.Exit(0)
 		}
 
@@ -56,62 +68,21 @@ var payout = &cobra.Command{
 		gt.AddNewClient(goTezos.NewTezosRPCClient(node, port))
 		wallet, err := gt.ImportEncryptedWallet(password, secret)
 		if err != nil {
-			log.Fatalf("could not import wallet: %v", err)
+			reporter.Log(fmt.Sprintf("could not import wallet: %v", err))
 			os.Exit(1)
 		}
 
-		payer := payouts.Payer{}
+		payer := pay.Payer{}
 		if dry {
-			payer = payouts.NewPayer(gt, wallet, delegate, fee, false)
+			payer = pay.NewPayer(gt, wallet, delegate, fee, false)
 		} else {
-			payer = payouts.NewPayer(gt, wallet, delegate, fee, true)
+			payer = pay.NewPayer(gt, wallet, delegate, fee, true)
 		}
 
 		if service == true {
-			ticker := time.NewTicker(5 * time.Minute)
-			quit := make(chan struct{})
-			lastPaidCycle := -1
-			for {
-				select {
-				case <-ticker.C:
-					constants, err := gt.GetNetworkConstants()
-					if err != nil {
-						log.Error(err)
-					}
-					head, _, err := gt.GetBlockLevelHead()
-					if err != nil {
-						log.Error(err)
-					}
-					currentCycle := head / constants.BlocksPerCycle
-					if currentCycle == cycle && lastPaidCycle == -1 {
-						payouts, ops, err := payer.PayoutForCycle(currentCycle, networkFee, networkGasLimit)
-						if err != nil {
-							log.Fatal(err)
-							close(quit)
-						}
-						for _, op := range ops {
-							log.Info("Successful operation: ", op)
-						}
-						log.Info(payouts)
-						lastPaidCycle = currentCycle
-					}
-					if (lastPaidCycle + 1) == currentCycle {
-						payouts, ops, err := payer.PayoutForCycle(currentCycle, networkFee, networkGasLimit)
-						if err != nil {
-							log.Fatal(err)
-							close(quit)
-						}
-						for _, op := range ops {
-							log.Info("Successful operation: ", op)
-						}
-						log.Info(payouts)
-						lastPaidCycle = currentCycle
-					}
-				case <-quit:
-					ticker.Stop()
-					return
-				}
-			}
+			serv := server.NewPaymanServer(delegate, fee, networkFee, networkGasLimit, gt, wallet, payer, reporter)
+			serv.Serve(cycle)
+
 		} else if cycles != "" {
 			cycles, err := parseCyclesInput(cycles)
 			if err != nil {
@@ -123,9 +94,10 @@ var payout = &cobra.Command{
 			}
 
 			for _, op := range ops {
-				log.Info("Successful operation: ", op)
+				reporter.Log("Successful operation: " + string(op))
 			}
-			log.Info(payouts)
+			reporter.PrintPaymentsTable(payouts)
+			reporter.WriteCSVReport(payouts)
 
 		} else if cycle > 0 {
 			payouts, ops, err := payer.PayoutForCycle(cycle, networkFee, networkGasLimit)
@@ -133,12 +105,13 @@ var payout = &cobra.Command{
 				log.Fatal(err)
 			}
 			for _, op := range ops {
-				log.Info("Successful operation: ", op)
+				reporter.Log("Successful operation: " + string(op))
 			}
-			log.Info(payouts)
+			reporter.PrintPaymentsTable(payouts)
+			reporter.WriteCSVReport(payouts)
 
 		} else {
-			log.Info("no cycles past to payout for.")
+			reporter.Log("no cycles past to payout for.")
 			os.Exit(1)
 		}
 		f.Close()
@@ -163,13 +136,6 @@ func parseCyclesInput(cycles string) ([2]int, error) {
 	return cycleRange, nil
 }
 
-// func tablePayments(payments []goTezos.Payment) {
-// 	var table [][]string
-// 	for _, payment := range payments {
-// 		table = append(table, []string{payment.Address, fmt.Sprintf("%f", payment.Amount)})
-// 	}
-// }
-
 // Execute payout command
 func Execute() {
 	if err := payout.Execute(); err != nil {
@@ -192,13 +158,4 @@ func init() {
 	payout.PersistentFlags().IntVar(&networkFee, "network-fee", 1270, "network fee for each transaction in mutez")
 	payout.PersistentFlags().IntVar(&networkGasLimit, "gas-limit", 10200, "network gas limit for each transaction in mutez")
 	payout.PersistentFlags().StringVarP(&file, "log-file", "l", "/dev/stdout", "example ./payman.log")
-}
-
-//Takes an interface v and returns a pretty json string.
-func PrettyReport(v interface{}) string {
-	b, err := json.MarshalIndent(v, "", "  ")
-	if err == nil {
-		return string(b)
-	}
-	return ""
 }
