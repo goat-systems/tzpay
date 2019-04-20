@@ -46,6 +46,39 @@ The example below will payout delegations for delegate `tz3gN8NTLNLJg5KRsUU47NHN
 ```
 ./payman -d=tz3gN8NTLNLJg5KRsUU47NHNVHbdhcFXjjaB -s=edesk1Qx5JbctVnFVHL4A7BXgyExihHfcAHRYXoxkbSBmKqP2Sp92Gg1xcU8mqqu4Qi9TXkXwomMxAfy19sWAgCm -k=abcd1234 --cycle=152 -n=127.
 0.0.1 -p=8732
+
+2019/04/20 14:30:04 reporting.go:23: Successful operation: "oopG1PWdhM8YUkADTwWBHdgmtMxproSPurN8GBAHXLJTnCMb27T"
+
++--------------------------------------+-----------+
+|               ADDRESS                |  PAYMENT  |
++--------------------------------------+-----------+
+| KT1WvyJ1qUrWzShA2T6QeL7AW4DR6GspUimM |  0.024563 |
+| KT1Veiiv3NvVF4YpZmSjUaJP7hhKqda4LX4A |  0.506465 |
+| KT1VBXqcStE2sonpWSFTRurzVgdtAPT5HdEU |  2.532329 |
+| KT1UPrvoYfAabgBT4YRFwmdxrHhURu45Yhtj |  0.075210 |
+| KT1UPe6SuBx1tKg6fD2DgEzqhaJG1UpYTLVq |  0.001878 |
+| KT1TJThjwjBuCJDDXp9CQkBgeNSRYbahQW8Y |  1.266164 |
+| KT1SbZzZWGj7HTpZwSiU8BT9X9jVMvy4LX5t |  2.581583 |
+| KT1NeVTJYNkrtGqKy6Z84rH1zF86VBnQYFTT |  0.101039 |
+| KT1N82y6jxThaot6bQC71SjGLDAgrpbchhJm |  0.253708 |
+| KT1N2iCTCpFJPZtncR7iTi5kTfnq7ahwvkaY |  5.163644 |
+| KT1KhU8TK59KHwvoXnEPP8232tfBVQkDJN3M |  0.404740 |
+| KT1JuKotYDPZd71cUtaR2AwCE2vfggMaGgKt |  0.253222 |
+| KT1JexcFezMnUAaWmvUGY99jwTA4jcKiUgFp |  2.405681 |
+| KT1HE1JLUZwsVYaCTBaGUnk652TfvWWeBsCu |  2.279089 |
+| KT1FGkavmRTjFtJ3pzT96XHj1zxCFc91KwKQ |  0.005051 |
+| KT1F5Gi1rLAuengNV9MdTsZbVSzJwEJPiQ1K |  0.430489 |
+| KT1EmjARhUY7n44HTXCLJd4cCPfXKm7k6fZA | 52.761327 |
+| KT1DKVQjcy2b9yDHQrsxNWZaKY7KfTWYvqzG |  0.164084 |
+| KT1CBzyabE55icq7vCaGEPWWQwHiJ1vnDpeL |  0.253232 |
+| KT1BmDCykjJr4zTHLNuojLkqKmcsGm7vxEMt |  1.519397 |
+| KT1AvvU63C6GzrELbgEmsiyzTxQhNTQy3AZR |  2.532329 |
+| KT1ACieGEX5WM1D8skTPGScw9jxv165t43Vk |  0.001871 |
+| KT19LRjvtkaHNBHjyikNn7jWbkCVBbcPaB2K |  0.253232 |
+| KT18j3UkJgNxqbjmy9J9rtFCmzKXynPWDqUy |  0.005058 |
++--------------------------------------+-----------+
+|                TOTAL                 | 75.775384 |
++--------------------------------------+-----------+
 ```
 
 The below will do the same as above but also start a server that will payout for every cycle going forward:
