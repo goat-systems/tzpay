@@ -6,6 +6,7 @@ import (
 	goTezos "github.com/DefinitelyNotAGoat/go-tezos"
 )
 
+// Payer is a structure to represent pay operations
 type Payer struct {
 	gt       *goTezos.GoTezos
 	wallet   goTezos.Wallet
@@ -14,10 +15,12 @@ type Payer struct {
 	enabled  bool
 }
 
+// NewPayer returns is a contructor for Payer
 func NewPayer(gt *goTezos.GoTezos, wallet goTezos.Wallet, delegate string, fee float32, enabled bool) Payer {
 	return Payer{gt: gt, wallet: wallet, delegate: delegate, fee: fee, enabled: enabled}
 }
 
+// PayoutForCycle uses the payer that calls to payout for the cycle passed with the network fee and gas limit specified
 func (payer *Payer) PayoutForCycle(cycle int, networkFee int, networkGasLimit int) ([]goTezos.Payment, [][]byte, error) {
 	rewards, err := payer.gt.GetRewardsForDelegateCycle(payer.delegate, cycle)
 	if err != nil {
@@ -32,15 +35,19 @@ func (payer *Payer) PayoutForCycle(cycle int, networkFee int, networkGasLimit in
 
 	responses := [][]byte{}
 	if payer.enabled {
-		responses, err = payer.gt.InjectOperation(ops)
-		if err != nil {
-			return payments, responses, err
+		for _, op := range ops {
+			resp, err := payer.gt.InjectOperation(op)
+			if err != nil {
+				return payments, responses, err
+			}
+			responses = append(responses, resp)
 		}
 	}
 
 	return payments, responses, nil
 }
 
+// PayoutForCycles uses the payer that calls to payout for the cycles passed with the network fee and gas limit specified
 func (payer *Payer) PayoutForCycles(cycleStart, cycleEnd int, networkFee int, networkGasLimit int) ([]goTezos.Payment, [][]byte, error) {
 	rewards, err := payer.gt.GetRewardsForDelegateForCycles(payer.delegate, cycleStart, cycleEnd)
 	if err != nil {
@@ -54,15 +61,20 @@ func (payer *Payer) PayoutForCycles(cycleStart, cycleEnd int, networkFee int, ne
 
 	responses := [][]byte{}
 	if payer.enabled {
-		responses, err = payer.gt.InjectOperation(ops)
-		if err != nil {
-			return payments, responses, err
+		for _, op := range ops {
+			resp, err := payer.gt.InjectOperation(op)
+			if err != nil {
+				return payments, responses, err
+			}
+			responses = append(responses, resp)
 		}
 	}
 
 	return payments, responses, nil
 }
 
+// calcPayments iterates through the goTezos type DelegationServiceRewards, to form fill out the payment structure used
+// for batch payments
 func (payer *Payer) calcPayments(rewards goTezos.DelegationServiceRewards, fee float32) []goTezos.Payment {
 	payments := []goTezos.Payment{}
 	net := 1 - fee
