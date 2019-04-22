@@ -4,16 +4,11 @@ Payman is a golang driven payout tool for delegation services that is built upon
 
 ## Installation
 
-Install pkg_config (debian example below):
-```
-sudo apt-get install pkg-config
-```
-
-Install [libsoidum](https://libsodium.gitbook.io/doc/installation)
-
 Get Payman 
 ```
 go get github.com/DefinitelyNotAGoat/payman
+cd $GOPATH/github.com/DefinitelyNotAGoat/payman
+go build
 ```
 
 ## Payman Documentation

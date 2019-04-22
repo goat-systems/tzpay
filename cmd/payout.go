@@ -36,9 +36,7 @@ var (
 var payout = &cobra.Command{
 	Use:   "payout",
 	Short: "payout pays out rewards to delegations",
-	Long: `payman is a simple golang example
-				  that demonstartes go-tezos,
-				  and also allows you to payout your delegations.`,
+	Long:  `payman is a simple golang example that demonstartes go-tezos, and also allows you to payout your delegations.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
 		f, err := os.Create(file)
@@ -111,7 +109,7 @@ var payout = &cobra.Command{
 			reporter.WriteCSVReport(payouts)
 
 		} else {
-			reporter.Log("no cycles past to payout for.")
+			reporter.Log("no cycles passed to payout for.")
 			os.Exit(1)
 		}
 		f.Close()
