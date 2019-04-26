@@ -1,0 +1,51 @@
+# github.com/DefinitelyNotAGoat/go-tezos v0.0.0-20190422005716-9954496b7e1c
+github.com/DefinitelyNotAGoat/go-tezos
+# github.com/Messer4/base58check v0.0.0-20180328134002-7531a92ae9ba
+github.com/Messer4/base58check
+# github.com/golang/protobuf v1.3.1
+github.com/golang/protobuf/proto
+# github.com/inconshreveable/mousetrap v1.0.0
+github.com/inconshreveable/mousetrap
+# github.com/mattn/go-runewidth v0.0.4
+github.com/mattn/go-runewidth
+# github.com/mitchellh/mapstructure v1.1.2
+github.com/mitchellh/mapstructure
+# github.com/olekukonko/tablewriter v0.0.1
+github.com/olekukonko/tablewriter
+# github.com/patrickmn/go-cache v2.1.0+incompatible
+github.com/patrickmn/go-cache
+# github.com/spf13/cobra v0.0.3
+github.com/spf13/cobra
+# github.com/spf13/pflag v1.0.3
+github.com/spf13/pflag
+# github.com/turnage/graw v0.0.0-20190218184947-3295929039f6
+github.com/turnage/graw/reddit
+# github.com/turnage/redditproto v0.0.0-20151223012412-afedf1b6eddb
+github.com/turnage/redditproto
+# golang.org/x/crypto v0.0.0-20190424203555-c05e17bb3b2d
+golang.org/x/crypto/blake2b
+golang.org/x/crypto/ed25519
+golang.org/x/crypto/nacl/secretbox
+golang.org/x/crypto/pbkdf2
+golang.org/x/crypto/ed25519/internal/edwards25519
+golang.org/x/crypto/internal/subtle
+golang.org/x/crypto/poly1305
+golang.org/x/crypto/salsa20/salsa
+# golang.org/x/net v0.0.0-20190424112056-4829fb13d2c6
+golang.org/x/net/context
+golang.org/x/net/context/ctxhttp
+# golang.org/x/oauth2 v0.0.0-20190402181905-9f3314589c9a
+golang.org/x/oauth2
+golang.org/x/oauth2/clientcredentials
+golang.org/x/oauth2/internal
+# golang.org/x/sys v0.0.0-20190412213103-97732733099d
+golang.org/x/sys/cpu
+golang.org/x/sys/unix
+# google.golang.org/appengine v1.4.0
+google.golang.org/appengine/urlfetch
+google.golang.org/appengine/internal
+google.golang.org/appengine/internal/urlfetch
+google.golang.org/appengine/internal/base
+google.golang.org/appengine/internal/datastore
+google.golang.org/appengine/internal/log
+google.golang.org/appengine/internal/remote_api

@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"strconv"
 
+	"github.com/DefinitelyNotAGoat/payman/reddit"
+
 	pay "github.com/DefinitelyNotAGoat/payman/payer"
 	"github.com/DefinitelyNotAGoat/payman/reporting"
 	"github.com/DefinitelyNotAGoat/payman/server"
@@ -31,6 +33,8 @@ var (
 	networkFee      int
 	networkGasLimit int
 	dry             bool
+	redditAgent     string
+	title           string
 )
 
 var payout = &cobra.Command{
@@ -77,22 +81,41 @@ var payout = &cobra.Command{
 			payer = pay.NewPayer(gt, wallet, delegate, fee, true)
 		}
 
+		var redditBot *reddit.Bot
+		if redditAgent != "" {
+			redditBot, err = reddit.NewRedditSession(redditAgent, "dng_delegation", title)
+			if err != nil {
+				reporter.Log(fmt.Sprintf("could not start reddit bot: %v", err))
+			}
+		}
+
 		if service == true {
-			serv := server.NewPaymanServer(delegate, fee, networkFee, networkGasLimit, gt, wallet, payer, reporter)
+			var serv server.PaymanServer
+			if redditBot != nil {
+				serv = server.NewPaymanServer(delegate, fee, networkFee, networkGasLimit, gt, wallet, payer, reporter, redditBot)
+			} else {
+				serv = server.NewPaymanServer(delegate, fee, networkFee, networkGasLimit, gt, wallet, payer, reporter, nil)
+			}
 			serv.Serve(cycle)
 
 		} else if cycles != "" {
-			cycles, err := parseCyclesInput(cycles)
+			intCycles, err := parseCyclesInput(cycles)
 			if err != nil {
 				log.Fatal(err)
 			}
-			payouts, ops, err := payer.PayoutForCycles(cycles[0], cycles[1], networkFee, networkGasLimit)
+			payouts, ops, err := payer.PayoutForCycles(intCycles[0], intCycles[1], networkFee, networkGasLimit)
 			if err != nil {
 				log.Fatal(err)
 			}
 
 			for _, op := range ops {
 				reporter.Log("Successful operation: " + string(op))
+				if redditAgent != "" {
+					err := redditBot.Post(string(op), cycles)
+					if err != nil {
+						reporter.Log(fmt.Sprintf("could not post to reddit: %v", err))
+					}
+				}
 			}
 			reporter.PrintPaymentsTable(payouts)
 			reporter.WriteCSVReport(payouts)
@@ -104,7 +127,14 @@ var payout = &cobra.Command{
 			}
 			for _, op := range ops {
 				reporter.Log("Successful operation: " + string(op))
+				if redditAgent != "" {
+					err := redditBot.Post(string(op), strconv.Itoa(cycle))
+					if err != nil {
+						reporter.Log(fmt.Sprintf("could not post to reddit: %v", err))
+					}
+				}
 			}
+
 			reporter.PrintPaymentsTable(payouts)
 			reporter.WriteCSVReport(payouts)
 
@@ -156,4 +186,6 @@ func init() {
 	payout.PersistentFlags().IntVar(&networkFee, "network-fee", 1270, "network fee for each transaction in mutez")
 	payout.PersistentFlags().IntVar(&networkGasLimit, "gas-limit", 10200, "network gas limit for each transaction in mutez")
 	payout.PersistentFlags().StringVarP(&file, "log-file", "l", "/dev/stdout", "example ./payman.log")
+	payout.PersistentFlags().StringVarP(&redditAgent, "reddit", "r", "", "example https://turnage.gitbooks.io/graw/content/chapter1.html")
+	payout.PersistentFlags().StringVar(&title, "title", "", "example \"MyService:\"")
 }

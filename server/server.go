@@ -1,10 +1,12 @@
 package server
 
 import (
+	"fmt"
 	"time"
 
 	goTezos "github.com/DefinitelyNotAGoat/go-tezos"
 	pay "github.com/DefinitelyNotAGoat/payman/payer"
+	"github.com/DefinitelyNotAGoat/payman/reddit"
 	"github.com/DefinitelyNotAGoat/payman/reporting"
 )
 
@@ -18,10 +20,11 @@ type PaymanServer struct {
 	wallet     goTezos.Wallet
 	payer      pay.Payer
 	reporter   reporting.Reporter
+	rbot       *reddit.Bot
 }
 
 // NewPaymanServer contructs a new payman server
-func NewPaymanServer(delegate string, fee float32, networkFee int, networkGas int, gt *goTezos.GoTezos, wallet goTezos.Wallet, payer pay.Payer, reporter reporting.Reporter) PaymanServer {
+func NewPaymanServer(delegate string, fee float32, networkFee int, networkGas int, gt *goTezos.GoTezos, wallet goTezos.Wallet, payer pay.Payer, reporter reporting.Reporter, rbot *reddit.Bot) PaymanServer {
 	return PaymanServer{
 		delegate:   delegate,
 		fee:        fee,
@@ -31,6 +34,7 @@ func NewPaymanServer(delegate string, fee float32, networkFee int, networkGas in
 		wallet:     wallet,
 		payer:      payer,
 		reporter:   reporter,
+		rbot:       rbot,
 	}
 }
 
@@ -59,6 +63,12 @@ func (payman *PaymanServer) Serve(startCylce int) {
 				}
 				for _, op := range ops {
 					payman.reporter.Log("Successful operation: " + string(op))
+					if payman.rbot != nil {
+						err := payman.rbot.Post(string(op), string(currentCycle))
+						if err != nil {
+							payman.reporter.Log(fmt.Sprintf("could not post to reddit: %v", err))
+						}
+					}
 				}
 				payman.reporter.PrintPaymentsTable(payouts)
 				payman.reporter.WriteCSVReport(payouts)
@@ -72,6 +82,12 @@ func (payman *PaymanServer) Serve(startCylce int) {
 				}
 				for _, op := range ops {
 					payman.reporter.Log("Successful operation: " + string(op))
+					if payman.rbot != nil {
+						err := payman.rbot.Post(string(op), string(currentCycle))
+						if err != nil {
+							payman.reporter.Log(fmt.Sprintf("could not post to reddit: %v", err))
+						}
+					}
 				}
 				payman.reporter.PrintPaymentsTable(payouts)
 				payman.reporter.WriteCSVReport(payouts)

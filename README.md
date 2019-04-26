@@ -32,15 +32,22 @@ Flags:
   -n, --node string       example mainnet-node.tzscan.io (default "http://127.0.0.1")
   -k, --password string   password to the secret key of the wallet paying
   -p, --port string       example 8732 (default "8732")
+  -r, --reddit string     example https://turnage.gitbooks.io/graw/content/chapter1.html
   -s, --secret string     encrypted secret key of the wallet paying
       --serve             run service to payout for all new cycles going foward
+      --title string      example "MyService:"
 ```
 
 ### example: 
 The example below will payout delegations for delegate `tz3gN8NTLNLJg5KRsUU47NHNVHbdhcFXjjaB` with wallet sk `edesk1Qx5JbctVnFVHL4A7BXgyExihHfcAHRYXoxkbSBmKqP2Sp92Gg1xcU8mqqu4Qi9TXkXwomMxAfy19sWAgCm` and password `abcd1234` for cycle `152` with a tezos node at `127.0.0.1:8732`:
 ```
-./payman -d=tz3gN8NTLNLJg5KRsUU47NHNVHbdhcFXjjaB -s=edesk1Qx5JbctVnFVHL4A7BXgyExihHfcAHRYXoxkbSBmKqP2Sp92Gg1xcU8mqqu4Qi9TXkXwomMxAfy19sWAgCm -k=abcd1234 --cycle=152 -n=127.
-0.0.1 -p=8732
+./payman \
+    --delegate=tz3gN8NTLNLJg5KRsUU47NHNVHbdhcFXjjaB \
+    --secret=edesk1Qx5JbctVnFVHL4A7BXgyExihHfcAHRYXoxkbSBmKqP2Sp92Gg1xcU8mqqu4Qi9TXkXwomMxAfy19sWAgCm \
+    --password=abcd1234 \
+    --cycle=160 \
+    --node=127.0.0.1 \
+    --port=8732 \
 
 2019/04/20 14:30:04 reporting.go:23: Successful operation: "oopG1PWdhM8YUkADTwWBHdgmtMxproSPurN8GBAHXLJTnCMb27T"
 
@@ -78,9 +85,51 @@ The example below will payout delegations for delegate `tz3gN8NTLNLJg5KRsUU47NHN
 
 The below will do the same as above but also start a server that will payout for every cycle going forward:
 ```
-./payman -d=tz3gN8NTLNLJg5KRsUU47NHNVHbdhcFXjjaB -s=edesk1Qx5JbctVnFVHL4A7BXgyExihHfcAHRYXoxkbSBmKqP2Sp92Gg1xcU8mqqu4Qi9TXkXwomMxAfy19sWAgCm -k=abcd1234 --cycle=152 -n=127.
-0.0.1 -p=8732 --serve
+./payman \
+    --delegate=tz3gN8NTLNLJg5KRsUU47NHNVHbdhcFXjjaB \
+    --secret=edesk1Qx5JbctVnFVHL4A7BXgyExihHfcAHRYXoxkbSBmKqP2Sp92Gg1xcU8mqqu4Qi9TXkXwomMxAfy19sWAgCm \
+    --password=abcd1234 \
+    --cycle=160 \
+    --node=127.0.0.1 \
+    --port=8732 \
+    --serve
 ``` 
+
+#### Using Reddit Bot Functionality 
+This feature is currently only functional with mainnet. If used with another network, the link in your reddit post will be broken (Future Fix)
+```
+-r, --reddit string     example https://turnage.gitbooks.io/graw/content/chapter1.html
+--title string      example "MyService:"
+```
+To use a reddit bot to post the results of your payout create an [agent file](https://turnage.gitbooks.io/graw/content/chapter1.html)  containing your reddit client and secret. 
+```
+user_agent: "<platform>:<app ID>:<version string> (by /u/<reddit username>)"
+client_id: "client id (looks kind of like: sdkfbwi48rhijwsdn)"
+client_secret: "client secret (looks kind of like: ldkvblwiu34y8hsldjivn)"
+username: "reddit username"
+password: "reddit password"
+```
+
+Pass that file to the `--reddit` / `-r` flag. You may also include an option pre title using the `--title` flag. 
+```
+./payman \
+    --delegate=tz3gN8NTLNLJg5KRsUU47NHNVHbdhcFXjjaB \
+    --secret=edesk1Qx5JbctVnFVHL4A7BXgyExihHfcAHRYXoxkbSBmKqP2Sp92Gg1xcU8mqqu4Qi9TXkXwomMxAfy19sWAgCm \
+    --password=abcd1234 \
+    --cycle=160 \
+    --node=127.0.0.1 \
+    --port=8732 \
+    --reddit=./reddit.agent \
+    --title=DefinitelyNotABot:
+
+```
+
+Your reddit post will contain the title passed along with "Payout for Cycle(s) number"
+```
+DefinitelyNotATestBot: Payout for Cycle(s) 100
+```
+With a link to the tzscan operation related to the cycle.
+
 
 ## Roadmap:
 * blacklist addresses
