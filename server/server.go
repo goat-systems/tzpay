@@ -5,93 +5,75 @@ import (
 	"time"
 
 	goTezos "github.com/DefinitelyNotAGoat/go-tezos"
+	"github.com/DefinitelyNotAGoat/payman/options"
 	pay "github.com/DefinitelyNotAGoat/payman/payer"
 	"github.com/DefinitelyNotAGoat/payman/reddit"
 	"github.com/DefinitelyNotAGoat/payman/reporting"
 )
 
-// PaymanServer is structure representing a payman payout server
-type PaymanServer struct {
-	delegate   string
-	fee        float32
-	networkFee int
-	networkGas int
-	gt         *goTezos.GoTezos
-	wallet     goTezos.Wallet
-	payer      pay.Payer
-	reporter   reporting.Reporter
-	rbot       *reddit.Bot
+// PayoutServer is structure representing a payout server
+type PayoutServer struct {
+	gt       *goTezos.GoTezos
+	wallet   goTezos.Wallet
+	reporter reporting.Reporter
+	rbot     *reddit.Bot
+	conf     *options.Options
 }
 
-// NewPaymanServer contructs a new payman server
-func NewPaymanServer(delegate string, fee float32, networkFee int, networkGas int, gt *goTezos.GoTezos, wallet goTezos.Wallet, payer pay.Payer, reporter reporting.Reporter, rbot *reddit.Bot) PaymanServer {
-	return PaymanServer{
-		delegate:   delegate,
-		fee:        fee,
-		networkFee: networkFee,
-		networkGas: networkGas,
-		gt:         gt,
-		wallet:     wallet,
-		payer:      payer,
-		reporter:   reporter,
-		rbot:       rbot,
+// NewPayoutServer contructs a new payout server
+func NewPayoutServer(gt *goTezos.GoTezos, wallet goTezos.Wallet, reporter reporting.Reporter, rbot *reddit.Bot, conf *options.Options) PayoutServer {
+	return PayoutServer{
+		gt:       gt,
+		wallet:   wallet,
+		reporter: reporter,
+		rbot:     rbot,
+		conf:     conf,
 	}
 }
 
-// Serve starts the payman server
-func (payman *PaymanServer) Serve(startCylce int) {
+// Serve starts the payout server
+func (ps *PayoutServer) Serve() {
 	ticker := time.NewTicker(5 * time.Minute)
 	quit := make(chan struct{})
-	lastPaidCycle := -1
+	lastCycle, _, err := ps.gt.GetBlockLevelHead()
+	if err != nil {
+		ps.reporter.Log(err)
+	}
+
+	payer := pay.NewPayer(ps.gt, ps.wallet, ps.conf)
+	constants, err := ps.gt.GetNetworkConstants()
+	if err != nil {
+		ps.reporter.Log(err)
+	}
+	lastCycle = lastCycle / constants.BlocksPerCycle
+
 	for {
 		select {
 		case <-ticker.C:
-			constants, err := payman.gt.GetNetworkConstants()
+			head, _, err := ps.gt.GetBlockLevelHead()
 			if err != nil {
-				payman.reporter.Log(err)
-			}
-			head, _, err := payman.gt.GetBlockLevelHead()
-			if err != nil {
-				payman.reporter.Log(err)
+				ps.reporter.Log(err)
 			}
 			currentCycle := head / constants.BlocksPerCycle
-			if currentCycle == startCylce && lastPaidCycle == -1 {
-				payouts, ops, err := payman.payer.PayoutForCycle(currentCycle, payman.networkFee, payman.networkGas)
+			if currentCycle > lastCycle {
+				ps.conf.Cycle = currentCycle
+				payouts, ops, err := payer.Payout()
 				if err != nil {
-					payman.reporter.Log(err)
+					ps.reporter.Log(err)
 					close(quit)
 				}
 				for _, op := range ops {
-					payman.reporter.Log("Successful operation: " + string(op))
-					if payman.rbot != nil {
-						err := payman.rbot.Post(string(op), string(currentCycle))
+					ps.reporter.Log("Successful operation: " + string(op))
+					if ps.rbot != nil {
+						err := ps.rbot.Post(string(op), string(currentCycle))
 						if err != nil {
-							payman.reporter.Log(fmt.Sprintf("could not post to reddit: %v", err))
+							ps.reporter.Log(fmt.Sprintf("could not post to reddit: %v", err))
 						}
 					}
 				}
-				payman.reporter.PrintPaymentsTable(payouts)
-				payman.reporter.WriteCSVReport(payouts)
-				lastPaidCycle = currentCycle
-			}
-			if (lastPaidCycle + 1) == currentCycle {
-				payouts, ops, err := payman.payer.PayoutForCycle(currentCycle, payman.networkFee, payman.networkGas)
-				if err != nil {
-					payman.reporter.Log(err)
-					close(quit)
-				}
-				for _, op := range ops {
-					payman.reporter.Log("Successful operation: " + string(op))
-					if payman.rbot != nil {
-						err := payman.rbot.Post(string(op), string(currentCycle))
-						if err != nil {
-							payman.reporter.Log(fmt.Sprintf("could not post to reddit: %v", err))
-						}
-					}
-				}
-				payman.reporter.PrintPaymentsTable(payouts)
-				payman.reporter.WriteCSVReport(payouts)
-				lastPaidCycle = currentCycle
+				ps.reporter.PrintPaymentsTable(payouts)
+				ps.reporter.WriteCSVReport(payouts)
+				lastCycle = currentCycle
 			}
 		case <-quit:
 			ticker.Stop()

@@ -1,40 +1,62 @@
 package payer
 
 import (
+	"fmt"
 	"strconv"
 
 	goTezos "github.com/DefinitelyNotAGoat/go-tezos"
+	"github.com/DefinitelyNotAGoat/payman/options"
 )
 
 // Payer is a structure to represent pay operations
 type Payer struct {
-	gt       *goTezos.GoTezos
-	wallet   goTezos.Wallet
-	delegate string
-	fee      float32
-	enabled  bool
+	gt     *goTezos.GoTezos
+	wallet goTezos.Wallet
+	conf   *options.Options
 }
 
 // NewPayer returns is a contructor for Payer
-func NewPayer(gt *goTezos.GoTezos, wallet goTezos.Wallet, delegate string, fee float32, enabled bool) Payer {
-	return Payer{gt: gt, wallet: wallet, delegate: delegate, fee: fee, enabled: enabled}
+func NewPayer(gt *goTezos.GoTezos, wallet goTezos.Wallet, conf *options.Options) Payer {
+	return Payer{gt: gt, wallet: wallet, conf: conf}
 }
 
-// PayoutForCycle uses the payer that calls to payout for the cycle passed with the network fee and gas limit specified
-func (payer *Payer) PayoutForCycle(cycle int, networkFee int, networkGasLimit int) ([]goTezos.Payment, [][]byte, error) {
-	rewards, err := payer.gt.GetRewardsForDelegateCycle(payer.delegate, cycle)
+// Payout pays out based of the configuration of the payer that calls it
+func (payer *Payer) Payout() ([]goTezos.Payment, [][]byte, error) {
+	var payment []goTezos.Payment
+	var ops [][]byte
+
+	if payer.conf.Cycle != 0 {
+		payment, ops, err := payer.payoutForCycle()
+		if err != nil {
+			return payment, ops, err
+		}
+		return payment, ops, err
+	} else if payer.conf.Cycles != "" {
+		payment, ops, err := payer.payoutForCycles()
+		if err != nil {
+			return payment, ops, err
+		}
+		return payment, ops, err
+	}
+	return payment, ops, fmt.Errorf("no cycle configuration found to payout for")
+}
+
+// payoutForCycle uses the payer that calls to payout for the cycle passed with the network fee and gas limit specified
+func (payer *Payer) payoutForCycle() ([]goTezos.Payment, [][]byte, error) {
+
+	rewards, err := payer.gt.GetRewardsForDelegateCycle(payer.conf.Delegate, payer.conf.Cycle)
 	if err != nil {
 		return nil, nil, err
 	}
-	payments := payer.calcPayments(rewards, payer.fee)
+	payments := payer.calcPayments(rewards, payer.conf.Fee)
 
-	ops, err := payer.gt.CreateBatchPayment(payments, payer.wallet, networkFee, networkGasLimit)
+	ops, err := payer.gt.CreateBatchPayment(payments, payer.wallet, payer.conf.NetworkFee, payer.conf.NetworkGasLimit)
 	if err != nil {
 		return payments, nil, err
 	}
 
 	responses := [][]byte{}
-	if payer.enabled {
+	if !payer.conf.Dry {
 		for _, op := range ops {
 			resp, err := payer.gt.InjectOperation(op)
 			if err != nil {
@@ -47,20 +69,21 @@ func (payer *Payer) PayoutForCycle(cycle int, networkFee int, networkGasLimit in
 	return payments, responses, nil
 }
 
-// PayoutForCycles uses the payer that calls to payout for the cycles passed with the network fee and gas limit specified
-func (payer *Payer) PayoutForCycles(cycleStart, cycleEnd int, networkFee int, networkGasLimit int) ([]goTezos.Payment, [][]byte, error) {
-	rewards, err := payer.gt.GetRewardsForDelegateForCycles(payer.delegate, cycleStart, cycleEnd)
+// payoutForCycles uses the payer that calls to payout for the cycles passed with the network fee and gas limit specified
+func (payer *Payer) payoutForCycles() ([]goTezos.Payment, [][]byte, error) {
+	cycles, err := payer.conf.ParseCyclesInput()
+	rewards, err := payer.gt.GetRewardsForDelegateForCycles(payer.conf.Delegate, cycles[0], cycles[1])
 	if err != nil {
 		return nil, nil, err
 	}
-	payments := payer.calcPayments(rewards, payer.fee)
-	ops, err := payer.gt.CreateBatchPayment(payments, payer.wallet, networkFee, networkGasLimit)
+	payments := payer.calcPayments(rewards, payer.conf.Fee)
+	ops, err := payer.gt.CreateBatchPayment(payments, payer.wallet, payer.conf.NetworkFee, payer.conf.NetworkGasLimit)
 	if err != nil {
 		return payments, nil, err
 	}
 
 	responses := [][]byte{}
-	if payer.enabled {
+	if !payer.conf.Dry {
 		for _, op := range ops {
 			resp, err := payer.gt.InjectOperation(op)
 			if err != nil {

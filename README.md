@@ -17,37 +17,38 @@ go build
 
 ```
 Usage:
-  payout [flags]
+  payman payout [flags]
 
 Flags:
-  -c, --cycle int         cycle to payout for, example 20
-      --cycles string     cycles to payout for, example 20-24
-  -d, --delegate string   public key hash of the delegate that's paying out
-      --dry               run payout in simulation with report
-  -f, --fee float32       example 0.05 (default 0.05)
-      --gas-limit int     network gas limit for each transaction in mutez (default 10200)
-  -h, --help              help for payout
-  -l, --log-file string   example ./payman.log (default "/dev/stdout")
-      --network-fee int   network fee for each transaction in mutez (default 1270)
-  -n, --node string       example mainnet-node.tzscan.io (default "http://127.0.0.1")
-  -k, --password string   password to the secret key of the wallet paying
-  -p, --port string       example 8732 (default "8732")
-  -r, --reddit string     example https://turnage.gitbooks.io/graw/content/chapter1.html
-  -s, --secret string     encrypted secret key of the wallet paying
-      --serve             run service to payout for all new cycles going foward
-      --title string      example "MyService:"
+  -c, --cycle int             cycle to payout for (e.g. 95)
+      --cycles string         cycles to payout for (e.g. 95-100)
+  -d, --delegate string       public key hash of the delegate that's paying out (e.g. --delegate=<phk>)
+      --dry                   run payout in simulation with report (default false)(e.g. --dry)
+  -f, --fee float32           fee for the delegate (e.g. 0.05 = 5%) (default -1)
+      --gas-limit int         network gas limit for each transaction in mutez (default 10200)(e.g. 10300) (default 10200)
+  -h, --help                  help for payout
+  -l, --log-file string       file to log to (default stdout)(e.g. ./payman.log) (default "/dev/stdout")
+      --network-fee int       network fee for each transaction in mutez (default 1270)(e.g. 2000) (default 1270)
+  -n, --node string           address to the node to query (default http://127.0.0.1)(e.g. mainnet-node.tzscan.io) (default "http://127.0.0.1")
+  -k, --password string       password to the secret key of the wallet paying (e.g. --password=<passwd>)
+  -p, --port string           port to use for node (default 8732)(e.g. 443) (default "8732")
+  -r, --reddit string         path to reddit agent file (initiates reddit bot)(e.g. https://turnage.gitbooks.io/graw/content/chapter1.html)
+      --reddit-title string   pre title for the reddit bot to post (e.g. DefinitelyNotABot: -- will read DefinitelyNotABot: Payout for Cycle(s) <cycles>)
+  -s, --secret string         encrypted secret key of the wallet paying (e.g. --secret=<sk>)
+      --serve                 run service to payout for all new cycles going foward (default false)(e.g. --serve)
 ```
 
 ### example: 
 The example below will payout delegations for delegate `tz3gN8NTLNLJg5KRsUU47NHNVHbdhcFXjjaB` with wallet sk `edesk1Qx5JbctVnFVHL4A7BXgyExihHfcAHRYXoxkbSBmKqP2Sp92Gg1xcU8mqqu4Qi9TXkXwomMxAfy19sWAgCm` and password `abcd1234` for cycle `152` with a tezos node at `127.0.0.1:8732`:
 ```
-./payman \
-    --delegate=tz3gN8NTLNLJg5KRsUU47NHNVHbdhcFXjjaB \
-    --secret=edesk1Qx5JbctVnFVHL4A7BXgyExihHfcAHRYXoxkbSBmKqP2Sp92Gg1xcU8mqqu4Qi9TXkXwomMxAfy19sWAgCm \
-    --password=abcd1234 \
-    --cycle=160 \
-    --node=127.0.0.1 \
-    --port=8732 \
+./payman payout \     
+        --delegate=tz3gN8NTLNLJg5KRsUU47NHNVHbdhcFXjjaB \
+        --secret=edesk1Qx5JbctVnFVHL4A7BXgyExihHfcAHRYXoxkbSBmKqP2Sp92Gg1xcU8mqqu4Qi9TXkXwomMxAfy19sWAgCm \
+        --password=abcd1234 \
+        --cycle=160 \
+        --node=127.0.0.1 \
+        --port=8732 \
+        --fee=0.05
 
 2019/04/20 14:30:04 reporting.go:23: Successful operation: "oopG1PWdhM8YUkADTwWBHdgmtMxproSPurN8GBAHXLJTnCMb27T"
 
@@ -85,14 +86,15 @@ The example below will payout delegations for delegate `tz3gN8NTLNLJg5KRsUU47NHN
 
 The below will do the same as above but also start a server that will payout for every cycle going forward:
 ```
-./payman \
-    --delegate=tz3gN8NTLNLJg5KRsUU47NHNVHbdhcFXjjaB \
-    --secret=edesk1Qx5JbctVnFVHL4A7BXgyExihHfcAHRYXoxkbSBmKqP2Sp92Gg1xcU8mqqu4Qi9TXkXwomMxAfy19sWAgCm \
-    --password=abcd1234 \
-    --cycle=160 \
-    --node=127.0.0.1 \
-    --port=8732 \
-    --serve
+./payman payout \     
+        --delegate=tz3gN8NTLNLJg5KRsUU47NHNVHbdhcFXjjaB \
+        --secret=edesk1Qx5JbctVnFVHL4A7BXgyExihHfcAHRYXoxkbSBmKqP2Sp92Gg1xcU8mqqu4Qi9TXkXwomMxAfy19sWAgCm \
+        --password=abcd1234 \
+        --cycle=160 \
+        --node=127.0.0.1 \
+        --port=8732 \
+        --fee=0.05 \
+        --serve
 ``` 
 
 #### Using Reddit Bot Functionality 
@@ -101,7 +103,7 @@ This feature is currently only functional with mainnet. If used with another net
 -r, --reddit string     example https://turnage.gitbooks.io/graw/content/chapter1.html
 --title string      example "MyService:"
 ```
-To use a reddit bot to post the results of your payout create an [agent file](https://turnage.gitbooks.io/graw/content/chapter1.html)  containing your reddit client and secret. 
+To post the results of your payout to reddit, create a [reddit.agent](https://turnage.gitbooks.io/graw/content/chapter1.html) file  containing your reddit client and secret. 
 ```
 user_agent: "<platform>:<app ID>:<version string> (by /u/<reddit username>)"
 client_id: "client id (looks kind of like: sdkfbwi48rhijwsdn)"
@@ -110,17 +112,18 @@ username: "reddit username"
 password: "reddit password"
 ```
 
-Pass that file to the `--reddit` / `-r` flag. You may also include an option pre title using the `--title` flag. 
+Pass that file to the `--reddit` / `-r` flag. You may also include an option pre title using the `--reddit-title` flag. 
 ```
-./payman \
-    --delegate=tz3gN8NTLNLJg5KRsUU47NHNVHbdhcFXjjaB \
-    --secret=edesk1Qx5JbctVnFVHL4A7BXgyExihHfcAHRYXoxkbSBmKqP2Sp92Gg1xcU8mqqu4Qi9TXkXwomMxAfy19sWAgCm \
-    --password=abcd1234 \
-    --cycle=160 \
-    --node=127.0.0.1 \
-    --port=8732 \
-    --reddit=./reddit.agent \
-    --title=DefinitelyNotABot:
+./payman payout \     
+        --delegate=tz3gN8NTLNLJg5KRsUU47NHNVHbdhcFXjjaB \
+        --secret=edesk1Qx5JbctVnFVHL4A7BXgyExihHfcAHRYXoxkbSBmKqP2Sp92Gg1xcU8mqqu4Qi9TXkXwomMxAfy19sWAgCm \
+        --password=abcd1234 \
+        --cycle=160 \
+        --node=127.0.0.1 \
+        --port=8732 \
+        --fee=0.05 \
+        --reddit=./reddit.agent \
+        --reddit-title=DefinitelyNotABot: 
 
 ```
 
