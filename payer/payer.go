@@ -1,9 +1,6 @@
 package payer
 
 import (
-	"fmt"
-	"strconv"
-
 	goTezos "github.com/DefinitelyNotAGoat/go-tezos"
 	"github.com/DefinitelyNotAGoat/payman/options"
 )
@@ -15,44 +12,48 @@ type Payer struct {
 	conf   *options.Options
 }
 
+// PayoutResults is a helper structure to describe results of a payout
+type PayoutResults struct {
+	OpHashes []string
+	Payouts  []Payout
+}
+
+// Payout describes a single payout to a single address
+type Payout struct {
+	Address  string
+	Share    float64
+	Gross    float64
+	Fee      float64
+	Total    float64
+	USDValue float64
+}
+
+// Node describes the node's total in PayoutResults
+type Node struct {
+	Address           string
+	TotalFees         float64
+	SelfBaked         float64
+	TotalFeesUSD      float64
+	TotalSelfBakedUSD float64
+}
+
 // NewPayer returns is a contructor for Payer
 func NewPayer(gt *goTezos.GoTezos, wallet goTezos.Wallet, conf *options.Options) Payer {
 	return Payer{gt: gt, wallet: wallet, conf: conf}
 }
 
-// Payout pays out based of the configuration of the payer that calls it
-func (payer *Payer) Payout() ([]goTezos.Payment, [][]byte, error) {
-	var payment []goTezos.Payment
-	var ops [][]byte
+// Payout uses the payers configuration that calls it, to pay out for the cycle in the conf
+func (payer *Payer) Payout() (goTezos.DelegateReport, [][]byte, error) {
 
-	if payer.conf.Cycle != 0 {
-		payment, ops, err := payer.payoutForCycle()
-		if err != nil {
-			return payment, ops, err
-		}
-		return payment, ops, err
-	} else if payer.conf.Cycles != "" {
-		payment, ops, err := payer.payoutForCycles()
-		if err != nil {
-			return payment, ops, err
-		}
-		return payment, ops, err
-	}
-	return payment, ops, fmt.Errorf("no cycle configuration found to payout for")
-}
-
-// payoutForCycle uses the payer that calls to payout for the cycle passed with the network fee and gas limit specified
-func (payer *Payer) payoutForCycle() ([]goTezos.Payment, [][]byte, error) {
-
-	rewards, err := payer.gt.GetRewardsForDelegateCycle(payer.conf.Delegate, payer.conf.Cycle)
+	rewards, err := payer.gt.GetRewardsForDelegateForCycle(payer.conf.Delegate, payer.conf.Cycle, float64(payer.conf.Fee))
 	if err != nil {
-		return nil, nil, err
+		return rewards, nil, err
 	}
-	payments := payer.calcPayments(rewards, payer.conf.Fee)
+	payments := rewards.GetPayments()
 
 	ops, err := payer.gt.CreateBatchPayment(payments, payer.wallet, payer.conf.NetworkFee, payer.conf.NetworkGasLimit)
 	if err != nil {
-		return payments, nil, err
+		return rewards, nil, err
 	}
 
 	responses := [][]byte{}
@@ -60,56 +61,11 @@ func (payer *Payer) payoutForCycle() ([]goTezos.Payment, [][]byte, error) {
 		for _, op := range ops {
 			resp, err := payer.gt.InjectOperation(op)
 			if err != nil {
-				return payments, responses, err
+				return rewards, responses, err
 			}
 			responses = append(responses, resp)
 		}
 	}
 
-	return payments, responses, nil
-}
-
-// payoutForCycles uses the payer that calls to payout for the cycles passed with the network fee and gas limit specified
-func (payer *Payer) payoutForCycles() ([]goTezos.Payment, [][]byte, error) {
-	cycles, err := payer.conf.ParseCyclesInput()
-	rewards, err := payer.gt.GetRewardsForDelegateForCycles(payer.conf.Delegate, cycles[0], cycles[1])
-	if err != nil {
-		return nil, nil, err
-	}
-	payments := payer.calcPayments(rewards, payer.conf.Fee)
-	ops, err := payer.gt.CreateBatchPayment(payments, payer.wallet, payer.conf.NetworkFee, payer.conf.NetworkGasLimit)
-	if err != nil {
-		return payments, nil, err
-	}
-
-	responses := [][]byte{}
-	if !payer.conf.Dry {
-		for _, op := range ops {
-			resp, err := payer.gt.InjectOperation(op)
-			if err != nil {
-				return payments, responses, err
-			}
-			responses = append(responses, resp)
-		}
-	}
-
-	return payments, responses, nil
-}
-
-// calcPayments iterates through the goTezos type DelegationServiceRewards, to form fill out the payment structure used
-// for batch payments
-func (payer *Payer) calcPayments(rewards goTezos.DelegationServiceRewards, fee float32) []goTezos.Payment {
-	payments := []goTezos.Payment{}
-	net := 1 - fee
-	for _, cycle := range rewards.RewardsByCycle {
-		for _, delegate := range cycle.Delegations {
-			f, _ := strconv.ParseFloat(delegate.GrossRewards, 32)
-			amount := f * float64(net)
-			payment := goTezos.Payment{Address: delegate.DelegationPhk, Amount: amount}
-			if amount > 1500 {
-				payments = append(payments, payment)
-			}
-		}
-	}
-	return payments
+	return rewards, responses, nil
 }

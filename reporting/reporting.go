@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	"encoding/csv"
@@ -35,7 +36,7 @@ func NewReporter(general *log.Logger) (Reporter, error) {
 }
 
 // PrintPaymentsTable takes in payments and prints them to a table for general logging
-func (r *Reporter) PrintPaymentsTable(payments []goTezos.Payment) {
+func (r *Reporter) PrintPaymentsTable(payments goTezos.DelegateReport) {
 	total := []string{}
 	data := r.formatData(payments)
 	if len(data) > 0 {
@@ -44,7 +45,7 @@ func (r *Reporter) PrintPaymentsTable(payments []goTezos.Payment) {
 	}
 
 	table := tablewriter.NewWriter(r.general.Writer())
-	table.SetHeader([]string{"Address", "Payment"})
+	table.SetHeader([]string{"Address", "Share", "Gross", "Fee", "Net"})
 	table.SetFooter(total)
 
 	for _, v := range data {
@@ -54,20 +55,32 @@ func (r *Reporter) PrintPaymentsTable(payments []goTezos.Payment) {
 }
 
 // formatData parses payments into a double array of data for table or csv printing
-func (r *Reporter) formatData(payments []goTezos.Payment) [][]string {
+func (r *Reporter) formatData(payments goTezos.DelegateReport) [][]string {
 	var data [][]string
-	var total float64
-	for _, payment := range payments {
-		payment.Amount = payment.Amount / goTezos.MUTEZ
-		total = total + payment.Amount
-		data = append(data, []string{payment.Address, fmt.Sprintf("%.6f", payment.Amount)})
+	var totalNet float64
+	var totalGross float64
+	var totalFee float64
+	for _, payment := range payments.Delegations {
+		share := payment.Share * 100
+		strShare := fmt.Sprintf("%.6f", share)
+		fee, _ := strconv.Atoi(payment.Fee)
+		floatFee := float64(fee) / float64(goTezos.MUTEZ)
+		gross, _ := strconv.Atoi(payment.GrossRewards)
+		floatGross := float64(gross) / float64(goTezos.MUTEZ)
+		net, _ := strconv.Atoi(payment.NetRewards)
+		floatNet := float64(net) / float64(goTezos.MUTEZ)
+
+		totalNet = totalNet + floatNet
+		totalGross = totalGross + floatGross
+		totalFee = totalFee + floatFee
+		data = append(data, []string{payment.DelegationPhk, strShare, fmt.Sprintf("%.6f", floatGross), fmt.Sprintf("%.6f", floatFee), fmt.Sprintf("%.6f", floatNet)})
 	}
-	data = append(data, []string{"Total", fmt.Sprintf("%.6f", total)})
+	data = append(data, []string{"", "Total", fmt.Sprintf("%.6f", totalGross), fmt.Sprintf("%.6f", totalFee), fmt.Sprintf("%.6f", totalNet)})
 	return data
 }
 
 // WriteCSVReport writes payments to a csv file for reporting
-func (r *Reporter) WriteCSVReport(payments []goTezos.Payment) {
+func (r *Reporter) WriteCSVReport(payments goTezos.DelegateReport) {
 	data := r.formatData(payments)
 	if r.report != nil {
 		for _, value := range data {

@@ -1,6 +1,6 @@
 cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
-github.com/DefinitelyNotAGoat/go-tezos v0.0.0-20190422005716-9954496b7e1c h1:8HNWVf04AVmqEAcYG+ul5NRViB4MavKHkNXSNogcQRs=
-github.com/DefinitelyNotAGoat/go-tezos v0.0.0-20190422005716-9954496b7e1c/go.mod h1:ixNp8mhks+QhqUsQCiScspz8zhTW6PBfzmzVhuZ1XsE=
+github.com/DefinitelyNotAGoat/go-tezos v0.0.0-20190427154335-dececb7deeeb h1:TCr7fKsE3TNDEF+rHGby6YQtgVfRzXjpvvKYyOiCfD0=
+github.com/DefinitelyNotAGoat/go-tezos v0.0.0-20190427154335-dececb7deeeb/go.mod h1:NfRQsQk5o8/9Xf9aOC3VneJVu9vUDBhdiG/DogjiY9A=
 github.com/Messer4/base58check v0.0.0-20180328134002-7531a92ae9ba h1:e0baDNoruF8YR/JRUmljBoQwxWSOL8MXPFPxWN0GOXk=
 github.com/Messer4/base58check v0.0.0-20180328134002-7531a92ae9ba/go.mod h1:NtsVEFPEMr0LH6B51gU0o+JYyiIb+jKEa49+t9tMbtM=
 github.com/golang/protobuf v1.2.0/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
@@ -29,9 +29,8 @@ golang.org/x/crypto v0.0.0-20190424203555-c05e17bb3b2d h1:adrbvkTDn9rGnXg2IJDKoz
 golang.org/x/crypto v0.0.0-20190424203555-c05e17bb3b2d/go.mod h1:yigFU9vqHzYiE8UmvKecakEJjdnWj3jj499lnFckfCI=
 golang.org/x/net v0.0.0-20180724234803-3673e40ba225/go.mod h1:mL1N/T3taQHkDXs73rZJwtUhF3w3ftmwwsq0BUmARs4=
 golang.org/x/net v0.0.0-20190108225652-1e06a53dbb7e/go.mod h1:mL1N/T3taQHkDXs73rZJwtUhF3w3ftmwwsq0BUmARs4=
+golang.org/x/net v0.0.0-20190404232315-eb5bcb51f2a3 h1:0GoQqolDA55aaLxZyTzK/Y2ePZzZTUrRacwib7cNsYQ=
 golang.org/x/net v0.0.0-20190404232315-eb5bcb51f2a3/go.mod h1:t9HGtf8HONx5eT2rtn7q6eTqICYqUVnKs3thJo3Qplg=
-golang.org/x/net v0.0.0-20190424112056-4829fb13d2c6 h1:FP8hkuE6yUEaJnK7O2eTuejKWwW+Rhfj80dQ2JcKxCU=
-golang.org/x/net v0.0.0-20190424112056-4829fb13d2c6/go.mod h1:t9HGtf8HONx5eT2rtn7q6eTqICYqUVnKs3thJo3Qplg=
 golang.org/x/oauth2 v0.0.0-20190402181905-9f3314589c9a h1:tImsplftrFpALCYumobsd0K86vlAs/eXGFms2txfJfA=
 golang.org/x/oauth2 v0.0.0-20190402181905-9f3314589c9a/go.mod h1:gOpvHmFTYa4IltrdGE7lF6nIHvwfUNPOp7c8zoXwtLw=
 golang.org/x/sync v0.0.0-20181221193216-37e7f081c4d4/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=

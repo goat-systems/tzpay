@@ -31,11 +31,8 @@ func newPayoutCommand() *cobra.Command {
 		if conf.Password == "" {
 			errors = append(errors, "[payout][preflight] error: no password passed for payout wallet (e.g. --password=<passwd>)")
 		}
-		if conf.Cycles == "" && conf.Cycle == 0 {
-			errors = append(errors, "[payout][preflight] error: no cycle(s) passed to payout for (e.g. --cycle=95 || --cycles=95-100)")
-		}
-		if conf.Cycles != "" && conf.Cycle > 0 {
-			errors = append(errors, "[payout][preflight] error: cannot pass both --cycles and --cycle, it's either or (e.g. --cycle=95 || --cycles=95-100)")
+		if conf.Cycle == 0 && conf.Service == false {
+			errors = append(errors, "[payout][preflight] error: no cycle passed to payout for (e.g. --cycle=95)")
 		}
 		if conf.Fee == -1 {
 			errors = append(errors, "[payout][preflight] error: no delegation fee passed for payout (e.g. --fee=0.05)")
@@ -62,6 +59,7 @@ func newPayoutCommand() *cobra.Command {
 		Short: "Payout pays out rewards to delegations.",
 		Long:  "Payout pays out rewards to delegations for the delegate passed.",
 		Run: func(cmd *cobra.Command, args []string) {
+
 			preflight(conf)
 
 			f, err := os.Create(conf.File)
@@ -111,7 +109,7 @@ func newPayoutCommand() *cobra.Command {
 				for _, op := range ops {
 					reporter.Log("Successful operation: " + string(op))
 					if conf.RedditAgent != "" {
-						err := redditBot.Post(string(op), conf.Cycles)
+						err := redditBot.Post(string(op), string(conf.Cycle))
 						if err != nil {
 							reporter.Log(fmt.Sprintf("could not post to reddit: %v", err))
 						}
@@ -130,7 +128,6 @@ func newPayoutCommand() *cobra.Command {
 	payout.PersistentFlags().StringVarP(&conf.Password, "password", "k", "", "password to the secret key of the wallet paying (e.g. --password=<passwd>)")
 	payout.PersistentFlags().BoolVar(&conf.Service, "serve", false, "run service to payout for all new cycles going foward (default false)(e.g. --serve)")
 	payout.PersistentFlags().BoolVar(&conf.Dry, "dry", false, "run payout in simulation with report (default false)(e.g. --dry)")
-	payout.PersistentFlags().StringVar(&conf.Cycles, "cycles", "", "cycles to payout for (e.g. 95-100)")
 	payout.PersistentFlags().IntVarP(&conf.Cycle, "cycle", "c", 0, "cycle to payout for (e.g. 95)")
 	payout.PersistentFlags().StringVarP(&conf.Node, "node", "n", "http://127.0.0.1", "address to the node to query (default http://127.0.0.1)(e.g. mainnet-node.tzscan.io)")
 	payout.PersistentFlags().StringVarP(&conf.Port, "port", "p", "8732", "port to use for node (default 8732)(e.g. 443)")
