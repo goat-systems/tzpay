@@ -22,21 +22,24 @@ Usage:
   payman payout [flags]
 
 Flags:
-  -c, --cycle int             cycle to payout for (e.g. 95)
-  -d, --delegate string       public key hash of the delegate that's paying out (e.g. --delegate=<phk>)
-      --dry                   run payout in simulation with report (default false)(e.g. --dry)
-  -f, --fee float32           fee for the delegate (e.g. 0.05 = 5%) (default -1)
-      --gas-limit int         network gas limit for each transaction in mutez (default 10200)(e.g. 10300) (default 10200)
-  -h, --help                  help for payout
-  -l, --log-file string       file to log to (default stdout)(e.g. ./payman.log) (default "/dev/stdout")
-      --network-fee int       network fee for each transaction in mutez (default 1270)(e.g. 2000) (default 1270)
-  -n, --node string           address to the node to query (default http://127.0.0.1)(e.g. mainnet-node.tzscan.io) (default "http://127.0.0.1")
-  -k, --password string       password to the secret key of the wallet paying (e.g. --password=<passwd>)
-  -p, --port string           port to use for node (default 8732)(e.g. 443) (default "8732")
-  -r, --reddit string         path to reddit agent file (initiates reddit bot)(e.g. https://turnage.gitbooks.io/graw/content/chapter1.html)
-      --reddit-title string   pre title for the reddit bot to post (e.g. DefinitelyNotABot: -- will read DefinitelyNotABot: Payout for Cycle(s) <cycles>)
-  -s, --secret string         encrypted secret key of the wallet paying (e.g. --secret=<sk>)
-      --serve                 run service to payout for all new cycles going foward (default false)(e.g. --serve)
+  -c, --cycle int              cycle to payout for (e.g. 95)
+  -d, --delegate string        public key hash of the delegate that's paying out (e.g. --delegate=<phk>)
+      --dry                    run payout in simulation with report (default false)(e.g. --dry)
+  -f, --fee float32            fee for the delegate (e.g. 0.05 = 5%) (default -1)
+      --gas-limit int          network gas limit for each transaction in mutez (default 10200)(e.g. 10300) (default 10200)
+  -h, --help                   help for payout
+  -l, --log-file string        file to log to (default stdout)(e.g. ./payman.log) (default "/dev/stdout")
+      --network-fee int        network fee for each transaction in mutez (default 1270)(e.g. 2000) (default 1270)
+  -n, --node string            address to the node to query (default http://127.0.0.1)(e.g. mainnet-node.tzscan.io) (default "http://127.0.0.1")
+  -k, --password string        password to the secret key of the wallet paying (e.g. --password=<passwd>)
+  -p, --port string            port to use for node (default 8732)(e.g. 443) (default "8732")
+  -r, --reddit string          path to reddit agent file (initiates reddit bot)(e.g. https://turnage.gitbooks.io/graw/content/chapter1.html)
+      --reddit-title string    pre title for the reddit bot to post (e.g. DefinitelyNotABot: -- will read DefinitelyNotABot: Payout for Cycle <cycle>)
+  -s, --secret string          encrypted secret key of the wallet paying (e.g. --secret=<sk>)
+      --serve                  run service to payout for all new cycles going foward (default false)(e.g. --serve)
+  -t, --twitter                turn on twitter bot, will look for api keys in twitter.yml in current dir or --twitter-path (e.g. --twitter)
+      --twitter-path string    path to twitter.yml file containing API keys if not in current dir (e.g. path/to/my/file/)
+      --twitter-title string   pre title for the twitter bot to post (e.g. DefinitelyNotABot: -- will read DefinitelyNotABot: Payout for Cycle <cycle>)
 ```
 
 ### example: 
@@ -131,9 +134,48 @@ Pass that file to the `--reddit` / `-r` flag. You may also include an option pre
 
 ```
 
-Your reddit post will contain the title passed along with "Payout for Cycle(s) number"
+Your reddit post will contain the title passed along with "Payout for Cycle (cycle)"
 ```
-DefinitelyNotATestBot: Payout for Cycle(s) 100
+DefinitelyNotATestBot: Payout for Cycle 100
+```
+With a link to the tzscan operation related to the cycle.
+
+
+### Using Twitter Bot Functionality 
+This feature is currently only functional with mainnet. If used with another network, the link in your twitter post will be broken (Future Fix)
+```
+-t, --twitter                turn on twitter bot, will look for api keys in twitter.yml in current dir or --twitter-path (e.g. --twitter)
+      --twitter-path string    path to twitter.yml file containing API keys if not in current dir (e.g. path/to/my/file/)
+      --twitter-title string   pre title for the twitter bot to post (e.g. DefinitelyNotABot: -- will read DefinitelyNotABot: Payout for Cycle <cycle>)
+```
+Pass the `--twitter` flag to turn on the twitter bot, and  `--twitter-title` to add a custom title for your tweets. Payman will look for a twitter.yml file containing your api key, access token, and secrets. If this file is not in the directory of where payman is executed, you need to specify the path to find the file with `--twitter-path`.
+
+```
+./payman payout \ 
+    --delegate=tz3gN8NTLNLJg5KRsUU47NHNVHbdhcFXjjaB \
+    --secret=edesk1Qx5JbctVnFVHL4A7BXgyExihHfcAHRYXoxkbSBmKqP2Sp92Gg1xcU8mqqu4Qi9TXkXwomMxAfy19sWAgCm \
+    --password=abcd1234 \
+    --cycle=162 \
+    --node=127.0.0.1 \
+    --port=8732 \
+    --fee=0.05 \
+    --twitter \
+    --twitter-title="DefinitelyNotATestBot:" \
+    --twitter-path=./
+
+```
+
+Example twitter.yml
+```
+consumerKey: "<key>"
+consumerKeySecret: "<key_secret>"
+accessToken: "<access_token>"
+accessTokenSecret: "<access_token_secret>"
+```
+
+Your tweet will contain the title passed along with "Payout for Cycle (cycle)"
+```
+DefinitelyNotATestBot: Payout for Cycle 100
 ```
 With a link to the tzscan operation related to the cycle.
 

@@ -16,4 +16,7 @@ type Options struct {
 	Dry             bool
 	RedditAgent     string
 	RedditTitle     string
+	TwitterPath     string
+	TwitterTitle    string
+	Twitter         bool
 }

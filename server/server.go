@@ -9,6 +9,7 @@ import (
 	pay "github.com/DefinitelyNotAGoat/payman/payer"
 	"github.com/DefinitelyNotAGoat/payman/reddit"
 	"github.com/DefinitelyNotAGoat/payman/reporting"
+	"github.com/DefinitelyNotAGoat/payman/twitter"
 )
 
 // PayoutServer is structure representing a payout server
@@ -17,16 +18,18 @@ type PayoutServer struct {
 	wallet   goTezos.Wallet
 	reporter reporting.Reporter
 	rbot     *reddit.Bot
+	tbot     *twitter.Bot
 	conf     *options.Options
 }
 
 // NewPayoutServer contructs a new payout server
-func NewPayoutServer(gt *goTezos.GoTezos, wallet goTezos.Wallet, reporter reporting.Reporter, rbot *reddit.Bot, conf *options.Options) PayoutServer {
+func NewPayoutServer(gt *goTezos.GoTezos, wallet goTezos.Wallet, reporter reporting.Reporter, rbot *reddit.Bot, tbot *twitter.Bot, conf *options.Options) PayoutServer {
 	return PayoutServer{
 		gt:       gt,
 		wallet:   wallet,
 		reporter: reporter,
 		rbot:     rbot,
+		tbot:     tbot,
 		conf:     conf,
 	}
 }
@@ -65,9 +68,16 @@ func (ps *PayoutServer) Serve() {
 				for _, op := range ops {
 					ps.reporter.Log("Successful operation: " + string(op))
 					if ps.rbot != nil {
-						err := ps.rbot.Post(string(op), string(currentCycle))
+						err := ps.rbot.Post(string(op), currentCycle)
 						if err != nil {
 							ps.reporter.Log(fmt.Sprintf("could not post to reddit: %v", err))
+						}
+					}
+
+					if ps.tbot != nil {
+						err := ps.tbot.Post(string(op), currentCycle)
+						if err != nil {
+							ps.reporter.Log(fmt.Sprintf("could not post to twitter: %v", err))
 						}
 					}
 				}

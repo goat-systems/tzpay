@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/DefinitelyNotAGoat/payman/reddit"
+	"github.com/DefinitelyNotAGoat/payman/twitter"
 
 	"github.com/DefinitelyNotAGoat/payman/options"
 	pay "github.com/DefinitelyNotAGoat/payman/payer"
@@ -83,20 +84,30 @@ func newPayoutCommand() *cobra.Command {
 			}
 
 			var redditBot *reddit.Bot
+			var redditBotStatus bool
 			if conf.RedditAgent != "" {
 				redditBot, err = reddit.NewRedditSession(conf.RedditAgent, "dng_delegation", conf.RedditTitle)
 				if err != nil {
 					reporter.Log(fmt.Sprintf("could not start reddit bot: %v", err))
+				} else {
+					redditBotStatus = true
+				}
+			}
+
+			var twitterBot *twitter.Bot
+			var twitterBotStatus bool
+			if conf.Twitter {
+				twitterBot, err = twitter.NewTwitterSession(conf.TwitterPath, conf.TwitterTitle)
+				if err != nil {
+					reporter.Log(fmt.Sprintf("could not start twitter bot: %v", err))
+				} else {
+					twitterBotStatus = true
 				}
 			}
 
 			if conf.Service == true {
-				var serv server.PayoutServer
-				if redditBot != nil {
-					serv = server.NewPayoutServer(gt, wallet, reporter, redditBot, &conf)
-				} else {
-					serv = server.NewPayoutServer(gt, wallet, reporter, nil, &conf)
-				}
+
+				serv := server.NewPayoutServer(gt, wallet, reporter, redditBot, twitterBot, &conf)
 				serv.Serve()
 
 			} else {
@@ -108,10 +119,17 @@ func newPayoutCommand() *cobra.Command {
 
 				for _, op := range ops {
 					reporter.Log("Successful operation: " + string(op))
-					if conf.RedditAgent != "" {
-						err := redditBot.Post(string(op), string(conf.Cycle))
+					if conf.RedditAgent != "" && redditBotStatus {
+						err := redditBot.Post(string(op), conf.Cycle)
 						if err != nil {
 							reporter.Log(fmt.Sprintf("could not post to reddit: %v", err))
+						}
+					}
+
+					if conf.Twitter && twitterBotStatus {
+						err := twitterBot.Post(string(op), conf.Cycle)
+						if err != nil {
+							reporter.Log(fmt.Sprintf("could not post to twitter: %v", err))
 						}
 					}
 				}
@@ -136,7 +154,10 @@ func newPayoutCommand() *cobra.Command {
 	payout.PersistentFlags().IntVar(&conf.NetworkGasLimit, "gas-limit", 10200, "network gas limit for each transaction in mutez (default 10200)(e.g. 10300)")
 	payout.PersistentFlags().StringVarP(&conf.File, "log-file", "l", "/dev/stdout", "file to log to (default stdout)(e.g. ./payman.log)")
 	payout.PersistentFlags().StringVarP(&conf.RedditAgent, "reddit", "r", "", "path to reddit agent file (initiates reddit bot)(e.g. https://turnage.gitbooks.io/graw/content/chapter1.html)")
-	payout.PersistentFlags().StringVar(&conf.RedditTitle, "reddit-title", "", "pre title for the reddit bot to post (e.g. DefinitelyNotABot: -- will read DefinitelyNotABot: Payout for Cycle(s) <cycles>)")
+	payout.PersistentFlags().StringVar(&conf.RedditTitle, "reddit-title", "", "pre title for the reddit bot to post (e.g. DefinitelyNotABot: -- will read DefinitelyNotABot: Payout for Cycle <cycle>)")
+	payout.PersistentFlags().StringVar(&conf.TwitterPath, "twitter-path", "", "path to twitter.yml file containing API keys if not in current dir (e.g. path/to/my/file/)")
+	payout.PersistentFlags().StringVar(&conf.TwitterTitle, "twitter-title", "", "pre title for the twitter bot to post (e.g. DefinitelyNotABot: -- will read DefinitelyNotABot: Payout for Cycle <cycle>)")
+	payout.PersistentFlags().BoolVarP(&conf.Twitter, "twitter", "t", false, "turn on twitter bot, will look for api keys in twitter.yml in current dir or --twitter-path (e.g. --twitter)")
 
 	return payout
 }

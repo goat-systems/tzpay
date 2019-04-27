@@ -2,6 +2,7 @@ package reddit
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/turnage/graw/reddit"
 )
@@ -24,10 +25,10 @@ func NewRedditSession(agentFile, sub, title string) (*Bot, error) {
 }
 
 // Post posts a tzscan link to the ophash
-func (bot *Bot) Post(ophash string, cycles string) error {
+func (bot *Bot) Post(ophash string, cycle int) error {
 	ophash = ophash[1 : len(ophash)-2]
 	link := "https://tzscan.io/" + ophash
-	title := bot.title + fmt.Sprintf(" Payout for Cycle(s) "+cycles)
+	title := bot.title + fmt.Sprintf(" Payout for Cycle "+strconv.Itoa(cycle))
 	err := bot.session.PostLink(bot.sub, title, link)
 	if err != nil {
 		return err
