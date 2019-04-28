@@ -32,7 +32,7 @@ func newPayoutCommand() *cobra.Command {
 		if conf.Password == "" {
 			errors = append(errors, "[payout][preflight] error: no password passed for payout wallet (e.g. --password=<passwd>)")
 		}
-		if conf.Cycle == 0 && conf.Service == false {
+		if conf.Cycle == 0 && !conf.Service {
 			errors = append(errors, "[payout][preflight] error: no cycle passed to payout for (e.g. --cycle=95)")
 		}
 		if conf.Fee == -1 {
@@ -105,7 +105,7 @@ func newPayoutCommand() *cobra.Command {
 				}
 			}
 
-			if conf.Service == true {
+			if conf.Service {
 
 				serv := server.NewPayoutServer(gt, wallet, reporter, redditBot, twitterBot, &conf)
 				serv.Serve()
