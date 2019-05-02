@@ -12,6 +12,7 @@ func newRootCommand() *cobra.Command {
 
 	rootCommand.AddCommand(
 		newPayoutCommand(),
+		newReportCommand(),
 	)
 
 	return rootCommand

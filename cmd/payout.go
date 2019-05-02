@@ -145,7 +145,6 @@ func newPayoutCommand() *cobra.Command {
 	payout.PersistentFlags().StringVarP(&conf.Secret, "secret", "s", "", "encrypted secret key of the wallet paying (e.g. --secret=<sk>)")
 	payout.PersistentFlags().StringVarP(&conf.Password, "password", "k", "", "password to the secret key of the wallet paying (e.g. --password=<passwd>)")
 	payout.PersistentFlags().BoolVar(&conf.Service, "serve", false, "run service to payout for all new cycles going foward (default false)(e.g. --serve)")
-	payout.PersistentFlags().BoolVar(&conf.Dry, "dry", false, "run payout in simulation with report (default false)(e.g. --dry)")
 	payout.PersistentFlags().IntVarP(&conf.Cycle, "cycle", "c", 0, "cycle to payout for (e.g. 95)")
 	payout.PersistentFlags().StringVarP(&conf.Node, "node", "n", "http://127.0.0.1", "address to the node to query (default http://127.0.0.1)(e.g. mainnet-node.tzscan.io)")
 	payout.PersistentFlags().StringVarP(&conf.Port, "port", "p", "8732", "port to use for node (default 8732)(e.g. 443)")

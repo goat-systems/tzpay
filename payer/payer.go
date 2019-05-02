@@ -51,13 +51,13 @@ func (payer *Payer) Payout() (goTezos.DelegateReport, [][]byte, error) {
 	}
 	payments := rewards.GetPayments()
 
-	ops, err := payer.gt.CreateBatchPayment(payments, payer.wallet, payer.conf.NetworkFee, payer.conf.NetworkGasLimit)
-	if err != nil {
-		return rewards, nil, err
-	}
-
 	responses := [][]byte{}
 	if !payer.conf.Dry {
+		ops, err := payer.gt.CreateBatchPayment(payments, payer.wallet, payer.conf.NetworkFee, payer.conf.NetworkGasLimit)
+		if err != nil {
+			return rewards, nil, err
+		}
+
 		for _, op := range ops {
 			resp, err := payer.gt.InjectOperation(op)
 			if err != nil {
