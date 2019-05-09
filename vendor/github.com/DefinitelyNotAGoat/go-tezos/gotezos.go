@@ -1,248 +1,121 @@
 package gotezos
 
 import (
+	"encoding/json"
 	"fmt"
-	"log"
-	"math/rand"
-	"os"
-	"sync"
-	"time"
-
+	"net/http"
 	"strings"
-
-	"github.com/patrickmn/go-cache"
 )
 
+// MUTEZ is a helper for balance devision
+const MUTEZ = 1000000
+
+// GoTezos is the driver of the library, it inludes the several RPC services
+// like Block, SnapSHot, Cycle, Account, Delegate, Operations, Contract, and Network
+type GoTezos struct {
+	client    *client
+	Constants NetworkConstants
+	Block     *BlockService
+	SnapShot  *SnapShotService
+	Cycle     *CycleService
+	Account   *AccountService
+	Delegate  *DelegateService
+	Network   *NetworkService
+	Operation *OperationService
+	Contract  *ContractService
+}
+
+// ResponseRaw represents a raw RPC/HTTP response
+type responseRaw struct {
+	Bytes []byte
+}
+
+// RPCGenericError is an Error helper for the RPC
+type genericRPCError struct {
+	Kind  string `json:"kind"`
+	Error string `json:"error"`
+}
+
+// RPCGenericErrors and array of RPCGenericErrors
+type genericRPCErrors []genericRPCError
+
 // NewGoTezos is a constructor that returns a GoTezos object
-func NewGoTezos() *GoTezos {
-	a := GoTezos{}
+func NewGoTezos(URL string) (*GoTezos, error) {
+	gt := GoTezos{}
+	gt.Block = gt.newBlockService()
+	gt.SnapShot = gt.newSnapShotService()
+	gt.Cycle = gt.newCycleService()
+	gt.Account = gt.newAccountService()
+	gt.Delegate = gt.newDelegateService()
+	gt.Network = gt.newNetworkService()
+	gt.Operation = gt.newOperationService()
+	gt.Contract = gt.newContractService()
 
-	a.UseBalancerStrategyFailover()
-	a.rand = rand.New(rand.NewSource(time.Now().Unix()))
-	go func(a *GoTezos) {
-		for {
-			time.Sleep(15 * time.Second)
-			a.checkUnhealthyClients()
-		}
-	}(&a)
-
-	// TTL Cache
-	// 5s default cache, 5m garbage collection
-	a.cache = cache.New(5*time.Second, 5*time.Minute)
-
-	// Default logger
-	a.logger = log.New(os.Stderr, "", log.LstdFlags)
-
-	return &a
-}
-
-// SetLogger sets the logging functionality
-func (gt *GoTezos) SetLogger(log *log.Logger) {
-	gt.logger = log
-}
-
-// Debug puts go-tezos into debug mode for logging
-func (gt *GoTezos) Debug(d bool) {
-	gt.debug = d
-}
-
-// AddNewClient adds an RPC Client to query the tezos network
-func (gt *GoTezos) AddNewClient(client *TezosRPCClient) {
-
-	gt.clientLock.Lock()
-	gt.RPCClients = append(gt.RPCClients, &TezClientWrapper{true, client})
-	gt.clientLock.Unlock()
+	gt.client = newClient(URL)
 
 	var err error
-	gt.Constants, err = gt.GetNetworkConstants()
+	gt.Constants, err = gt.Network.GetConstants()
 	if err != nil {
-		fmt.Println("Could not get network constants, library will fail. Exiting .... ")
-		os.Exit(0)
+		return &gt, fmt.Errorf("could not get network constants: %v", err)
 	}
 
-	gt.Versions, err = gt.GetNetworkVersions()
+	return &gt, nil
+}
+
+// SetHTTPClient allows you to pass your own Go http client, with your own settings
+func (gt *GoTezos) SetHTTPClient(client *http.Client) {
+	gt.client.netClient = client
+}
+
+// Get takes path endpoint and returns the response of the query
+func (gt *GoTezos) Get(path string, params map[string]string) ([]byte, error) {
+	resp, err := gt.client.Get(path, params)
 	if err != nil {
-		fmt.Println("Could not get network version, library will fail. Exiting .... ")
-		os.Exit(0)
-	}
-}
-
-// IsMainnet checks whether the current network used is the Mainnet
-func (gt *GoTezos) IsMainnet() bool {
-	if len(gt.Versions) > 0 {
-		return gt.Versions[0].Network == "BETANET"
-	}
-	return false
-}
-
-// IsAlphanet checks whether the current network used is the IsAlphanet
-func (gt *GoTezos) IsAlphanet() bool {
-	if len(gt.Versions) > 0 {
-		return gt.Versions[0].Network == "ALPHANET"
-	}
-	return false
-}
-
-// IsZeronet checks whether the current network used is the IsZeronet
-func (gt *GoTezos) IsZeronet() bool {
-	if len(gt.Versions) > 0 {
-		return gt.Versions[0].Network == "ZERONET"
-	}
-	return false
-}
-
-// UseBalancerStrategyFailover tells the client side failover to use the balancer strategy
-func (gt *GoTezos) UseBalancerStrategyFailover() {
-	gt.balancerStrategy = "failover"
-}
-
-// UseBalancerStrategyRandom tells the client side failover to use the balancer random strategy
-func (gt *GoTezos) UseBalancerStrategyRandom() {
-	gt.balancerStrategy = "random"
-}
-
-func (gt *GoTezos) checkHealthStatus() {
-	gt.clientLock.Lock()
-	wg := sync.WaitGroup{}
-	for _, a := range gt.RPCClients {
-		wg.Add(1)
-		go func(wg *sync.WaitGroup, client *TezClientWrapper) {
-			res := client.client.Healthcheck()
-			if client.healthy && res == false {
-				gt.logger.Println("Client state switched to unhealthy", gt.ActiveRPCCient.client.Host+gt.ActiveRPCCient.client.Port)
-			}
-			if !client.healthy && res {
-				gt.logger.Println("Client state switched to healthy", gt.ActiveRPCCient.client.Host+gt.ActiveRPCCient.client.Port)
-			}
-			client.healthy = res
-			wg.Done()
-		}(&wg, a)
-	}
-	wg.Wait()
-	gt.clientLock.Unlock()
-}
-
-func (gt *GoTezos) checkUnhealthyClients() {
-	gt.clientLock.Lock()
-	wg := sync.WaitGroup{}
-	for _, a := range gt.RPCClients {
-		wg.Add(1)
-		go func(wg *sync.WaitGroup, client *TezClientWrapper) {
-			if client.healthy == false {
-				res := client.client.Healthcheck()
-				if !client.healthy && res {
-					gt.logger.Println("Client state switched to healthy", gt.ActiveRPCCient.client.Host+gt.ActiveRPCCient.client.Port)
-				}
-				client.healthy = res
-			}
-			wg.Done()
-		}(&wg, a)
-	}
-	wg.Wait()
-	gt.clientLock.Unlock()
-}
-
-func (gt *GoTezos) getFirstHealthyClient() *TezClientWrapper {
-	gt.clientLock.Lock()
-	defer gt.clientLock.Unlock()
-	for _, a := range gt.RPCClients {
-		if a.healthy == true {
-			return a
-		}
-	}
-	return nil
-}
-
-func (gt *GoTezos) getRandomHealthyClient() *TezClientWrapper {
-	gt.clientLock.Lock()
-	defer gt.clientLock.Unlock()
-	clients := []int{}
-	for i := range gt.RPCClients {
-		clients = append(clients, i)
-	}
-	for _, i := range gt.rand.Perm(len(clients)) {
-		return gt.RPCClients[i]
-	}
-	return nil
-}
-
-func (gt *GoTezos) setActiveclient() error {
-	if gt.balancerStrategy == "failover" {
-		c := gt.getFirstHealthyClient()
-		if c == nil {
-			gt.checkHealthStatus()
-			c = gt.getFirstHealthyClient()
-			if c == nil {
-				return NoClientError{}
-			}
-		}
-		gt.ActiveRPCCient = c
+		return nil, err
 	}
 
-	if gt.balancerStrategy == "random" {
-		c := gt.getRandomHealthyClient()
-		if c == nil {
-			gt.checkHealthStatus()
-			c = gt.getRandomHealthyClient()
-			if c == nil {
-				return NoClientError{}
-			}
-			gt.ActiveRPCCient = c
-		}
-		gt.ActiveRPCCient = c
-
-	}
-	return nil
-}
-
-// GetResponse takes path endpoint and any arguments and returns the raw response of the query
-func (gt *GoTezos) GetResponse(path string, args string) (ResponseRaw, error) {
-	return gt.HandleResponse("GET", path, args)
-}
-
-// PostResponse takes path endpoint and any arguments and returns the raw response of the POST query
-func (gt *GoTezos) PostResponse(path string, args string) (ResponseRaw, error) {
-	return gt.HandleResponse("POST", path, args)
-}
-
-// HandleResponse takes the method (GET/POST ... etc), the query path, any arguments, and returns the raw response of the query
-func (gt *GoTezos) HandleResponse(method string, path string, args string) (ResponseRaw, error) {
-	e := gt.setActiveclient()
-	if e != nil {
-		gt.logger.Println("goTezos", "Could not find any healthy clients")
-		return ResponseRaw{}, e
-	}
-
-	r, err := gt.ActiveRPCCient.client.GetResponse(method, path, args)
+	err = gt.handleRPCError(resp)
 	if err != nil {
-		gt.ActiveRPCCient.healthy = false
-		gt.logger.Println(gt.ActiveRPCCient.client.Host+gt.ActiveRPCCient.client.Port, "Client state switched to unhealthy")
-
-		// recurse call self, which will pick a new ActiveClient if defined
-		return gt.HandleResponse(method, path, args)
+		return nil, err
 	}
 
-	// Received a HTTP 200 OK response, but payload could contain error message
-	if strings.Contains(string(r.Bytes), "\"error\":") {
+	return resp, nil
+}
 
-		rpcErrors := RPCGenericErrors{}
-		rpcErrors, err := rpcErrors.UnmarshalJSON(r.Bytes)
+// Post takes path endpoint and any arguments and returns the response of the POST
+func (gt *GoTezos) Post(path string, args string) ([]byte, error) {
+	resp, err := gt.client.Post(path, args)
+	if err != nil {
+		return nil, err
+	}
+
+	err = gt.handleRPCError(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
+func (gt *GoTezos) handleRPCError(resp []byte) error {
+	if strings.Contains(string(resp), "\"error\":") {
+		rpcErrors := genericRPCErrors{}
+		rpcErrors, err := rpcErrors.unmarshalJSON(resp)
 		if err != nil {
-			return r, err
+			return err
 		}
-
-		// Just return the first error for now
-		// TODO: Return all errors
-		return r, fmt.Errorf("RPC Error (%s): %s", rpcErrors[0].Kind, rpcErrors[0].Error)
+		return fmt.Errorf("rpc error (%s): %s", rpcErrors[0].Kind, rpcErrors[0].Error)
 	}
+	return nil
+}
 
+// UnmarshalJSON unmarhsels bytes into RPCGenericErrors
+func (ge *genericRPCErrors) unmarshalJSON(v []byte) (genericRPCErrors, error) {
+	r := genericRPCErrors{}
+
+	err := json.Unmarshal(v, &r)
+	if err != nil {
+		return r, err
+	}
 	return r, nil
-}
-
-// NoClientError is a helper structure for error handling
-type NoClientError struct {
-}
-
-func (gt NoClientError) Error() string {
-	return "GoTezos did not find any healthy Tezos Node"
 }

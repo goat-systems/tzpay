@@ -45,27 +45,26 @@ func NewPayer(gt *goTezos.GoTezos, wallet goTezos.Wallet, conf *options.Options)
 // Payout uses the payers configuration that calls it, to pay out for the cycle in the conf
 func (payer *Payer) Payout() (goTezos.DelegateReport, [][]byte, error) {
 
-	rewards, err := payer.gt.GetRewardsForDelegateForCycle(payer.conf.Delegate, payer.conf.Cycle, float64(payer.conf.Fee))
+	rewards, err := payer.gt.Delegate.GetReport(payer.conf.Delegate, payer.conf.Cycle, float64(payer.conf.Fee))
 	if err != nil {
-		return rewards, nil, err
+		return *rewards, nil, err
 	}
 	payments := rewards.GetPayments()
-
 	responses := [][]byte{}
 	if !payer.conf.Dry {
-		ops, err := payer.gt.CreateBatchPayment(payments, payer.wallet, payer.conf.NetworkFee, payer.conf.NetworkGasLimit)
+		ops, err := payer.gt.Operation.CreateBatchPayment(payments, payer.wallet, payer.conf.NetworkFee, payer.conf.NetworkGasLimit)
 		if err != nil {
-			return rewards, nil, err
+			return *rewards, nil, err
 		}
 
 		for _, op := range ops {
-			resp, err := payer.gt.InjectOperation(op)
+			resp, err := payer.gt.Operation.InjectOperation(op)
 			if err != nil {
-				return rewards, responses, err
+				return *rewards, responses, err
 			}
 			responses = append(responses, resp)
 		}
 	}
 
-	return rewards, responses, nil
+	return *rewards, responses, nil
 }

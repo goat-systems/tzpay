@@ -1,4 +1,4 @@
-# github.com/DefinitelyNotAGoat/go-tezos v0.0.0-20190427154335-dececb7deeeb
+# github.com/DefinitelyNotAGoat/go-tezos v1.0.3
 github.com/DefinitelyNotAGoat/go-tezos
 # github.com/Messer4/base58check v0.0.0-20180328134002-7531a92ae9ba
 github.com/Messer4/base58check
@@ -37,8 +37,6 @@ github.com/mattn/go-runewidth
 github.com/mitchellh/mapstructure
 # github.com/olekukonko/tablewriter v0.0.1
 github.com/olekukonko/tablewriter
-# github.com/patrickmn/go-cache v2.1.0+incompatible
-github.com/patrickmn/go-cache
 # github.com/pelletier/go-toml v1.2.0
 github.com/pelletier/go-toml
 # github.com/spf13/afero v1.1.2
@@ -58,7 +56,7 @@ github.com/spf13/viper
 github.com/turnage/graw/reddit
 # github.com/turnage/redditproto v0.0.0-20151223012412-afedf1b6eddb
 github.com/turnage/redditproto
-# golang.org/x/crypto v0.0.0-20190424203555-c05e17bb3b2d
+# golang.org/x/crypto v0.0.0-20190426145343-a29dc8fdc734
 golang.org/x/crypto/blake2b
 golang.org/x/crypto/ed25519
 golang.org/x/crypto/nacl/secretbox

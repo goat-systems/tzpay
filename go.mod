@@ -3,7 +3,7 @@ module github.com/DefinitelyNotAGoat/payman
 go 1.12
 
 require (
-	github.com/DefinitelyNotAGoat/go-tezos v0.0.0-20190427154335-dececb7deeeb
+	github.com/DefinitelyNotAGoat/go-tezos v1.0.3
 	github.com/cenkalti/backoff v2.1.1+incompatible // indirect
 	github.com/dghubble/go-twitter v0.0.0-20190305084156-0022a70e9bee
 	github.com/dghubble/oauth1 v0.5.0

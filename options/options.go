@@ -7,8 +7,7 @@ type Options struct {
 	Password        string
 	Service         bool
 	Cycle           int
-	Node            string
-	Port            string
+	URL             string
 	Fee             float32
 	File            string
 	NetworkFee      int

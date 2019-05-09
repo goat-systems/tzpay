@@ -52,8 +52,10 @@ func newReportCommand() *cobra.Command {
 				reporter.Log(fmt.Sprintf("could not open file for reporting: %v\n", err))
 			}
 
-			gt := goTezos.NewGoTezos()
-			gt.AddNewClient(goTezos.NewTezosRPCClient(conf.Node, conf.Port))
+			gt, err := goTezos.NewGoTezos(conf.URL)
+			if err != nil {
+				reporter.Log(fmt.Sprintf("could not connect to network: %v\n", err))
+			}
 			conf.Dry = true
 
 			wallet := goTezos.Wallet{}
@@ -72,8 +74,7 @@ func newReportCommand() *cobra.Command {
 
 	report.PersistentFlags().StringVarP(&conf.Delegate, "delegate", "d", "", "public key hash of the delegate that's paying out (e.g. --delegate=<phk>)")
 	report.PersistentFlags().IntVarP(&conf.Cycle, "cycle", "c", 0, "cycle to payout for (e.g. 95)")
-	report.PersistentFlags().StringVarP(&conf.Node, "node", "n", "http://127.0.0.1", "address to the node to query (default http://127.0.0.1)(e.g. mainnet-node.tzscan.io)")
-	report.PersistentFlags().StringVarP(&conf.Port, "port", "p", "8732", "port to use for node (default 8732)(e.g. 443)")
+	report.PersistentFlags().StringVarP(&conf.URL, "node", "u", "http://127.0.0.1:8732", "address to the node to query (default http://127.0.0.1:8732)(e.g. https://mainnet-node.tzscan.io:443)")
 	report.PersistentFlags().Float32VarP(&conf.Fee, "fee", "f", -1, "fee for the delegate (e.g. 0.05 = 5%)")
 	report.PersistentFlags().StringVarP(&conf.File, "log-file", "l", "/dev/stdout", "file to log to (default stdout)(e.g. ./payman.log)")
 

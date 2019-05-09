@@ -75,9 +75,12 @@ func newPayoutCommand() *cobra.Command {
 				reporter.Log(fmt.Sprintf("could not open file for reporting: %v\n", err))
 			}
 
-			gt := goTezos.NewGoTezos()
-			gt.AddNewClient(goTezos.NewTezosRPCClient(conf.Node, conf.Port))
-			wallet, err := gt.ImportEncryptedWallet(conf.Password, conf.Secret)
+			gt, err := goTezos.NewGoTezos(conf.URL)
+			if err != nil {
+				reporter.Log(fmt.Sprintf("could not connect to network: %v\n", err))
+			}
+
+			wallet, err := gt.Account.ImportEncryptedWallet(conf.Password, conf.Secret)
 			if err != nil {
 				reporter.Log(fmt.Sprintf("could not import wallet: %v", err))
 				os.Exit(1)
@@ -146,8 +149,7 @@ func newPayoutCommand() *cobra.Command {
 	payout.PersistentFlags().StringVarP(&conf.Password, "password", "k", "", "password to the secret key of the wallet paying (e.g. --password=<passwd>)")
 	payout.PersistentFlags().BoolVar(&conf.Service, "serve", false, "run service to payout for all new cycles going foward (default false)(e.g. --serve)")
 	payout.PersistentFlags().IntVarP(&conf.Cycle, "cycle", "c", 0, "cycle to payout for (e.g. 95)")
-	payout.PersistentFlags().StringVarP(&conf.Node, "node", "n", "http://127.0.0.1", "address to the node to query (default http://127.0.0.1)(e.g. mainnet-node.tzscan.io)")
-	payout.PersistentFlags().StringVarP(&conf.Port, "port", "p", "8732", "port to use for node (default 8732)(e.g. 443)")
+	payout.PersistentFlags().StringVarP(&conf.URL, "node", "u", "http://127.0.0.1:8732", "address to the node to query (default http://127.0.0.1:8732)(e.g. https://mainnet-node.tzscan.io:443)")
 	payout.PersistentFlags().Float32VarP(&conf.Fee, "fee", "f", -1, "fee for the delegate (e.g. 0.05 = 5%)")
 	payout.PersistentFlags().IntVar(&conf.NetworkFee, "network-fee", 1270, "network fee for each transaction in mutez (default 1270)(e.g. 2000)")
 	payout.PersistentFlags().IntVar(&conf.NetworkGasLimit, "gas-limit", 10200, "network gas limit for each transaction in mutez (default 10200)(e.g. 10300)")
