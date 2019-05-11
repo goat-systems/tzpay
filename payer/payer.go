@@ -44,12 +44,21 @@ func NewPayer(gt *goTezos.GoTezos, wallet goTezos.Wallet, conf *options.Options)
 
 // Payout uses the payers configuration that calls it, to pay out for the cycle in the conf
 func (payer *Payer) Payout() (goTezos.DelegateReport, [][]byte, error) {
+	var payments []goTezos.Payment
+	rewards := &goTezos.DelegateReport{}
 
-	rewards, err := payer.gt.Delegate.GetReport(payer.conf.Delegate, payer.conf.Cycle, float64(payer.conf.Fee))
-	if err != nil {
-		return *rewards, nil, err
+	if len(payer.conf.PaymentsOverride.Payments) > 0 {
+		payments = payer.conf.PaymentsOverride.Payments
+	} else {
+		var err error
+		rewards, err = payer.gt.Delegate.GetReport(payer.conf.Delegate, payer.conf.Cycle, float64(payer.conf.Fee))
+		if err != nil {
+			return *rewards, nil, err
+		}
+
+		payments = rewards.GetPayments()
 	}
-	payments := rewards.GetPayments()
+
 	responses := [][]byte{}
 	if !payer.conf.Dry {
 		ops, err := payer.gt.Operation.CreateBatchPayment(payments, payer.wallet, payer.conf.NetworkFee, payer.conf.NetworkGasLimit)

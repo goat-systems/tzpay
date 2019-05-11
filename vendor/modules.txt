@@ -1,10 +1,10 @@
-# github.com/DefinitelyNotAGoat/go-tezos v1.0.3
+# github.com/DefinitelyNotAGoat/go-tezos v1.0.4
 github.com/DefinitelyNotAGoat/go-tezos
 # github.com/Messer4/base58check v0.0.0-20180328134002-7531a92ae9ba
 github.com/Messer4/base58check
 # github.com/cenkalti/backoff v2.1.1+incompatible
 github.com/cenkalti/backoff
-# github.com/dghubble/go-twitter v0.0.0-20190305084156-0022a70e9bee
+# github.com/dghubble/go-twitter v0.0.0-20190512073027-53f972dc4b06
 github.com/dghubble/go-twitter/twitter
 # github.com/dghubble/oauth1 v0.5.0
 github.com/dghubble/oauth1
@@ -44,7 +44,7 @@ github.com/spf13/afero
 github.com/spf13/afero/mem
 # github.com/spf13/cast v1.3.0
 github.com/spf13/cast
-# github.com/spf13/cobra v0.0.3
+# github.com/spf13/cobra v0.0.4
 github.com/spf13/cobra
 # github.com/spf13/jwalterweatherman v1.0.0
 github.com/spf13/jwalterweatherman
@@ -68,7 +68,7 @@ golang.org/x/crypto/salsa20/salsa
 # golang.org/x/net v0.0.0-20190404232315-eb5bcb51f2a3
 golang.org/x/net/context
 golang.org/x/net/context/ctxhttp
-# golang.org/x/oauth2 v0.0.0-20190402181905-9f3314589c9a
+# golang.org/x/oauth2 v0.0.0-20190517181255-950ef44c6e07
 golang.org/x/oauth2
 golang.org/x/oauth2/clientcredentials
 golang.org/x/oauth2/internal
