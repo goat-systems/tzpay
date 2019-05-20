@@ -27,6 +27,8 @@ sudo chmod a+x /usr/local/bin/payman
 
 ## Payman Usage
 
+Github Pages: https://definitelynotagoat.github.io/payman/
+
 ### Report
 
 #### Help
