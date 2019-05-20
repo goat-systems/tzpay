@@ -10,14 +10,14 @@ go get github.com/DefinitelyNotAGoat/payman
 cd $GOPATH/github.com/DefinitelyNotAGoat/payman
 go build
 ```
-### Linux AMD64
+### Linux
 ```
 wget https://github.com/DefinitelyNotAGoat/payman/releases/download/v1.0.4/payman_linux_amd64
 sudo mv payman_linux_amd64 /usr/local/bin/payman
 sudo chmod a+x /usr/local/bin/payman
 ```
 
-### Mac Darwin AMD65
+### MacOS
 ```
 wget https://github.com/DefinitelyNotAGoat/payman/releases/download/v1.0.4/payman_darwin_amd64
 sudo mv payman_linux_amd64 /usr/local/bin/payman
