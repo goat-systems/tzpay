@@ -1,7 +1,7 @@
 cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
-github.com/DefinitelyNotAGoat/go-tezos v1.0.4 h1:K6Wz/qmaeUfYiBnvuGYvv7OmFcqQaClGAxRuJ0B8B14=
-github.com/DefinitelyNotAGoat/go-tezos v1.0.4/go.mod h1:mf/AW1aXQXQ7OPbJ/u3jjYXLam6ak0G/XEreg771lPE=
+github.com/DefinitelyNotAGoat/go-tezos v1.0.5 h1:zbjv+2VSTuwDBmjBwl2+CWLCZ+JmyHdt+hGx/ZlOeho=
+github.com/DefinitelyNotAGoat/go-tezos v1.0.5/go.mod h1:mf/AW1aXQXQ7OPbJ/u3jjYXLam6ak0G/XEreg771lPE=
 github.com/Messer4/base58check v0.0.0-20180328134002-7531a92ae9ba h1:e0baDNoruF8YR/JRUmljBoQwxWSOL8MXPFPxWN0GOXk=
 github.com/Messer4/base58check v0.0.0-20180328134002-7531a92ae9ba/go.mod h1:NtsVEFPEMr0LH6B51gU0o+JYyiIb+jKEa49+t9tMbtM=
 github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6/go.mod h1:grANhF5doyWs3UAsr3K4I6qtAmlQcZDesFNEHPZAzj8=

@@ -20,6 +20,7 @@ type Options struct {
 	File             string
 	NetworkFee       int
 	NetworkGasLimit  int
+	PaymentMinimum   int
 	Dry              bool
 	RedditAgent      string
 	RedditTitle      string

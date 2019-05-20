@@ -1,4 +1,4 @@
-# github.com/DefinitelyNotAGoat/go-tezos v1.0.4
+# github.com/DefinitelyNotAGoat/go-tezos v1.0.5
 github.com/DefinitelyNotAGoat/go-tezos
 # github.com/Messer4/base58check v0.0.0-20180328134002-7531a92ae9ba
 github.com/Messer4/base58check

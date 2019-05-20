@@ -174,6 +174,7 @@ func newPayoutCommand() *cobra.Command {
 	payout.PersistentFlags().StringVar(&conf.TwitterPath, "twitter-path", "", "path to twitter.yml file containing API keys if not in current dir (e.g. path/to/my/file/)")
 	payout.PersistentFlags().StringVar(&conf.TwitterTitle, "twitter-title", "", "pre title for the twitter bot to post (e.g. DefinitelyNotABot: -- will read DefinitelyNotABot: Payout for Cycle <cycle>)")
 	payout.PersistentFlags().BoolVarP(&conf.Twitter, "twitter", "t", false, "turn on twitter bot, will look for api keys in twitter.yml in current dir or --twitter-path (e.g. --twitter)")
+	payout.PersistentFlags().IntVar(&conf.PaymentMinimum, "payout-min", 0, "will only payout to addresses that meet the payout minimum (e.g. --payout-min=<mutez>)")
 	payout.PersistentFlags().StringVar(&conf.PaymentsOverride.File, "payments-override", "", "overrides the rewards calculation and allows you to pass in your own payments in a json file (e.g. path/to/my/file/payments.json)")
 	return payout
 }

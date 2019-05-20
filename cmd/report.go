@@ -76,6 +76,7 @@ func newReportCommand() *cobra.Command {
 	report.PersistentFlags().IntVarP(&conf.Cycle, "cycle", "c", 0, "cycle to payout for (e.g. 95)")
 	report.PersistentFlags().StringVarP(&conf.URL, "node", "u", "http://127.0.0.1:8732", "address to the node to query (default http://127.0.0.1:8732)(e.g. https://mainnet-node.tzscan.io:443)")
 	report.PersistentFlags().Float32VarP(&conf.Fee, "fee", "f", -1, "fee for the delegate (e.g. 0.05 = 5%)")
+	report.PersistentFlags().IntVar(&conf.PaymentMinimum, "payout-min", 0, "will only payout to addresses that meet the payout minimum (e.g. --payout-min=<mutez>)")
 	report.PersistentFlags().StringVarP(&conf.File, "log-file", "l", "/dev/stdout", "file to log to (default stdout)(e.g. ./payman.log)")
 
 	return report

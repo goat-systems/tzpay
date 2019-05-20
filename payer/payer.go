@@ -1,6 +1,8 @@
 package payer
 
 import (
+	"strconv"
+
 	goTezos "github.com/DefinitelyNotAGoat/go-tezos"
 	"github.com/DefinitelyNotAGoat/payman/options"
 )
@@ -56,8 +58,18 @@ func (payer *Payer) Payout() (goTezos.DelegateReport, [][]byte, error) {
 			return *rewards, nil, err
 		}
 
-		payments = rewards.GetPayments()
+		payments = rewards.GetPayments(payer.conf.PaymentMinimum)
 	}
+
+	var delegations []goTezos.DelegationReport
+	for _, delegation := range rewards.Delegations {
+		intNet, _ := strconv.Atoi(delegation.NetRewards)
+		if intNet >= payer.conf.PaymentMinimum {
+			delegations = append(delegations, delegation)
+		}
+	}
+
+	rewards.Delegations = delegations
 
 	responses := [][]byte{}
 	if !payer.conf.Dry {
