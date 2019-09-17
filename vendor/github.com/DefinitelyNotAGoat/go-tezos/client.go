@@ -22,19 +22,19 @@ func newClient(URL string) *client {
 	if URL[len(URL)-1] == '/' {
 		URL = URL[:len(URL)-1]
 	}
-	if URL[0:7] != "http://" && URL[0:7] != "https://" {
+	if URL[0:7] != "http://" && URL[0:8] != "https://" {
 		URL = fmt.Sprintf("http://%s", URL)
 	}
 
 	var netTransport = &http.Transport{
 		Dial: (&net.Dialer{
-			Timeout: 10 * time.Second,
+			Timeout: 100 * time.Second,
 		}).Dial,
-		TLSHandshakeTimeout: 10 * time.Second,
+		TLSHandshakeTimeout: 100 * time.Second,
 	}
 
 	var netClient = &http.Client{
-		Timeout:   time.Second * 10,
+		Timeout:   time.Second * 100,
 		Transport: netTransport,
 	}
 
@@ -47,6 +47,7 @@ func (c *client) Post(path, args string) ([]byte, error) {
 	if err != nil {
 		return respBytes, err
 	}
+	resp.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.75 Safari/537.36")
 
 	respBytes, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -69,6 +70,7 @@ func (c *client) Get(path string, params map[string]string) ([]byte, error) {
 	if err != nil {
 		return bytes, err
 	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.75 Safari/537.36")
 
 	q := req.URL.Query()
 	if len(params) > 0 {
