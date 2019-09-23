@@ -11,6 +11,20 @@ cd $GOPATH/github.com/DefinitelyNotAGoat/payman
 go build
 ```
 
+## Standard Stake Capital Payout
+
+Simply insert the secret and password for the wallet:
+
+```
+./payman payout --delegate=tz1Z3KCf8CLGAYfvVWPEr562jDDyWkwNF7sT --cycle=143 --node=https://mainnet.tezrpc.me --fee=0.1 --secret=edesk22... --password=... --network-fee=1420
+```
+
+To first check the total cost of a cycle simply run:
+
+```
+./payman report --delegate=tz1Z3KCf8CLGAYfvVWPEr562jDDyWkwNF7sT --cycle=143 --node=https://mainnet.tezrpc.me --fee=0.1
+```
+
 ## Payman Documentation
 
 ### help:
