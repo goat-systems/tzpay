@@ -4,111 +4,97 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net"
 	"net/http"
-	"os"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
-// TezosRPCClient is a struct to represent the client to reach a Tezos node
-type TezosRPCClient struct {
-	Host        string
-	Port        string
-	logfunction func(level, msg string)
-	logger      *log.Logger
-	isWebClient bool
+// client is a struct to represent the http or rpc client
+type client struct {
+	URL       string
+	netClient *http.Client
 }
 
-// NewTezosRPCClient creates a new RPC client using the specified hostname and port.
-// Also acceptable is the hostname of a web-endpoint that supports https.
-func NewTezosRPCClient(hostname string, port string) *TezosRPCClient {
-	t := TezosRPCClient{}
-
-	// Strip off posible trailing '/'
-	hLen := len(hostname)
-	if hostname[hLen-1] == '/' {
-		hostname = hostname[:hLen-1]
+// newClient returns a new client
+func newClient(URL string) *client {
+	if URL[len(URL)-1] == '/' {
+		URL = URL[:len(URL)-1]
+	}
+	if URL[0:7] != "http://" && URL[0:8] != "https://" {
+		URL = fmt.Sprintf("http://%s", URL)
 	}
 
-	// Strip off URI scheme
-	if hostname[:8] == "https://" {
-		hostname = hostname[8:]
-		t.isWebClient = true
-	} else if hostname[:7] == "http://" {
-		hostname = hostname[7:]
-	}
-
-	t.Host = hostname
-	t.Port = port
-	t.logfunction = func(level, msg string) {
-		fmt.Println(level + ": " + msg)
-	}
-	t.SetLogger(log.New(os.Stdout, hostname, 0))
-	return &t
-}
-
-// SetLogger set the logger for the RPC Client
-func (gt *TezosRPCClient) SetLogger(log *log.Logger) {
-	gt.logger = log
-}
-
-// IsWebClient tells the TezosRPCClient calling it that it is a web client
-func (gt *TezosRPCClient) IsWebClient(b bool) {
-	gt.isWebClient = b
-}
-
-// GetResponse gets the raw response using TezosRPCClient with the path and args to query
-func (gt *TezosRPCClient) GetResponse(method string, path string, args string) (ResponseRaw, error) {
-
-	var url string
-
-	if gt.isWebClient {
-		url = fmt.Sprintf("https://%s:%s%s", gt.Host, gt.Port, path)
-	} else {
-		url = fmt.Sprintf("http://%s:%s%s", gt.Host, gt.Port, path)
-	}
-
-	var jsonStr = []byte(args)
-	req, err := http.NewRequest(method, url, bytes.NewBuffer(jsonStr))
-	if err != nil {
-		gt.logger.Println("Error in GetResponse: " + err.Error())
-		return ResponseRaw{}, err
-	}
-
-	var netTransport = &http.Transport{ // TODO make gt as config option, but with defaults like this
+	var netTransport = &http.Transport{
 		Dial: (&net.Dialer{
-			Timeout: 3 * time.Second,
+			Timeout: 100 * time.Second,
 		}).Dial,
-		TLSHandshakeTimeout: 3 * time.Second,
+		TLSHandshakeTimeout: 100 * time.Second,
 	}
 
 	var netClient = &http.Client{
-		Timeout:   time.Second * 3,
+		Timeout:   time.Second * 100,
 		Transport: netTransport,
 	}
 
-	resp, err := netClient.Do(req)
-	if err != nil {
-		gt.logger.Println("Error in GetResponse: " + err.Error())
-		return ResponseRaw{}, err
-	}
-	var b []byte
-	b, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		gt.logger.Println("Error in GetResponse - readAll bytes: " + err.Error())
-		return ResponseRaw{}, err
-	}
-	netTransport.CloseIdleConnections()
-	defer resp.Body.Close()
-	return ResponseRaw{b}, nil
+	return &client{URL: URL, netClient: netClient}
 }
 
-// Healthcheck a function just to perform a query to see if an RPC Client's endpoint is alive (heartbeat)
-func (gt *TezosRPCClient) Healthcheck() bool {
-	_, err := gt.GetResponse("GET", "/chains/main/blocks", "")
-	if err == nil {
-		return true // healthy
+func (c *client) Post(path, args string) ([]byte, error) {
+	var respBytes []byte
+	resp, err := c.netClient.Post(c.URL+path, "application/json", bytes.NewBuffer([]byte(args)))
+	if err != nil {
+		return respBytes, err
 	}
-	return false // unhelaty
+	resp.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.75 Safari/537.36")
+
+	respBytes, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return respBytes, errors.Wrap(err, "could not post")
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return respBytes, errors.Errorf("%d error: %s", resp.StatusCode, string(respBytes))
+	}
+
+	c.netClient.CloseIdleConnections()
+
+	return respBytes, nil
+}
+
+func (c *client) Get(path string, params map[string]string) ([]byte, error) {
+	var bytes []byte
+
+	req, err := http.NewRequest("GET", c.URL+path, nil)
+	if err != nil {
+		return bytes, err
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.75 Safari/537.36")
+
+	q := req.URL.Query()
+	if len(params) > 0 {
+		for k, v := range params {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
+	}
+
+	resp, err := c.netClient.Get(c.URL + path)
+	if err != nil {
+		return bytes, err
+	}
+
+	bytes, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return bytes, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return bytes, errors.Errorf("%d error: %s", resp.StatusCode, string(bytes))
+	}
+
+	c.netClient.CloseIdleConnections()
+
+	return bytes, nil
 }

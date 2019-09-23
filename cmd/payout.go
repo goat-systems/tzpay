@@ -23,21 +23,26 @@ func newPayoutCommand() *cobra.Command {
 	preflight := func(conf options.Options) {
 		errors := []string{}
 		warnings := []string{}
-		if conf.Delegate == "" {
-			errors = append(errors, "[payout][preflight] error: no delegate passed for payout (e.g. --delegate=<pkh>)")
-		}
+
 		if conf.Secret == "" {
 			errors = append(errors, "[payout][preflight] error: no secret key passed for payout wallet (e.g. --secret=<sk>)")
 		}
 		if conf.Password == "" {
 			errors = append(errors, "[payout][preflight] error: no password passed for payout wallet (e.g. --password=<passwd>)")
 		}
-		if conf.Cycle == 0 && !conf.Service {
-			errors = append(errors, "[payout][preflight] error: no cycle passed to payout for (e.g. --cycle=95)")
+
+		if conf.PaymentsOverride.File == "" {
+			if conf.Cycle == 0 && !conf.Service {
+				errors = append(errors, "[payout][preflight] error: no cycle passed to payout for (e.g. --cycle=95)")
+			}
+			if conf.Fee == -1 {
+				errors = append(errors, "[payout][preflight] error: no delegation fee passed for payout (e.g. --fee=0.05)")
+			}
+			if conf.Delegate == "" {
+				errors = append(errors, "[payout][preflight] error: no delegate passed for payout (e.g. --delegate=<pkh>)")
+			}
 		}
-		if conf.Fee == -1 {
-			errors = append(errors, "[payout][preflight] error: no delegation fee passed for payout (e.g. --fee=0.05)")
-		}
+
 		if conf.NetworkFee == 1270 {
 			warnings = append(warnings, "[payout][preflight] warning: no network fee passed for payout, using default 1270 mutez")
 		}
@@ -75,9 +80,20 @@ func newPayoutCommand() *cobra.Command {
 				reporter.Log(fmt.Sprintf("could not open file for reporting: %v\n", err))
 			}
 
-			gt := goTezos.NewGoTezos()
-			gt.AddNewClient(goTezos.NewTezosRPCClient(conf.Node, conf.Port))
-			wallet, err := gt.ImportEncryptedWallet(conf.Password, conf.Secret)
+			gt, err := goTezos.NewGoTezos(conf.URL)
+			if err != nil {
+				reporter.Log(fmt.Sprintf("could not connect to network: %v\n", err))
+			}
+
+			if conf.PaymentsOverride.File != "" {
+				conf.PaymentsOverride.Payments, err = conf.PaymentsOverride.ReadPaymentsOverride()
+				if err != nil {
+					reporter.Log(fmt.Sprintf("could not parse payments override into payments: %v", err))
+					os.Exit(1)
+				}
+			}
+
+			wallet, err := gt.Account.ImportEncryptedWallet(conf.Password, conf.Secret)
 			if err != nil {
 				reporter.Log(fmt.Sprintf("could not import wallet: %v", err))
 				os.Exit(1)
@@ -133,8 +149,10 @@ func newPayoutCommand() *cobra.Command {
 						}
 					}
 				}
-				reporter.PrintPaymentsTable(payouts)
-				reporter.WriteCSVReport(payouts)
+				if len(conf.PaymentsOverride.Payments) == 0 {
+					reporter.PrintPaymentsTable(payouts)
+					reporter.WriteCSVReport(payouts)
+				}
 			}
 
 			f.Close()
@@ -146,8 +164,7 @@ func newPayoutCommand() *cobra.Command {
 	payout.PersistentFlags().StringVarP(&conf.Password, "password", "k", "", "password to the secret key of the wallet paying (e.g. --password=<passwd>)")
 	payout.PersistentFlags().BoolVar(&conf.Service, "serve", false, "run service to payout for all new cycles going foward (default false)(e.g. --serve)")
 	payout.PersistentFlags().IntVarP(&conf.Cycle, "cycle", "c", 0, "cycle to payout for (e.g. 95)")
-	payout.PersistentFlags().StringVarP(&conf.Node, "node", "n", "http://127.0.0.1", "address to the node to query (default http://127.0.0.1)(e.g. mainnet-node.tzscan.io)")
-	payout.PersistentFlags().StringVarP(&conf.Port, "port", "p", "8732", "port to use for node (default 8732)(e.g. 443)")
+	payout.PersistentFlags().StringVarP(&conf.URL, "node", "u", "http://127.0.0.1:8732", "address to the node to query (default http://127.0.0.1:8732)(e.g. https://mainnet-node.tzscan.io:443)")
 	payout.PersistentFlags().Float32VarP(&conf.Fee, "fee", "f", -1, "fee for the delegate (e.g. 0.05 = 5%)")
 	payout.PersistentFlags().IntVar(&conf.NetworkFee, "network-fee", 1270, "network fee for each transaction in mutez (default 1270)(e.g. 2000)")
 	payout.PersistentFlags().IntVar(&conf.NetworkGasLimit, "gas-limit", 10200, "network gas limit for each transaction in mutez (default 10200)(e.g. 10300)")
@@ -157,6 +174,7 @@ func newPayoutCommand() *cobra.Command {
 	payout.PersistentFlags().StringVar(&conf.TwitterPath, "twitter-path", "", "path to twitter.yml file containing API keys if not in current dir (e.g. path/to/my/file/)")
 	payout.PersistentFlags().StringVar(&conf.TwitterTitle, "twitter-title", "", "pre title for the twitter bot to post (e.g. DefinitelyNotABot: -- will read DefinitelyNotABot: Payout for Cycle <cycle>)")
 	payout.PersistentFlags().BoolVarP(&conf.Twitter, "twitter", "t", false, "turn on twitter bot, will look for api keys in twitter.yml in current dir or --twitter-path (e.g. --twitter)")
-
+	payout.PersistentFlags().IntVar(&conf.PaymentMinimum, "payout-min", 0, "will only payout to addresses that meet the payout minimum (e.g. --payout-min=<mutez>)")
+	payout.PersistentFlags().StringVar(&conf.PaymentsOverride.File, "payments-override", "", "overrides the rewards calculation and allows you to pass in your own payments in a json file (e.g. path/to/my/file/payments.json)")
 	return payout
 }

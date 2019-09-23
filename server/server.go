@@ -38,26 +38,22 @@ func NewPayoutServer(gt *goTezos.GoTezos, wallet goTezos.Wallet, reporter report
 func (ps *PayoutServer) Serve() {
 	ticker := time.NewTicker(5 * time.Minute)
 	quit := make(chan struct{})
-	lastCycle, _, err := ps.gt.GetBlockLevelHead()
+	head, err := ps.gt.Block.GetHead()
 	if err != nil {
 		ps.reporter.Log(err)
 	}
 
 	payer := pay.NewPayer(ps.gt, ps.wallet, ps.conf)
-	constants, err := ps.gt.GetNetworkConstants()
-	if err != nil {
-		ps.reporter.Log(err)
-	}
-	lastCycle = lastCycle / constants.BlocksPerCycle
+	lastCycle := head.Metadata.Level.Cycle
 
 	for {
 		select {
 		case <-ticker.C:
-			head, _, err := ps.gt.GetBlockLevelHead()
+			now, err := ps.gt.Block.GetHead()
 			if err != nil {
 				ps.reporter.Log(err)
 			}
-			currentCycle := head / constants.BlocksPerCycle
+			currentCycle := now.Metadata.Level.Cycle
 			if currentCycle > lastCycle {
 				ps.conf.Cycle = currentCycle
 				payouts, ops, err := payer.Payout()

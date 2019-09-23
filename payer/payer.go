@@ -1,6 +1,8 @@
 package payer
 
 import (
+	"strconv"
+
 	goTezos "github.com/DefinitelyNotAGoat/go-tezos"
 	"github.com/DefinitelyNotAGoat/payman/options"
 )
@@ -44,28 +46,46 @@ func NewPayer(gt *goTezos.GoTezos, wallet goTezos.Wallet, conf *options.Options)
 
 // Payout uses the payers configuration that calls it, to pay out for the cycle in the conf
 func (payer *Payer) Payout() (goTezos.DelegateReport, [][]byte, error) {
+	var payments []goTezos.Payment
+	rewards := &goTezos.DelegateReport{}
 
-	rewards, err := payer.gt.GetRewardsForDelegateForCycle(payer.conf.Delegate, payer.conf.Cycle, float64(payer.conf.Fee))
-	if err != nil {
-		return rewards, nil, err
+	if len(payer.conf.PaymentsOverride.Payments) > 0 {
+		payments = payer.conf.PaymentsOverride.Payments
+	} else {
+		var err error
+		rewards, err = payer.gt.Delegate.GetReport(payer.conf.Delegate, payer.conf.Cycle, float64(payer.conf.Fee))
+		if err != nil {
+			return *rewards, nil, err
+		}
+
+		payments = rewards.GetPayments(payer.conf.PaymentMinimum)
 	}
-	payments := rewards.GetPayments()
+
+	var delegations []goTezos.DelegationReport
+	for _, delegation := range rewards.Delegations {
+		intNet, _ := strconv.Atoi(delegation.NetRewards)
+		if intNet >= payer.conf.PaymentMinimum {
+			delegations = append(delegations, delegation)
+		}
+	}
+
+	rewards.Delegations = delegations
 
 	responses := [][]byte{}
 	if !payer.conf.Dry {
-		ops, err := payer.gt.CreateBatchPayment(payments, payer.wallet, payer.conf.NetworkFee, payer.conf.NetworkGasLimit)
+		ops, err := payer.gt.Operation.CreateBatchPayment(payments, payer.wallet, payer.conf.NetworkFee, payer.conf.NetworkGasLimit)
 		if err != nil {
-			return rewards, nil, err
+			return *rewards, nil, err
 		}
 
 		for _, op := range ops {
-			resp, err := payer.gt.InjectOperation(op)
+			resp, err := payer.gt.Operation.InjectOperation(op)
 			if err != nil {
-				return rewards, responses, err
+				return *rewards, responses, err
 			}
 			responses = append(responses, resp)
 		}
 	}
 
-	return rewards, responses, nil
+	return *rewards, responses, nil
 }

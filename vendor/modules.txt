@@ -1,10 +1,10 @@
-# github.com/DefinitelyNotAGoat/go-tezos v0.0.0-20190427154335-dececb7deeeb
+# github.com/DefinitelyNotAGoat/go-tezos v1.0.6
 github.com/DefinitelyNotAGoat/go-tezos
 # github.com/Messer4/base58check v0.0.0-20180328134002-7531a92ae9ba
 github.com/Messer4/base58check
 # github.com/cenkalti/backoff v2.1.1+incompatible
 github.com/cenkalti/backoff
-# github.com/dghubble/go-twitter v0.0.0-20190305084156-0022a70e9bee
+# github.com/dghubble/go-twitter v0.0.0-20190512073027-53f972dc4b06
 github.com/dghubble/go-twitter/twitter
 # github.com/dghubble/oauth1 v0.5.0
 github.com/dghubble/oauth1
@@ -37,28 +37,28 @@ github.com/mattn/go-runewidth
 github.com/mitchellh/mapstructure
 # github.com/olekukonko/tablewriter v0.0.1
 github.com/olekukonko/tablewriter
-# github.com/patrickmn/go-cache v2.1.0+incompatible
-github.com/patrickmn/go-cache
 # github.com/pelletier/go-toml v1.2.0
 github.com/pelletier/go-toml
+# github.com/pkg/errors v0.8.0
+github.com/pkg/errors
 # github.com/spf13/afero v1.1.2
 github.com/spf13/afero
 github.com/spf13/afero/mem
 # github.com/spf13/cast v1.3.0
 github.com/spf13/cast
-# github.com/spf13/cobra v0.0.3
+# github.com/spf13/cobra v0.0.4
 github.com/spf13/cobra
 # github.com/spf13/jwalterweatherman v1.0.0
 github.com/spf13/jwalterweatherman
 # github.com/spf13/pflag v1.0.3
 github.com/spf13/pflag
-# github.com/spf13/viper v1.3.2
+# github.com/spf13/viper v1.4.0
 github.com/spf13/viper
 # github.com/turnage/graw v0.0.0-20190218184947-3295929039f6
 github.com/turnage/graw/reddit
 # github.com/turnage/redditproto v0.0.0-20151223012412-afedf1b6eddb
 github.com/turnage/redditproto
-# golang.org/x/crypto v0.0.0-20190424203555-c05e17bb3b2d
+# golang.org/x/crypto v0.0.0-20190426145343-a29dc8fdc734
 golang.org/x/crypto/blake2b
 golang.org/x/crypto/ed25519
 golang.org/x/crypto/nacl/secretbox
@@ -67,10 +67,10 @@ golang.org/x/crypto/ed25519/internal/edwards25519
 golang.org/x/crypto/internal/subtle
 golang.org/x/crypto/poly1305
 golang.org/x/crypto/salsa20/salsa
-# golang.org/x/net v0.0.0-20190404232315-eb5bcb51f2a3
+# golang.org/x/net v0.0.0-20190522155817-f3200d17e092
 golang.org/x/net/context
 golang.org/x/net/context/ctxhttp
-# golang.org/x/oauth2 v0.0.0-20190402181905-9f3314589c9a
+# golang.org/x/oauth2 v0.0.0-20180821212333-d2e6202438be
 golang.org/x/oauth2
 golang.org/x/oauth2/clientcredentials
 golang.org/x/oauth2/internal
@@ -80,7 +80,7 @@ golang.org/x/sys/unix
 # golang.org/x/text v0.3.0
 golang.org/x/text/transform
 golang.org/x/text/unicode/norm
-# google.golang.org/appengine v1.4.0
+# google.golang.org/appengine v1.1.0
 google.golang.org/appengine/urlfetch
 google.golang.org/appengine/internal
 google.golang.org/appengine/internal/urlfetch
