@@ -71,6 +71,7 @@ func (payer *Payer) Payout() (goTezos.DelegateReport, [][]byte, error) {
 	}
 
 	rewards.Delegations = delegations
+	payments = rewards.GetPayments(payer.conf.PaymentMinimum)
 
 	responses := [][]byte{}
 	if !payer.conf.Dry {
