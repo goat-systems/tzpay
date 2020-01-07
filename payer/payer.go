@@ -2,6 +2,7 @@ package payer
 
 import (
 	"strconv"
+	"strings"
 
 	goTezos "github.com/DefinitelyNotAGoat/go-tezos"
 	"github.com/DefinitelyNotAGoat/payman/options"
@@ -64,7 +65,7 @@ func (payer *Payer) Payout() (goTezos.DelegateReport, [][]byte, error) {
 	var delegations []goTezos.DelegationReport
 	for _, delegation := range rewards.Delegations {
 		intNet, _ := strconv.Atoi(delegation.NetRewards)
-		if intNet >= payer.conf.PaymentMinimum {
+		if intNet >= payer.conf.PaymentMinimum && !isInArray(payer.conf.Blacklist, delegation.DelegationPhk) {
 			delegations = append(delegations, delegation)
 		}
 	}
@@ -88,4 +89,14 @@ func (payer *Payer) Payout() (goTezos.DelegateReport, [][]byte, error) {
 	}
 
 	return *rewards, responses, nil
+}
+
+func isInArray(array []string, elem string) bool {
+	for _, x := range array {
+		if strings.Trim(x, " ") == elem {
+			return true
+		}
+	}
+
+	return false
 }

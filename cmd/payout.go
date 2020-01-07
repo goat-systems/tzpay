@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 
@@ -19,6 +21,7 @@ import (
 
 func newPayoutCommand() *cobra.Command {
 	var conf options.Options
+	var blacklistFile string
 
 	preflight := func(conf options.Options) {
 		errors := []string{}
@@ -99,6 +102,29 @@ func newPayoutCommand() *cobra.Command {
 				os.Exit(1)
 			}
 
+			if blacklistFile != "" {
+				jsonFile, err := os.Open(blacklistFile)
+				if err != nil {
+					reporter.Log(fmt.Sprintf("could not read in blacklist: %s", blacklistFile))
+					os.Exit(1)
+				}
+				defer jsonFile.Close()
+
+				byteValue, err := ioutil.ReadAll(jsonFile)
+				if err != nil {
+					reporter.Log(fmt.Sprintf("could not read in blacklist: %s", blacklistFile))
+					os.Exit(1)
+				}
+
+				var blacklist []string
+				err = json.Unmarshal(byteValue, &blacklist)
+				if err != nil {
+					reporter.Log("could not unmarshal blacklist from json string array")
+					os.Exit(1)
+				}
+				conf.Blacklist = blacklist
+			}
+
 			var redditBot *reddit.Bot
 			var redditBotStatus bool
 			if conf.RedditAgent != "" {
@@ -176,5 +202,6 @@ func newPayoutCommand() *cobra.Command {
 	payout.PersistentFlags().BoolVarP(&conf.Twitter, "twitter", "t", false, "turn on twitter bot, will look for api keys in twitter.yml in current dir or --twitter-path (e.g. --twitter)")
 	payout.PersistentFlags().IntVar(&conf.PaymentMinimum, "payout-min", 0, "will only payout to addresses that meet the payout minimum (e.g. --payout-min=<mutez>)")
 	payout.PersistentFlags().StringVar(&conf.PaymentsOverride.File, "payments-override", "", "overrides the rewards calculation and allows you to pass in your own payments in a json file (e.g. path/to/my/file/payments.json)")
+	payout.PersistentFlags().StringVar(&blacklistFile, "blacklist", "", "will not pay out to addresses in json <file> (string array)")
 	return payout
 }

@@ -21,6 +21,7 @@ type Options struct {
 	NetworkFee       int
 	NetworkGasLimit  int
 	PaymentMinimum   int
+	Blacklist        []string
 	Dry              bool
 	RedditAgent      string
 	RedditTitle      string
