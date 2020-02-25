@@ -1,83 +1,92 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
-	"log"
-	"os"
 
-	goTezos "github.com/DefinitelyNotAGoat/go-tezos"
-	"github.com/DefinitelyNotAGoat/payman/options"
-	pay "github.com/DefinitelyNotAGoat/payman/payer"
-	"github.com/DefinitelyNotAGoat/payman/reporting"
+	"github.com/caarlos0/env/v6"
+	"github.com/go-playground/validator/v10"
+	gotezos "github.com/goat-systems/go-tezos/v2"
+	"github.com/goat-systems/payman/v2/cmd/delegates"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
-func newReportCommand() *cobra.Command {
-	var conf options.Options
+// ReportConf is the configuraion for a payman report
+type ReportConf struct {
+	Delegate       string  `validate:"required" env:"PAYMAN_DELEGATE"`
+	HostNode       string  `validate:"required" env:"PAYMAN_HOST_NODE"`
+	BakersFee      float64 `validate:"required" env:"PAYMAN_BAKERS_FEE"`
+	MinimumPayment int     `env:"PAYMAN_MINIMUM_PAYMENT"`
+	BlackList      string  `env:"PAYMAN_BLACKLIST"`
+}
 
-	preflight := func(conf options.Options) {
-		errors := []string{}
-		if conf.Delegate == "" {
-			errors = append(errors, "[payout][preflight] error: no delegate passed for payout (e.g. --delegate=<pkh>)")
-		}
-		if conf.Cycle == 0 {
-			errors = append(errors, "[payout][preflight] error: no cycle passed to payout for (e.g. --cycle=95)")
-		}
-		if conf.Fee == -1 {
-			errors = append(errors, "[payout][preflight] error: no delegation fee passed for payout (e.g. --fee=0.05)")
-		}
-
-		for _, err := range errors {
-			fmt.Println(err)
-			os.Exit(1)
-		}
+func loadReportEnviroment() *ReportConf {
+	cfg := &ReportConf{}
+	if err := env.Parse(cfg); err != nil {
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Fatal("Configuration error.")
 	}
+
+	return cfg
+}
+
+func validateReportEnviroment(cfg *ReportConf) *ReportConf {
+	validate := validator.New()
+	if err := validate.Struct(cfg); err != nil {
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Fatal("Configuration error.")
+	}
+
+	return cfg
+}
+
+func report(cycle int) {
+	cfg := validateReportEnviroment(loadReportEnviroment())
+
+	gt, err := gotezos.New(cfg.HostNode)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Fatal("Failed to initialize GoTezos library.")
+	}
+
+	baker := delegates.NewBaker(&delegates.NewBakerInput{
+		GoTezos:   gt,
+		Address:   cfg.Delegate,
+		Fee:       cfg.BakersFee,
+		BlackList: delegates.ParseBlackList(cfg.BlackList),
+	})
+
+	delegationEarnings, err := baker.GetDelegationEarnings(cycle)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Fatal("Failed to get delegation earnings.")
+	}
+
+	prettyJSON, err := json.MarshalIndent(delegationEarnings, "", "    ")
+	fmt.Println(prettyJSON)
+}
+
+func newReportCommand() *cobra.Command {
+	var (
+		cycle int
+		table bool
+	)
 
 	var report = &cobra.Command{
 		Use:   "report",
 		Short: "report simulates a payout and generates a table and csv report",
 		Run: func(cmd *cobra.Command, args []string) {
-
-			preflight(conf)
-
-			f, err := os.Create(conf.File)
-			if err != nil {
-				fmt.Printf("could not open logging file: %v\n", err)
-			}
-
-			log := log.New(f, "", log.Ldate|log.Ltime|log.Lshortfile)
-
-			reporter, err := reporting.NewReporter(log)
-			if err != nil {
-				reporter.Log(fmt.Sprintf("could not open file for reporting: %v\n", err))
-			}
-
-			gt, err := goTezos.NewGoTezos(conf.URL)
-			if err != nil {
-				reporter.Log(fmt.Sprintf("could not connect to network: %v\n", err))
-			}
-			conf.Dry = true
-
-			wallet := goTezos.Wallet{}
-			payer := pay.NewPayer(gt, wallet, &conf)
-			payouts, _, err := payer.Payout()
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			reporter.PrintPaymentsTable(payouts)
-			reporter.WriteCSVReport(payouts)
-
-			f.Close()
+			report(cycle)
 		},
 	}
 
-	report.PersistentFlags().StringVarP(&conf.Delegate, "delegate", "d", "", "public key hash of the delegate that's paying out (e.g. --delegate=<phk>)")
-	report.PersistentFlags().IntVarP(&conf.Cycle, "cycle", "c", 0, "cycle to payout for (e.g. 95)")
-	report.PersistentFlags().StringVarP(&conf.URL, "node", "u", "http://127.0.0.1:8732", "address to the node to query (default http://127.0.0.1:8732)(e.g. https://mainnet-node.tzscan.io:443)")
-	report.PersistentFlags().Float32VarP(&conf.Fee, "fee", "f", -1, "fee for the delegate (e.g. 0.05 = 5%)")
-	report.PersistentFlags().IntVar(&conf.PaymentMinimum, "payout-min", 0, "will only payout to addresses that meet the payout minimum (e.g. --payout-min=<mutez>)")
-	report.PersistentFlags().StringVarP(&conf.File, "log-file", "l", "/dev/stdout", "file to log to (default stdout)(e.g. ./payman.log)")
+	report.PersistentFlags().IntVarP(&cycle, "cycle", "c", 0, "cycle to payout for (e.g. 95)")
+	report.PersistentFlags().BoolVarP(&table, "table", "t", false, "formats result into a table (Default: json)")
 
 	return report
 }
