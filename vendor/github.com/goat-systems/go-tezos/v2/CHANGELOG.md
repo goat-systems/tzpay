@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
  
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
+
+## [v2.3.1-alpha] 
+ 
+All balances now have big.Int.
+
+## [v2.2.1-alpha] 
+ 
+Improved the BigInt wrapper. 
+Started integration tests.
  
 ## [v2.1.1-alpha] 
  

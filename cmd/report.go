@@ -7,7 +7,7 @@ import (
 	"github.com/caarlos0/env/v6"
 	"github.com/go-playground/validator/v10"
 	gotezos "github.com/goat-systems/go-tezos/v2"
-	"github.com/goat-systems/payman/v2/cmd/delegates"
+	"github.com/goat-systems/payman/v2/cmd/internal/delegates"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )

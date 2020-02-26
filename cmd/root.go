@@ -6,7 +6,7 @@ import (
 
 func newRootCommand() *cobra.Command {
 	rootCommand := &cobra.Command{
-		Use:   "payman",
+		Use:   "tzpay",
 		Short: "A bulk payout tool for bakers in the Tezos Ecosystem",
 	}
 
@@ -18,6 +18,7 @@ func newRootCommand() *cobra.Command {
 	return rootCommand
 }
 
+// Execute executes the user command.
 func Execute() error {
 	return newRootCommand().Execute()
 }
