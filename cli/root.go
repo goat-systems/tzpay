@@ -1,6 +1,7 @@
-package cmd
+package cli
 
 import (
+	"github.com/goat-systems/tzpay/v2/cli/internal/cmd"
 	"github.com/spf13/cobra"
 )
 
@@ -11,8 +12,8 @@ func newRootCommand() *cobra.Command {
 	}
 
 	rootCommand.AddCommand(
-		newPayoutCommand(),
-		newReportCommand(),
+		cmd.NewDryRunCommand(),
+		cmd.NewVersionCommand(),
 	)
 
 	return rootCommand
