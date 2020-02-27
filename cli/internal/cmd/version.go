@@ -1,8 +1,16 @@
+package cmd
+
+import (
+	"fmt"
+
+	"github.com/spf13/cobra"
+)
+
 const (
 	version = "v2.0.0"
 )
 
-// NewDryRunCommand returns a new dryrun cobra command
+// NewVersionCommand returns a version cobra command
 func NewVersionCommand() *cobra.Command {
 	var version = &cobra.Command{
 		Use:     "version",

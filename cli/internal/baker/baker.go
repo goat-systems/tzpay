@@ -6,12 +6,12 @@ import (
 	"unicode"
 
 	gotezos "github.com/goat-systems/go-tezos/v2"
-	"github.com/goat-systems/payman/v2/cmd/internal/enviroment"
+	"github.com/goat-systems/tzpay/v2/cli/internal/enviroment"
 	"github.com/pkg/errors"
 )
 
-// DelegationEarnings -
-type DelegationEarnings struct {
+// DelegationEarning -
+type DelegationEarning struct {
 	Delegation   string
 	Fee          *big.Int
 	GrossRewards *big.Int
@@ -32,8 +32,8 @@ type processDelegationsInput struct {
 }
 
 type processDelegationsOutput struct {
-	delegationEarnings DelegationEarnings
-	err                error
+	delegationEarning DelegationEarning
+	err               error
 }
 
 type processDelegationInput struct {
@@ -43,17 +43,26 @@ type processDelegationInput struct {
 	blockHash            string
 }
 
-// Payouts contains a alphabetically case sensitive sorted list of DelegationEarnings
-type Payouts []DelegationEarnings
-
-func (p Payouts) Len() int { return len(p) }
-func (p Payouts) Swap(i, j int) {
-	p[i], p[j] = p[j], p[i]
+// Payout contains all needed information for a payout
+type Payout struct {
+	DelegationEarnings DelegationEarnings `json:"delegaions"`
+	Cycle              int                `json:"cycle"`
+	FrozenBalance      *big.Int           `json:"rewards"`
+	StakingBalance     *big.Int           `json:"staking_balance"`
+	Delegate           string             `json:"delegate"`
 }
 
-func (p Payouts) Less(i, j int) bool {
-	iRunes := []rune(p[i].Delegation)
-	jRunes := []rune(p[j].Delegation)
+// DelegationEarnings contains list of DelegationEarning and implements sort.
+type DelegationEarnings []DelegationEarning
+
+func (d DelegationEarnings) Len() int { return len(d) }
+func (d DelegationEarnings) Swap(i, j int) {
+	d[i], d[j] = d[j], d[i]
+}
+
+func (d DelegationEarnings) Less(i, j int) bool {
+	iRunes := []rune(d[i].Delegation)
+	jRunes := []rune(d[j].Delegation)
 
 	max := len(iRunes)
 	if max > len(jRunes) {
@@ -85,7 +94,7 @@ func NewBaker(gt gotezos.IFace) *Baker {
 }
 
 // Payouts returns all payouts for a cycle
-func (b *Baker) Payouts(ctx context.Context, cycle int) (*Payouts, error) {
+func (b *Baker) Payouts(ctx context.Context, cycle int) (*Payout, error) {
 	params := enviroment.GetEnviromentFromContext(ctx)
 	frozenBalanceRewards, err := b.gt.FrozenBalance(cycle, params.Delegate)
 	if err != nil {
@@ -114,12 +123,17 @@ func (b *Baker) Payouts(ctx context.Context, cycle int) (*Payouts, error) {
 		blockHash:            networkCycle.BlockHash,
 	})
 
-	payouts := Payouts{}
+	payouts := Payout{
+		Delegate:       params.Delegate,
+		StakingBalance: stakingBalance,
+		Cycle:          cycle,
+		FrozenBalance:  frozenBalanceRewards.Rewards.Big,
+	}
 	for _, delegation := range out {
 		if delegation.err != nil {
-			err = errors.Wrapf(delegation.err, "failed to get payout for delegation %s", delegation.delegationEarnings.Delegation)
+			err = errors.Wrapf(delegation.err, "failed to get payout for delegation %s", delegation.delegationEarning.Delegation)
 		} else {
-			payouts = append(payouts, delegation.delegationEarnings)
+			payouts.DelegationEarnings = append(payouts.DelegationEarnings, delegation.delegationEarning)
 		}
 	}
 
@@ -163,27 +177,27 @@ func (b *Baker) proccessDelegationWorker(ctx context.Context, jobs <-chan proces
 			}
 		} else {
 			results <- processDelegationsOutput{
-				delegationEarnings: *d,
+				delegationEarning: *d,
 			}
 		}
 	}
 }
 
-func (b *Baker) processDelegation(ctx context.Context, input *processDelegationInput) (*DelegationEarnings, error) {
+func (b *Baker) processDelegation(ctx context.Context, input *processDelegationInput) (*DelegationEarning, error) {
 	params := enviroment.GetEnviromentFromContext(ctx)
-	delegationEarnings := &DelegationEarnings{Delegation: input.delegation}
+	delegationEarning := &DelegationEarning{Delegation: input.delegation}
 	balance, err := b.gt.Balance(input.blockHash, input.delegation)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to process delegation earnings for delegation %s", input.delegation)
 	}
 
-	delegationEarnings.Share = float64(balance.Int64()) / float64(input.stakingBalance.Int64())
-	grossRewardsFloat := delegationEarnings.Share * float64(input.frozenBalanceRewards.Rewards.Big.Int64())
+	delegationEarning.Share = float64(balance.Int64()) / float64(input.stakingBalance.Int64())
+	grossRewardsFloat := delegationEarning.Share * float64(input.frozenBalanceRewards.Rewards.Big.Int64())
 	feeFloat := grossRewardsFloat * params.BakersFee
 
-	delegationEarnings.GrossRewards = big.NewInt(int64(grossRewardsFloat))
-	delegationEarnings.Fee = big.NewInt(int64(feeFloat))
-	delegationEarnings.NetRewards = big.NewInt(0).Sub(delegationEarnings.GrossRewards, delegationEarnings.Fee)
+	delegationEarning.GrossRewards = big.NewInt(int64(grossRewardsFloat))
+	delegationEarning.Fee = big.NewInt(int64(feeFloat))
+	delegationEarning.NetRewards = big.NewInt(0).Sub(delegationEarning.GrossRewards, delegationEarning.Fee)
 
-	return delegationEarnings, nil
+	return delegationEarning, nil
 }

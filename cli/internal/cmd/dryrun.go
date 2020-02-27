@@ -2,12 +2,12 @@ package cmd
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 
 	gotezos "github.com/goat-systems/go-tezos/v2"
-	"github.com/goat-systems/payman/v2/cli/internal/baker"
-	"github.com/goat-systems/payman/v2/cli/internal/enviroment"
+	"github.com/goat-systems/tzpay/v2/cli/internal/baker"
+	"github.com/goat-systems/tzpay/v2/cli/internal/enviroment"
+	"github.com/goat-systems/tzpay/v2/cli/internal/print"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -59,12 +59,12 @@ func dryrun(arg string) {
 	baker := baker.NewBaker(gt)
 	ctx := enviroment.SetEnviromentToContext(context.Background(), env)
 
-	payouts, err := baker.Payouts(ctx, cycle)
+	payout, err := baker.Payouts(ctx, cycle)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err.Error(),
 		}).Fatal("Failed to get payouts.")
 	}
 
-	fmt.Println(payouts)
+	print.JSON(ctx, "", payout)
 }

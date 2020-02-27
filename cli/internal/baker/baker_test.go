@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	gotezos "github.com/goat-systems/go-tezos/v2"
-	"github.com/goat-systems/payman/v2/cmd/internal/enviroment"
+	"github.com/goat-systems/tzpay/v2/cli/internal/enviroment"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -16,7 +16,7 @@ func Test_processDelegation(t *testing.T) {
 	type want struct {
 		err                bool
 		errContains        string
-		delegationEarnings *DelegationEarnings
+		delegationEarnings *DelegationEarning
 	}
 
 	cases := []struct {
@@ -35,7 +35,7 @@ func Test_processDelegation(t *testing.T) {
 			want{
 				false,
 				"",
-				&DelegationEarnings{Fee: big.NewInt(4000000), GrossRewards: big.NewInt(80000000), NetRewards: big.NewInt(76000000), Share: 0.1},
+				&DelegationEarning{Fee: big.NewInt(4000000), GrossRewards: big.NewInt(80000000), NetRewards: big.NewInt(76000000), Share: 0.1},
 			},
 		},
 		{
@@ -150,7 +150,7 @@ func Test_Payouts(t *testing.T) {
 	type want struct {
 		err         bool
 		errContains string
-		payouts     *Payouts
+		payouts     *Payout
 	}
 
 	cases := []struct {
@@ -208,27 +208,30 @@ func Test_Payouts(t *testing.T) {
 			want{
 				false,
 				"",
-				&Payouts{
-					DelegationEarnings{
-						Delegation:   "tz1b",
-						Fee:          big.NewInt(3500000),
-						GrossRewards: big.NewInt(70000000),
-						NetRewards:   big.NewInt(66500000),
-						Share:        1,
+				&Payout{
+					DelegationEarnings: []DelegationEarning{
+						DelegationEarning{
+							Delegation:   "tz1b",
+							Fee:          big.NewInt(3500000),
+							GrossRewards: big.NewInt(70000000),
+							NetRewards:   big.NewInt(66500000),
+							Share:        1,
+						},
+						DelegationEarning{
+							Delegation:   "tz1c",
+							Fee:          big.NewInt(3500000),
+							GrossRewards: big.NewInt(70000000),
+							NetRewards:   big.NewInt(66500000),
+							Share:        1,
+						},
+						DelegationEarning{
+							Delegation:   "tz1a",
+							Fee:          big.NewInt(3500000),
+							GrossRewards: big.NewInt(70000000),
+							NetRewards:   big.NewInt(66500000),
+							Share:        1,
+						},
 					},
-					DelegationEarnings{
-						Delegation:   "tz1c",
-						Fee:          big.NewInt(3500000),
-						GrossRewards: big.NewInt(70000000),
-						NetRewards:   big.NewInt(66500000),
-						Share:        1,
-					},
-					DelegationEarnings{
-						Delegation:   "tz1a",
-						Fee:          big.NewInt(3500000),
-						GrossRewards: big.NewInt(70000000),
-						NetRewards:   big.NewInt(66500000),
-						Share:        1},
 				},
 			},
 		},
@@ -237,55 +240,55 @@ func Test_Payouts(t *testing.T) {
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
 			baker := &Baker{gt: tt.input}
-			payouts, err := baker.Payouts(goldenContext, 100)
+			payout, err := baker.Payouts(goldenContext, 100)
 			checkErr(t, tt.want.err, tt.want.errContains, err)
 
 			if tt.want.payouts != nil {
-				sort.Sort(tt.want.payouts)
+				sort.Sort(tt.want.payouts.DelegationEarnings)
 			}
 
-			if payouts != nil {
-				sort.Sort(payouts)
+			if payout != nil {
+				sort.Sort(payout.DelegationEarnings)
 			}
 
-			assert.Equal(t, tt.want.payouts, payouts)
+			assert.Equal(t, tt.want.payouts, payout)
 		})
 	}
 }
 
 func Test_PayoutsSort(t *testing.T) {
-	payouts := Payouts{}
-	payouts = append(payouts,
-		[]DelegationEarnings{
-			DelegationEarnings{
+	delegationEarnings := DelegationEarnings{}
+	delegationEarnings = append(delegationEarnings,
+		[]DelegationEarning{
+			DelegationEarning{
 				Delegation: "tz1c",
 			},
-			DelegationEarnings{
+			DelegationEarning{
 				Delegation: "tz1a",
 			},
-			DelegationEarnings{
+			DelegationEarning{
 				Delegation: "tz1b",
 			},
 		}...,
 	)
-	sort.Sort(&payouts)
+	sort.Sort(&delegationEarnings)
 
-	want := Payouts{}
+	want := DelegationEarnings{}
 	want = append(want,
-		[]DelegationEarnings{
-			DelegationEarnings{
+		[]DelegationEarning{
+			DelegationEarning{
 				Delegation: "tz1a",
 			},
-			DelegationEarnings{
+			DelegationEarning{
 				Delegation: "tz1b",
 			},
-			DelegationEarnings{
+			DelegationEarning{
 				Delegation: "tz1c",
 			},
 		}...,
 	)
 
-	assert.Equal(t, want, payouts)
+	assert.Equal(t, want, delegationEarnings)
 }
 
 func checkErr(t *testing.T, wantErr bool, errContains string, err error) {

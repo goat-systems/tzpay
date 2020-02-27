@@ -27,6 +27,9 @@ dep: ## Get the dependencies
 	@go get -u golang.org/x/lint/golint
 	@go get -u honnef.co/go/tools/...
 
+build: ## Get the dependencies
+	@go build
+
 clean: ## Remove previous build
 	@rm -f $(PROJECT_NAME)
 
