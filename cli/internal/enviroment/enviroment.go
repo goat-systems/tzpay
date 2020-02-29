@@ -6,6 +6,7 @@ import (
 
 	cenv "github.com/caarlos0/env/v6"
 	"github.com/go-playground/validator"
+	gotezos "github.com/goat-systems/go-tezos/v2"
 	"github.com/pkg/errors"
 )
 
@@ -21,74 +22,65 @@ const (
 
 // Enviroment is the enviroment for a tzpay baker
 type Enviroment struct {
-	BakersFee      float64 `validate:"required" env:"PAYMAN_BAKERS_FEE"`
-	BlackList      string  `env:"PAYMAN_BLACKLIST"`
-	Delegate       string  `validate:"required" env:"PAYMAN_DELEGATE"`
-	GasLimit       int     `env:"PAYMAN_NETWORK_GAS_LIMIT" envDefault:"26283"`
-	HostNode       string  `validate:"required" env:"PAYMAN_HOST_NODE"`
-	MinimumPayment int     `env:"PAYMAN_MINIMUM_PAYMENT"`
-	NetworkFee     int     `env:"PAYMAN_NETWORK_FEE" envDefault:"2941"`
+	BakersFee      float64 `validate:"required" env:"TZPAY_BAKERS_FEE"`
+	BlackList      string  `env:"TZPAY_BLACKLIST"`
+	Delegate       string  `validate:"required" env:"TZPAY_DELEGATE"`
+	GasLimit       int     `env:"TZPAY_NETWORK_GAS_LIMIT" envDefault:"26283"`
+	HostNode       string  `validate:"required" env:"TZPAY_HOST_NODE"`
+	MinimumPayment int     `env:"TZPAY_MINIMUM_PAYMENT" envDefault:"0"`
+	EarningsOnly   bool    `env:"TZPAY_EARNINGS_ONLY"` // If this is turned on, tzpay won't pay for missed blocks or endorsements
+	NetworkFee     int     `env:"TZPAY_NETWORK_FEE" envDefault:"2941"`
+	WalletSecret   string  `validate:"required" env:"TZPAY_WALLET_SECRET"`
+	WalletPassword string  `validate:"required" env:"TZPAY_WALLET_PASSWORD"`
 }
 
-// Wallet is the enviroment for a tzpay baker's tezos wallet
-type Wallet struct {
-	Secret   string `validate:"required" env:"PAYMAN_WALLET_SECRET"`
-	Password string `validate:"required" env:"PAYMAN_WALLET_PASSWORD"`
+// ContextEnviroment is the enviroment to be attatched to context
+type ContextEnviroment struct {
+	BakersFee      float64
+	BlackList      string
+	Delegate       string
+	GasLimit       int
+	HostNode       string
+	MinimumPayment int
+	EarningsOnly   bool
+	NetworkFee     int
+	Wallet         gotezos.Wallet
 }
 
 // GetEnviromentFromContext gets the Enviroment off context
-func GetEnviromentFromContext(ctx context.Context) *Enviroment {
+func GetEnviromentFromContext(ctx context.Context) *ContextEnviroment {
 	val := ctx.Value(ENVIROMENTKEY)
-	env, _ := val.(*Enviroment)
+	env, _ := val.(*ContextEnviroment)
 	return env
 }
 
-// GetWalletFromContext gets the Wallet off context
-func GetWalletFromContext(ctx context.Context) *Wallet {
-	val := ctx.Value(WALLETKEY)
-	env, _ := val.(*Wallet)
-	return env
+// setEnviromentToContext sets tzpays enviroment to context
+func setEnviromentToContext(ctx context.Context, env *Enviroment) (context.Context, error) {
+	cenv, err := enviromentToContextEnviroment(*env)
+	if err != nil {
+		return ctx, errors.Wrap(err, "failed to set context enviroment")
+	}
+
+	return context.WithValue(ctx, ENVIROMENTKEY, cenv), nil
 }
 
-// SetEnviromentToContext sets tzpays enviroment to context
-func SetEnviromentToContext(ctx context.Context, env *Enviroment) context.Context {
-	return context.WithValue(ctx, ENVIROMENTKEY, env)
-}
-
-// SetWalletToContext sets tzpays wallet to context
-func SetWalletToContext(ctx context.Context, wallet *Wallet) context.Context {
-	return context.WithValue(ctx, WALLETKEY, wallet)
-}
-
-// Parameters returns and validates the enviroment for tzpay
-func Parameters() (*Enviroment, error) {
+// InitContext returns and validates the enviroment for tzpay in context
+func InitContext() (context.Context, error) {
 	env, err := loadEnviroment()
 	if err != nil {
-		return env, err
+		return context.Background(), err
 	}
 	err = validate(env)
 	if err != nil {
-		return env, err
+		return context.Background(), err
 	}
 
-	return env, nil
-}
-
-// ParametersWithWallet returns and validates the enviroment and wallet for tzpay
-func ParametersWithWallet() (*Enviroment, *Wallet, error) {
-	env, err := Parameters()
+	ctx, err := setEnviromentToContext(context.Background(), env)
 	if err != nil {
-		return env, nil, err
-	}
-	wallet, err := loadWallet()
-	if err != nil {
-		return env, wallet, err
-	}
-	if err = validate(wallet); err != nil {
-		return env, wallet, err
+		return ctx, err
 	}
 
-	return env, wallet, nil
+	return ctx, nil
 }
 
 func loadEnviroment() (*Enviroment, error) {
@@ -98,15 +90,6 @@ func loadEnviroment() (*Enviroment, error) {
 	}
 
 	return env, nil
-}
-
-func loadWallet() (*Wallet, error) {
-	wallet := &Wallet{}
-	if err := cenv.Parse(wallet); err != nil {
-		return wallet, errors.Wrap(err, "failed to load wallet")
-	}
-
-	return wallet, nil
 }
 
 func validate(i interface{}) error {
@@ -126,4 +109,23 @@ func ParseBlackList(list string) []string {
 	}
 
 	return blacklist
+}
+
+func enviromentToContextEnviroment(env Enviroment) (ContextEnviroment, error) {
+	wallet, err := gotezos.ImportEncryptedWallet(env.WalletPassword, env.WalletSecret) // TODO ImportEncryptedWallet second parameter name should be edesk
+	if err != nil {
+		return ContextEnviroment{}, errors.Wrap(err, "failed to set enviroment to context")
+	}
+
+	return ContextEnviroment{
+		BakersFee:      env.BakersFee,
+		BlackList:      env.BlackList,
+		Delegate:       env.Delegate,
+		GasLimit:       env.GasLimit,
+		HostNode:       env.HostNode,
+		MinimumPayment: env.MinimumPayment,
+		EarningsOnly:   env.EarningsOnly,
+		NetworkFee:     env.NetworkFee,
+		Wallet:         *wallet,
+	}, nil
 }

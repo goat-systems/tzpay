@@ -201,3 +201,96 @@ func (b *Baker) processDelegation(ctx context.Context, input *processDelegationI
 
 	return delegationEarning, nil
 }
+
+// ForgePayout converts Payout into operation contents and forges them locally
+func (b *Baker) ForgePayout(ctx context.Context, payout Payout) (string, error) {
+	base := enviroment.GetEnviromentFromContext(ctx)
+	head, err := b.gt.Head()
+	if err != nil {
+		return "", errors.Wrap(err, "failed to forge payout")
+	}
+
+	counter, err := b.gt.Counter(head.Hash, base.Delegate)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to forge payout")
+	}
+
+	contents := b.constructPayoutContents(ctx, *counter, payout)
+
+	forge, err := gotezos.ForgeOperation("TODO", contents...)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to forge payout")
+	}
+
+	if err = b.isValidForge(contents, *forge); err != nil {
+		return "", errors.Wrap(err, "failed to forge payout: failed sanity check")
+	}
+
+	return *forge, nil
+}
+
+func (b *Baker) constructPayoutContents(ctx context.Context, counter int, payout Payout) []gotezos.Contents {
+	base := enviroment.GetEnviromentFromContext(ctx)
+	var contents []gotezos.Contents
+	for _, delegation := range payout.DelegationEarnings {
+		counter++
+		if delegation.NetRewards.Int64() >= int64(base.MinimumPayment) {
+			contents = append(contents, gotezos.Contents{
+				Kind:        gotezos.TRANSACTIONOP,
+				Source:      base.Wallet.Address,
+				Destination: delegation.Delegation,
+				Amount:      gotezos.Int{Big: delegation.NetRewards},
+				Fee:         gotezos.Int{Big: big.NewInt(int64(base.NetworkFee))}, //TODO: expose NewInt function in GoTezos
+				GasLimit:    gotezos.Int{Big: big.NewInt(int64(base.GasLimit))},
+				Counter:     gotezos.Int{Big: big.NewInt(int64(counter))}, // TODO: counter should just be a regular int in GoTezos
+			})
+		}
+	}
+
+	return contents
+}
+
+func (b *Baker) isValidForge(contents []gotezos.Contents, forge string) error {
+	_, sanity, err := gotezos.UnforgeOperation(forge, false)
+	if err != nil {
+		return errors.Wrap(err, "failed to unforge forge")
+	}
+
+	if ok := isEqualContents(contents, *sanity); !ok {
+		return errors.Wrap(err, "forged contents are not equal to the unforged contents")
+	}
+
+	return nil
+}
+
+func isEqualContents(forge, unforge []gotezos.Contents) bool {
+	if len(forge) != len(unforge) {
+		return false
+	}
+
+	for i := range forge {
+		if forge[i].Amount.Big.Int64() != unforge[i].Amount.Big.Int64() {
+			return false
+		}
+		if forge[i].Destination != unforge[i].Destination {
+			return false
+		}
+		if forge[i].Source != unforge[i].Source {
+			return false
+		}
+		if forge[i].Fee.Big.Int64() != unforge[i].Fee.Big.Int64() {
+			return false
+		}
+		if forge[i].GasLimit.Big.Int64() != unforge[i].GasLimit.Big.Int64() {
+			return false
+		}
+		if forge[i].Counter.Big.Int64() != unforge[i].Counter.Big.Int64() {
+			return false
+		}
+		if forge[i].Kind != unforge[i].Kind {
+			return false
+		}
+	}
+
+	return true
+}

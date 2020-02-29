@@ -291,6 +291,362 @@ func Test_PayoutsSort(t *testing.T) {
 	assert.Equal(t, want, delegationEarnings)
 }
 
+func Test_ForgePayout(t *testing.T) {
+	type input struct {
+		payout Payout
+		gt     gotezos.IFace
+	}
+
+	type want struct {
+		err         bool
+		errContains string
+		forge       string
+	}
+
+	cases := []struct {
+		name  string
+		input input
+		want  want
+	}{
+		{
+			"is successful",
+			input{
+				Payout{
+					DelegationEarnings: DelegationEarnings{
+						DelegationEarning{
+							Delegation:   "somedelegation",
+							GrossRewards: big.NewInt(1000000),
+							NetRewards:   big.NewInt(900000),
+						},
+						DelegationEarning{
+							Delegation:   "someotherdelegation",
+							GrossRewards: big.NewInt(1000000),
+							NetRewards:   big.NewInt(950000),
+						},
+					},
+				},
+				&gotezosMock{},
+			},
+			want{
+				false,
+				"",
+				"",
+			},
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			baker := &Baker{gt: &gotezosMock{}}
+			forge, err := baker.ForgePayout(goldenContext, tt.input.payout)
+			checkErr(t, tt.want.err, tt.want.errContains, err)
+			assert.Equal(t, tt.want.forge, forge)
+		})
+	}
+}
+
+func Test_constructPayoutContents(t *testing.T) {
+	type input struct {
+		counter int
+		payout  Payout
+	}
+
+	cases := []struct {
+		name  string
+		input input
+		want  []gotezos.Contents
+	}{
+		{
+			"is successful",
+			input{
+				100,
+				Payout{
+					DelegationEarnings: DelegationEarnings{
+						DelegationEarning{
+							Delegation:   "somedelegation",
+							GrossRewards: big.NewInt(1000000),
+							NetRewards:   big.NewInt(900000),
+						},
+						DelegationEarning{
+							Delegation:   "someotherdelegation",
+							GrossRewards: big.NewInt(1000000),
+							NetRewards:   big.NewInt(950000),
+						},
+					},
+				},
+			},
+			[]gotezos.Contents{
+				gotezos.Contents{
+					Kind:        "transaction",
+					Source:      "",
+					Fee:         gotezos.Int{Big: big.NewInt(100000)},
+					Counter:     gotezos.Int{Big: big.NewInt(101)},
+					GasLimit:    gotezos.Int{Big: big.NewInt(100000)},
+					Amount:      gotezos.Int{Big: big.NewInt(900000)},
+					Destination: "somedelegation",
+				},
+				gotezos.Contents{
+					Kind:        "transaction",
+					Source:      "",
+					Fee:         gotezos.Int{Big: big.NewInt(100000)},
+					Counter:     gotezos.Int{Big: big.NewInt(102)},
+					GasLimit:    gotezos.Int{Big: big.NewInt(100000)},
+					Amount:      gotezos.Int{Big: big.NewInt(950000)},
+					Destination: "someotherdelegation",
+				},
+			},
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			baker := &Baker{gt: &gotezosMock{}}
+			contents := baker.constructPayoutContents(goldenContext, tt.input.counter, tt.input.payout)
+			assert.Equal(t, tt.want, contents)
+		})
+	}
+}
+
+func Test_isValidForge(t *testing.T) {
+	type input struct {
+		contents []gotezos.Contents
+		forge    string
+		gt       gotezos.IFace
+	}
+
+	type want struct {
+		err         bool
+		errContains string
+	}
+
+	cases := []struct {
+		name  string
+		input input
+		want  want
+	}{
+		{
+			"handles failed unforge",
+			input{
+				[]gotezos.Contents{},
+				"",
+				&gotezosMock{
+					unforgeOperationErr: true,
+				},
+			},
+			want{
+				true,
+				"failed to unforge forge",
+			},
+		},
+		{
+			"is successful",
+			input{
+				[]gotezos.Contents{
+					gotezos.Contents{
+						Source:       "tz1LSAycAVcNdYnXCy18bwVksXci8gUC2YpA",
+						Fee:          gotezos.Int{Big: big.NewInt(10100)},
+						Counter:      gotezos.Int{Big: big.NewInt(10)},
+						GasLimit:     gotezos.Int{Big: big.NewInt(10100)},
+						StorageLimit: gotezos.Int{Big: big.NewInt(0)},
+						Amount:       gotezos.Int{Big: big.NewInt(30)},
+						Destination:  "tz1LSAycAVcNdYnXCy18bwVksXci8gUC2YpA",
+						Kind:         gotezos.TRANSACTIONOP,
+					},
+				},
+				"6c0008ba0cb2fad622697145cf1665124096d25bc31ef44e0af44e001e000008ba0cb2fad622697145cf1665124096d25bc31e00",
+				&gotezosMock{
+					unforgeOperationErr: false,
+					unforgeOperationRtn: []gotezos.Contents{
+						gotezos.Contents{
+							Source:       "tz1LSAycAVcNdYnXCy18bwVksXci8gUC2YpA",
+							Fee:          gotezos.Int{Big: big.NewInt(10100)},
+							Counter:      gotezos.Int{Big: big.NewInt(10)},
+							GasLimit:     gotezos.Int{Big: big.NewInt(10100)},
+							StorageLimit: gotezos.Int{Big: big.NewInt(0)},
+							Amount:       gotezos.Int{Big: big.NewInt(30)},
+							Destination:  "tz1LSAycAVcNdYnXCy18bwVksXci8gUC2YpA",
+							Kind:         gotezos.TRANSACTIONOP,
+						},
+					},
+				},
+			},
+			want{
+				true,
+				"failed to unforge forge",
+			},
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			baker := &Baker{gt: tt.input.gt}
+			err := baker.isValidForge(tt.input.contents, tt.input.forge)
+			checkErr(t, tt.want.err, tt.want.errContains, err)
+		})
+	}
+}
+
+func Test_isEqualContents(t *testing.T) {
+	type input struct {
+		forge   []gotezos.Contents
+		unforge []gotezos.Contents
+	}
+
+	cases := []struct {
+		name  string
+		input input
+		want  bool
+	}{
+		{
+			"is equal",
+			input{
+				forge: []gotezos.Contents{
+					gotezos.Contents{
+						Source:       "tz1LSAycAVcNdYnXCy18bwVksXci8gUC2YpA",
+						Fee:          gotezos.Int{Big: big.NewInt(10100)},
+						Counter:      gotezos.Int{Big: big.NewInt(10)},
+						GasLimit:     gotezos.Int{Big: big.NewInt(10100)},
+						StorageLimit: gotezos.Int{Big: big.NewInt(0)},
+						Amount:       gotezos.Int{Big: big.NewInt(30)},
+						Destination:  "tz1LSAycAVcNdYnXCy18bwVksXci8gUC2YpA",
+						Kind:         gotezos.TRANSACTIONOP,
+					},
+					gotezos.Contents{
+						Source:       "tz1LSAycAVcNdYnXCy18bwVksXci8iwYpA",
+						Fee:          gotezos.Int{Big: big.NewInt(500)},
+						Counter:      gotezos.Int{Big: big.NewInt(10)},
+						GasLimit:     gotezos.Int{Big: big.NewInt(10100)},
+						StorageLimit: gotezos.Int{Big: big.NewInt(0)},
+						Amount:       gotezos.Int{Big: big.NewInt(30)},
+						Destination:  "tz1LSAycAVcNdYnXCy18bwVksXci8gUC2YpA",
+						Kind:         gotezos.TRANSACTIONOP,
+					},
+				},
+				unforge: []gotezos.Contents{
+					gotezos.Contents{
+						Source:       "tz1LSAycAVcNdYnXCy18bwVksXci8gUC2YpA",
+						Fee:          gotezos.Int{Big: big.NewInt(10100)},
+						Counter:      gotezos.Int{Big: big.NewInt(10)},
+						GasLimit:     gotezos.Int{Big: big.NewInt(10100)},
+						StorageLimit: gotezos.Int{Big: big.NewInt(0)},
+						Amount:       gotezos.Int{Big: big.NewInt(30)},
+						Destination:  "tz1LSAycAVcNdYnXCy18bwVksXci8gUC2YpA",
+						Kind:         gotezos.TRANSACTIONOP,
+					},
+					gotezos.Contents{
+						Source:       "tz1LSAycAVcNdYnXCy18bwVksXci8iwYpA",
+						Fee:          gotezos.Int{Big: big.NewInt(500)},
+						Counter:      gotezos.Int{Big: big.NewInt(10)},
+						GasLimit:     gotezos.Int{Big: big.NewInt(10100)},
+						StorageLimit: gotezos.Int{Big: big.NewInt(0)},
+						Amount:       gotezos.Int{Big: big.NewInt(30)},
+						Destination:  "tz1LSAycAVcNdYnXCy18bwVksXci8gUC2YpA",
+						Kind:         gotezos.TRANSACTIONOP,
+					},
+				},
+			},
+			true,
+		},
+		{
+			"is unequal",
+			input{
+				forge: []gotezos.Contents{
+					gotezos.Contents{
+						Source:       "tz1LSAycAVcNdYnXCy18bwVksXci8gUC2YpA",
+						Fee:          gotezos.Int{Big: big.NewInt(10100)},
+						Counter:      gotezos.Int{Big: big.NewInt(10)},
+						GasLimit:     gotezos.Int{Big: big.NewInt(10100)},
+						StorageLimit: gotezos.Int{Big: big.NewInt(0)},
+						Amount:       gotezos.Int{Big: big.NewInt(30)},
+						Destination:  "tz1LSAycAVcNdYnXCy18bwVksXci8gUC2YpA",
+						Kind:         gotezos.TRANSACTIONOP,
+					},
+					gotezos.Contents{
+						Source:       "tz1LSAycAVcNdYnXCy18bwVksXci8iwYpA",
+						Fee:          gotezos.Int{Big: big.NewInt(500)},
+						Counter:      gotezos.Int{Big: big.NewInt(10)},
+						GasLimit:     gotezos.Int{Big: big.NewInt(10100)},
+						StorageLimit: gotezos.Int{Big: big.NewInt(0)},
+						Amount:       gotezos.Int{Big: big.NewInt(30)},
+						Destination:  "tz1LSAycAVcNdYnXCy18bwVksXci8gUC2YpA",
+						Kind:         gotezos.TRANSACTIONOP,
+					},
+				},
+				unforge: []gotezos.Contents{
+					gotezos.Contents{
+						Source:       "tz118bwVksXci8gUC2YpA",
+						Fee:          gotezos.Int{Big: big.NewInt(10100)},
+						Counter:      gotezos.Int{Big: big.NewInt(10)},
+						GasLimit:     gotezos.Int{Big: big.NewInt(10100)},
+						StorageLimit: gotezos.Int{Big: big.NewInt(0)},
+						Amount:       gotezos.Int{Big: big.NewInt(30)},
+						Destination:  "tz1LSAycAVcNdYnXCy18bwVksXci8gUC2YpA",
+						Kind:         gotezos.TRANSACTIONOP,
+					},
+					gotezos.Contents{
+						Source:       "tz1LSAycAVcNdYnXCy18bwVksXci8iwYpA",
+						Fee:          gotezos.Int{Big: big.NewInt(500)},
+						Counter:      gotezos.Int{Big: big.NewInt(10)},
+						GasLimit:     gotezos.Int{Big: big.NewInt(10100)},
+						StorageLimit: gotezos.Int{Big: big.NewInt(0)},
+						Amount:       gotezos.Int{Big: big.NewInt(30)},
+						Destination:  "tz1LSAycAVcNdYnXCy18bwVksXci8gUC2YpA",
+						Kind:         gotezos.TRANSACTIONOP,
+					},
+				},
+			},
+			false,
+		},
+		{
+			"is unequal length",
+			input{
+				forge: []gotezos.Contents{
+					gotezos.Contents{
+						Source:       "tz1LSAycAVcNdYnXCy18bwVksXci8gUC2YpA",
+						Fee:          gotezos.Int{Big: big.NewInt(10100)},
+						Counter:      gotezos.Int{Big: big.NewInt(10)},
+						GasLimit:     gotezos.Int{Big: big.NewInt(10100)},
+						StorageLimit: gotezos.Int{Big: big.NewInt(0)},
+						Amount:       gotezos.Int{Big: big.NewInt(30)},
+						Destination:  "tz1LSAycAVcNdYnXCy18bwVksXci8gUC2YpA",
+						Kind:         gotezos.TRANSACTIONOP,
+					},
+					gotezos.Contents{
+						Source:       "tz1LSAycAVcNdYnXCy18bwVksXci8iwYpA",
+						Fee:          gotezos.Int{Big: big.NewInt(500)},
+						Counter:      gotezos.Int{Big: big.NewInt(10)},
+						GasLimit:     gotezos.Int{Big: big.NewInt(10100)},
+						StorageLimit: gotezos.Int{Big: big.NewInt(0)},
+						Amount:       gotezos.Int{Big: big.NewInt(30)},
+						Destination:  "tz1LSAycAVcNdYnXCy18bwVksXci8gUC2YpA",
+						Kind:         gotezos.TRANSACTIONOP,
+					},
+				},
+				unforge: []gotezos.Contents{
+					gotezos.Contents{
+						Source:       "tz118bwVksXci8gUC2YpA",
+						Fee:          gotezos.Int{Big: big.NewInt(10100)},
+						Counter:      gotezos.Int{Big: big.NewInt(10)},
+						GasLimit:     gotezos.Int{Big: big.NewInt(10100)},
+						StorageLimit: gotezos.Int{Big: big.NewInt(0)},
+						Amount:       gotezos.Int{Big: big.NewInt(30)},
+						Destination:  "tz1LSAycAVcNdYnXCy18bwVksXci8gUC2YpA",
+						Kind:         gotezos.TRANSACTIONOP,
+					},
+				},
+			},
+			false,
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			ok := isEqualContents(tt.input.forge, tt.input.unforge)
+			assert.Equal(t, tt.want, ok)
+		})
+	}
+}
+
 func checkErr(t *testing.T, wantErr bool, errContains string, err error) {
 	if wantErr {
 		assert.Error(t, err)
@@ -301,33 +657,49 @@ func checkErr(t *testing.T, wantErr bool, errContains string, err error) {
 }
 
 var goldenContext = context.WithValue(
-	context.WithValue(
-		context.TODO(),
-		enviroment.ENVIROMENTKEY,
-		&enviroment.Enviroment{
-			BakersFee:      0.05,
-			BlackList:      "somehash, somehash1",
-			Delegate:       "somedelegate",
-			GasLimit:       100000,
-			HostNode:       "http://somenode.com:8732",
-			MinimumPayment: 1000,
-			NetworkFee:     100000,
-		},
-	),
-	enviroment.WALLETKEY,
-	&enviroment.Wallet{
-		Secret:   "secret",
-		Password: "password",
+	context.TODO(),
+	enviroment.ENVIROMENTKEY,
+	&enviroment.ContextEnviroment{
+		BakersFee:      0.05,
+		BlackList:      "somehash, somehash1",
+		Delegate:       "somedelegate",
+		GasLimit:       100000,
+		HostNode:       "http://somenode.com:8732",
+		MinimumPayment: 1000,
+		NetworkFee:     100000,
 	},
 )
 
 type gotezosMock struct {
 	gotezos.IFace
+	headErr               bool
+	counterErr            bool
+	forgeOperationErr     bool
 	balanceErr            bool
 	frozenBalanceErr      bool
 	delegatedContractsErr bool
 	cycleErr              bool
 	stakingBalanceErr     bool
+	unforgeOperationErr   bool
+	unforgeOperationRtn   []gotezos.Contents
+}
+
+func (g *gotezosMock) Head() (*gotezos.Block, error) {
+	if g.headErr {
+		return &gotezos.Block{}, errors.New("failed to get block")
+	}
+	return &gotezos.Block{
+		Hash: "BLfEWKVudXH15N8nwHZehyLNjRuNLoJavJDjSZ7nq8ggfzbZ18p",
+	}, nil
+}
+
+func (g *gotezosMock) Counter(blockhash, pkh string) (*int, error) {
+	counter := 0
+	if g.counterErr {
+		return &counter, errors.New("failed to get block")
+	}
+	counter = 100
+	return &counter, nil
 }
 
 func (g *gotezosMock) Balance(blockhash, address string) (*big.Int, error) {

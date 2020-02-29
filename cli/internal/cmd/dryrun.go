@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"strconv"
 
 	gotezos "github.com/goat-systems/go-tezos/v2"
@@ -25,7 +24,7 @@ func NewDryRunCommand() *cobra.Command {
 			if len(args) == 0 {
 				log.WithFields(nil).Fatal("Missing cycle as argument.")
 			}
-			dryrun(args[0])
+			dryrun(args[0], table)
 		},
 	}
 
@@ -34,7 +33,7 @@ func NewDryRunCommand() *cobra.Command {
 	return report
 }
 
-func dryrun(arg string) {
+func dryrun(arg string, table bool) {
 	cycle, err := strconv.Atoi(arg)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -42,29 +41,40 @@ func dryrun(arg string) {
 		}).Fatal("Failed to read cycle argument.")
 	}
 
-	env, err := enviroment.Parameters()
+	ctx, err := enviroment.InitContext()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err.Error(),
-		}).Fatal("Failed to get enviroment.")
+		}).Fatal("Failed to get enviroment and initialize context.")
 	}
 
-	gt, err := gotezos.New(env.HostNode)
+	base := enviroment.GetEnviromentFromContext(ctx)
+
+	gt, err := gotezos.New(base.HostNode)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err.Error(),
 		}).Fatal("Failed to connect to node.")
 	}
-
 	baker := baker.NewBaker(gt)
-	ctx := enviroment.SetEnviromentToContext(context.Background(), env)
 
-	payout, err := baker.Payouts(ctx, cycle)
+	payouts, err := baker.Payouts(ctx, cycle)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err.Error(),
 		}).Fatal("Failed to get payouts.")
 	}
 
-	print.JSON(ctx, "", payout)
+	forge, err := baker.ForgePayout(ctx, *payouts)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Fatal("Failed to forge operation.")
+	}
+
+	if table {
+		print.Table(ctx, forge, payouts)
+	} else {
+		print.JSON(forge, payouts)
+	}
 }
