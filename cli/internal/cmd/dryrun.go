@@ -65,7 +65,7 @@ func dryrun(arg string, table bool) {
 		}).Fatal("Failed to get payouts.")
 	}
 
-	forge, err := baker.ForgePayout(ctx, *payouts)
+	_, err = baker.ForgePayout(ctx, *payouts)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err.Error(),
@@ -73,8 +73,8 @@ func dryrun(arg string, table bool) {
 	}
 
 	if table {
-		print.Table(ctx, forge, payouts)
+		print.Table(ctx, payouts)
 	} else {
-		print.JSON(forge, payouts)
+		print.JSON(payouts)
 	}
 }

@@ -59,6 +59,10 @@ github.com/goat-systems/go-tezos/v2 v2.4.3-alpha h1:XtXF1GmcvSAYDd/Jkr4KQ7Eo4/GS
 github.com/goat-systems/go-tezos/v2 v2.4.3-alpha/go.mod h1:dLkybscVNsS7OnclevQP73sJFH/JJOH0pKv+RQplmuk=
 github.com/goat-systems/go-tezos/v2 v2.4.4-alpha h1:DoXnsRwMNLyRaH9lCydfhcls+8yE5lx0S1g1eYkNek0=
 github.com/goat-systems/go-tezos/v2 v2.4.4-alpha/go.mod h1:cOs4TyAFZWnwg4syEAAOJGZNduIjGD2e4oov8K67NCw=
+github.com/goat-systems/go-tezos/v2 v2.5.0-alpha h1:P21DZnkuoIP2X4soToCujqo7j7S0ybGWarYBFe6KgZs=
+github.com/goat-systems/go-tezos/v2 v2.5.0-alpha/go.mod h1:cOs4TyAFZWnwg4syEAAOJGZNduIjGD2e4oov8K67NCw=
+github.com/goat-systems/go-tezos/v2 v2.5.1-alpha h1:8C52DpTAM9tf54NMOpiJzvRfzwaLEyxdUW/A18HlUpE=
+github.com/goat-systems/go-tezos/v2 v2.5.1-alpha/go.mod h1:cOs4TyAFZWnwg4syEAAOJGZNduIjGD2e4oov8K67NCw=
 github.com/gogo/protobuf v1.1.1/go.mod h1:r8qH/GZQm5c6nD/R0oafs1akxWv10x8SbQlK7atdtwQ=
 github.com/gogo/protobuf v1.2.1/go.mod h1:hp+jE20tsWTFYpLwKvXlhS1hjn+gTNwPg2I6zVXpSg4=
 github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b/go.mod h1:SBH7ygxi8pfUlaOkMMuAQtPIUF8ecWP5IEl/CR7VP2Q=

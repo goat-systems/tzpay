@@ -6,7 +6,7 @@ require (
 	github.com/caarlos0/env/v6 v6.2.0
 	github.com/go-playground/validator v9.31.0+incompatible
 	github.com/go-playground/validator/v10 v10.2.0 // indirect
-	github.com/goat-systems/go-tezos/v2 v2.4.4-alpha
+	github.com/goat-systems/go-tezos/v2 v2.5.1-alpha
 	github.com/olekukonko/tablewriter v0.0.4
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.4.2

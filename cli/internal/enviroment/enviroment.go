@@ -61,7 +61,7 @@ func setEnviromentToContext(ctx context.Context, env *Enviroment) (context.Conte
 		return ctx, errors.Wrap(err, "failed to set context enviroment")
 	}
 
-	return context.WithValue(ctx, ENVIROMENTKEY, cenv), nil
+	return context.WithValue(ctx, ENVIROMENTKEY, &cenv), nil
 }
 
 // InitContext returns and validates the enviroment for tzpay in context
