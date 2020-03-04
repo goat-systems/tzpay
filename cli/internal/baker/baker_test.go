@@ -434,14 +434,11 @@ type gotezosMock struct {
 	gotezos.IFace
 	headErr               bool
 	counterErr            bool
-	forgeOperationErr     bool
 	balanceErr            bool
 	frozenBalanceErr      bool
 	delegatedContractsErr bool
 	cycleErr              bool
 	stakingBalanceErr     bool
-	unforgeOperationErr   bool
-	unforgeOperationRtn   []gotezos.Contents
 }
 
 func (g *gotezosMock) Head() (*gotezos.Block, error) {

@@ -18,9 +18,9 @@ sudo chmod a+x /usr/local/bin/tzpay
 
 ### Docker
 ```
-docker pull goatsystems/tzpay:v2.0.0-alpha
+docker pull goatsystems/tzpay:latest
 
-docker run --rm -ti tzpay:v2.0.0-alpha tzpay [command] \
+docker run --rm -ti goatsystems/tzpay:latest tzpay [command] \
 -e TZPAY_HOST_NODE=<TODO (e.g. http://127.0.0.1:8732)> \
 -e TZPAY_BAKERS_FEE=<TODO (e.g. 0.05 for 5%)> \
 -e TZPAY_DELEGATE=<TODO (e.g. tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc)> \

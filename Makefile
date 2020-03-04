@@ -1,4 +1,4 @@
-PROJECT_NAME := "payman"
+PROJECT_NAME := "tzpay"
 VERSION := "v2.0.0"
 PKG := "github.com/goat-systems/$(PROJECT_NAME)"
 PKG_LIST := $(shell go list ${PKG}/... | grep -v /vendor/)

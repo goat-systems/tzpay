@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// NewSetupCommand returns a new setup cobra command
 func NewSetupCommand() *cobra.Command {
 	var version = &cobra.Command{
 		Use:     "setup",

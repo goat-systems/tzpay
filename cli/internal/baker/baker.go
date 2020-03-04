@@ -222,11 +222,6 @@ func (b *Baker) ForgePayout(ctx context.Context, payout Payout) (string, error) 
 		return "", errors.Wrap(err, "failed to forge payout")
 	}
 
-	var contents []gotezos.Contents
-	for _, transaction := range transactions {
-		contents = append(contents, *transaction.Contents())
-	}
-
 	return *forge, nil
 }
 
