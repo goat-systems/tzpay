@@ -6,7 +6,7 @@ Tzpay is a golang driven payout tool for delegation services on the tezos networ
 
 ### Source 
 ```
-go get -u github.com/goat-systems/tzpay
+go get -u github.com/goat-systems/tzpay/v2
 ```
 
 ### Linux
