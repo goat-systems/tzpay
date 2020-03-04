@@ -1,4 +1,4 @@
-PROJECT_NAME := "payman"
+PROJECT_NAME := "tzpay"
 VERSION := "v2.0.0"
 PKG := "github.com/goat-systems/$(PROJECT_NAME)"
 PKG_LIST := $(shell go list ${PKG}/... | grep -v /vendor/)
@@ -26,6 +26,9 @@ race: ## Run data race detector
 dep: ## Get the dependencies
 	@go get -u golang.org/x/lint/golint
 	@go get -u honnef.co/go/tools/...
+
+build: ## Get the dependencies
+	@go build
 
 clean: ## Remove previous build
 	@rm -f $(PROJECT_NAME)

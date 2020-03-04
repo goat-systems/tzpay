@@ -1,18 +1,17 @@
-module github.com/DefinitelyNotAGoat/payman
+module github.com/goat-systems/tzpay/v2
 
-go 1.12
+go 1.13
 
 require (
-	github.com/DefinitelyNotAGoat/go-tezos v1.0.6
-	github.com/cenkalti/backoff v2.1.1+incompatible // indirect
-	github.com/dghubble/go-twitter v0.0.0-20190512073027-53f972dc4b06
-	github.com/dghubble/oauth1 v0.5.0
-	github.com/dghubble/sling v1.2.0 // indirect
-	github.com/google/go-querystring v1.0.0 // indirect
-	github.com/mattn/go-runewidth v0.0.4 // indirect
-	github.com/olekukonko/tablewriter v0.0.1
-	github.com/spf13/cobra v0.0.4
-	github.com/spf13/viper v1.4.0
-	github.com/turnage/graw v0.0.0-20190218184947-3295929039f6
-	github.com/turnage/redditproto v0.0.0-20151223012412-afedf1b6eddb // indirect
+	github.com/caarlos0/env/v6 v6.2.0
+	github.com/go-playground/validator v9.31.0+incompatible
+	github.com/go-playground/validator/v10 v10.2.0 // indirect
+	github.com/goat-systems/go-tezos/v2 v2.5.2-alpha
+	github.com/olekukonko/tablewriter v0.0.4
+	github.com/pkg/errors v0.9.1
+	github.com/sirupsen/logrus v1.4.2
+	github.com/spf13/cobra v0.0.6
+	github.com/stretchr/testify v1.5.1
+	golang.org/x/sys v0.0.0-20191128015809-6d18c012aee9 // indirect
+	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
 )
