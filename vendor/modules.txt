@@ -15,7 +15,7 @@ github.com/go-playground/universal-translator
 github.com/go-playground/validator
 # github.com/go-playground/validator/v10 v10.2.0
 github.com/go-playground/validator/v10
-# github.com/goat-systems/go-tezos/v2 v2.5.1-alpha
+# github.com/goat-systems/go-tezos/v2 v2.5.2-alpha
 github.com/goat-systems/go-tezos/v2
 # github.com/inconshreveable/mousetrap v1.0.0
 github.com/inconshreveable/mousetrap
