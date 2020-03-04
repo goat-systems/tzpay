@@ -232,6 +232,10 @@ func Test_Payouts(t *testing.T) {
 							Share:        1,
 						},
 					},
+					Cycle:          100,
+					FrozenBalance:  big.NewInt(70000000),
+					StakingBalance: big.NewInt(10000000000),
+					Delegate:       "somedelegate",
 				},
 			},
 		},
@@ -314,12 +318,12 @@ func Test_ForgePayout(t *testing.T) {
 				Payout{
 					DelegationEarnings: DelegationEarnings{
 						DelegationEarning{
-							Delegation:   "somedelegation",
+							Delegation:   "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
 							GrossRewards: big.NewInt(1000000),
 							NetRewards:   big.NewInt(900000),
 						},
 						DelegationEarning{
-							Delegation:   "someotherdelegation",
+							Delegation:   "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
 							GrossRewards: big.NewInt(1000000),
 							NetRewards:   big.NewInt(950000),
 						},
@@ -330,7 +334,7 @@ func Test_ForgePayout(t *testing.T) {
 			want{
 				false,
 				"",
-				"",
+				"7cc601d2729c90b267e6a79d902f8b048d37fd990f2f7447efefb0cfb2f8e8a46c004b04ad1e57c2f13b61b3d2c95b3073d961a4132ba08d0665a08d0600a0f73600004b04ad1e57c2f13b61b3d2c95b3073d961a4132b006c004b04ad1e57c2f13b61b3d2c95b3073d961a4132ba08d0666a08d0600f0fd3900004b04ad1e57c2f13b61b3d2c95b3073d961a4132b00",
 			},
 		},
 	}
@@ -354,7 +358,7 @@ func Test_constructPayoutContents(t *testing.T) {
 	cases := []struct {
 		name  string
 		input input
-		want  []gotezos.Contents
+		want  []gotezos.ForgeTransactionOperationInput
 	}{
 		{
 			"is successful",
@@ -375,24 +379,24 @@ func Test_constructPayoutContents(t *testing.T) {
 					},
 				},
 			},
-			[]gotezos.Contents{
-				gotezos.Contents{
-					Kind:        "transaction",
-					Source:      "",
-					Fee:         gotezos.Int{Big: big.NewInt(100000)},
-					Counter:     gotezos.Int{Big: big.NewInt(101)},
-					GasLimit:    gotezos.Int{Big: big.NewInt(100000)},
-					Amount:      gotezos.Int{Big: big.NewInt(900000)},
-					Destination: "somedelegation",
+			[]gotezos.ForgeTransactionOperationInput{
+				gotezos.ForgeTransactionOperationInput{
+					Source:       "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+					Fee:          gotezos.Int{Big: big.NewInt(100000)},
+					Counter:      101,
+					GasLimit:     gotezos.Int{Big: big.NewInt(100000)},
+					StorageLimit: gotezos.Int{Big: big.NewInt(0)},
+					Amount:       gotezos.Int{Big: big.NewInt(900000)},
+					Destination:  "somedelegation",
 				},
-				gotezos.Contents{
-					Kind:        "transaction",
-					Source:      "",
-					Fee:         gotezos.Int{Big: big.NewInt(100000)},
-					Counter:     gotezos.Int{Big: big.NewInt(102)},
-					GasLimit:    gotezos.Int{Big: big.NewInt(100000)},
-					Amount:      gotezos.Int{Big: big.NewInt(950000)},
-					Destination: "someotherdelegation",
+				gotezos.ForgeTransactionOperationInput{
+					Source:       "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+					Fee:          gotezos.Int{Big: big.NewInt(100000)},
+					Counter:      102,
+					GasLimit:     gotezos.Int{Big: big.NewInt(100000)},
+					StorageLimit: gotezos.Int{Big: big.NewInt(0)},
+					Amount:       gotezos.Int{Big: big.NewInt(950000)},
+					Destination:  "someotherdelegation",
 				},
 			},
 		},
@@ -427,6 +431,9 @@ var goldenContext = context.WithValue(
 		HostNode:       "http://somenode.com:8732",
 		MinimumPayment: 1000,
 		NetworkFee:     100000,
+		Wallet: gotezos.Wallet{
+			Address: "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+		},
 	},
 )
 
