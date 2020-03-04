@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"strconv"
 
 	gotezos "github.com/goat-systems/go-tezos/v2"
@@ -59,25 +58,22 @@ func run(arg string, table bool) {
 	}
 	baker := baker.NewBaker(gt)
 
-	payouts, err := baker.Payouts(ctx, cycle)
+	payout, err := baker.Payouts(ctx, cycle)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err.Error(),
 		}).Fatal("Failed to get payouts.")
 	}
 
-	split := splitPayouts(payouts)
-
+	payouts := splitPayouts(payout)
 	var operations []string
-	for _, p := range split {
+	for _, p := range payouts {
 		forge, err := baker.ForgePayout(ctx, *p)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"error": err.Error(),
 			}).Fatal("Failed to forge operation.")
 		}
-
-		fmt.Println(forge)
 
 		signedop, err := base.Wallet.SignOperation(forge)
 		if err != nil {
@@ -99,15 +95,20 @@ func run(arg string, table bool) {
 	}
 
 	if table {
-		print.Table(ctx, payouts, operations...)
+		print.Table(ctx, payout, operations...)
 	} else {
-		print.JSON(payouts, operations...)
+		print.JSON(payout, operations...)
 	}
 }
 
 func splitPayouts(payout *baker.Payout) []*baker.Payout {
 	var payouts []*baker.Payout
-	size := 2
+	size := 125
+
+	if len(payout.DelegationEarnings) <= 125 {
+		payouts = append(payouts, payout)
+		return payouts
+	}
 	for len(payout.DelegationEarnings) > size {
 		p := &baker.Payout{
 			Cycle:              payout.Cycle,

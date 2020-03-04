@@ -210,7 +210,7 @@ func (b *Baker) ForgePayout(ctx context.Context, payout Payout) (string, error) 
 		return "", errors.Wrap(err, "failed to forge payout")
 	}
 
-	counter, err := b.gt.Counter(head.Hash, base.Delegate)
+	counter, err := b.gt.Counter(head.Hash, base.Wallet.Address)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to forge payout")
 	}

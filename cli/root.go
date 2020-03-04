@@ -15,6 +15,7 @@ func newRootCommand() *cobra.Command {
 		cmd.NewDryRunCommand(),
 		cmd.NewRunCommand(),
 		cmd.NewVersionCommand(),
+		cmd.NewSetupCommand(),
 	)
 
 	return rootCommand
