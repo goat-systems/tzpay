@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	version = "v2.0.0"
+	version = "v2.1.0-alpha"
 )
 
 // NewVersionCommand returns a version cobra command
