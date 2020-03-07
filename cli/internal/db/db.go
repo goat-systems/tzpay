@@ -17,8 +17,7 @@ const (
 
 // DB wraps bolt db functions
 type DB struct {
-	bolt   *bolt.DB
-	bucket *bolt.Bucket
+	bolt *bolt.DB
 }
 
 // Open will open or create the tzpay boltdb profile
@@ -34,9 +33,8 @@ func Open(path string) (*DB, error) {
 	if err != nil {
 		return &DB{}, errors.Wrap(err, "failed to open boltdb")
 	}
-	var b *bolt.Bucket
 	err = db.Update(func(tx *bolt.Tx) error {
-		b, err = tx.CreateBucketIfNotExists([]byte(walletBucket))
+		_, err = tx.CreateBucketIfNotExists([]byte(walletBucket))
 		if err != nil {
 			return fmt.Errorf("create bucket: %s", err)
 		}
@@ -44,7 +42,6 @@ func Open(path string) (*DB, error) {
 	})
 
 	return &DB{
-		bolt:   db,
-		bucket: b,
+		bolt: db,
 	}, nil
 }
