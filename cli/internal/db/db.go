@@ -15,11 +15,6 @@ const (
 	walletBucketSecret bucketKey = "edesk"
 )
 
-type boltdb interface {
-	Update(fn func(*bolt.Tx) error) error
-	View(fn func(*bolt.Tx) error) error
-}
-
 // DB wraps bolt db functions
 type DB struct {
 	bolt   *bolt.DB

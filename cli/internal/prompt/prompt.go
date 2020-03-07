@@ -1,4 +1,4 @@
 package prompt
 
-type Prompt struct {
-}
+// type Prompt struct {
+// }
