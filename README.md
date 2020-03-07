@@ -11,7 +11,7 @@ go get -u github.com/goat-systems/tzpay/v2
 
 ### Linux
 ```
-wget https://github.com/DefinitelyNotAGoat/payman/releases/download/v2.0.0-alpha/tzpay_linux_amd64
+wget https://github.com/DefinitelyNotAGoat/payman/releases/download/v2.1.0-alpha/tzpay_linux_amd64
 sudo mv tzpay_linux_amd64 /usr/local/bin/tzpay
 sudo chmod a+x /usr/local/bin/tzpay
 ```
@@ -30,12 +30,28 @@ docker run --rm -ti goatsystems/tzpay:latest tzpay [command] \
 
 ## Usage
 
-### Required Enviroment Variables 
+### Initializing
+
+tzpay uses boltdb to safely store your edesk. You're edesk will be aes encrypted with you're wallet password as the key.
+In order for tzpay to intialize this database you must first run tzpay with the `TZPAY_WALLET_SECRET` enviroment variable. 
+
+`TZPAY_WALLET_SECRET` should be set to the edesk of your wallet. On the first run, tzpay will store the secret with aes encryption, and then remove the enviroment variable from the enviroment. It is recommend that you export this in your shell on your first run, so that it doesn't persist in a file somewhere. 
+
+On you're first run you should have the following enviroment variables:
 ```
 TZPAY_HOST_NODE=<TODO (e.g. http://127.0.0.1:8732)>
 TZPAY_BAKERS_FEE=<TODO (e.g. 0.05 for 5%)>
 TZPAY_DELEGATE=<TODO (e.g. tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc)>
 TZPAY_WALLET_SECRET=<TODO (e.g. edesk...)>
+TZPAY_WALLET_PASSWORD=<TODO (e.g. password)>
+```
+
+
+### Required Enviroment Variables After Initialization 
+```
+TZPAY_HOST_NODE=<TODO (e.g. http://127.0.0.1:8732)>
+TZPAY_BAKERS_FEE=<TODO (e.g. 0.05 for 5%)>
+TZPAY_DELEGATE=<TODO (e.g. tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc)>
 TZPAY_WALLET_PASSWORD=<TODO (e.g. password)>
 ```
 
@@ -45,6 +61,7 @@ TZPAY_BLACKLIST=<TODO (e.g. tz1W3HW533csCBLor4NPtU79R2TT2sbKfJDH, tz1W3HW533csCB
 TZPAY_NETWORK_GAS_LIMIT=<TODO (e.g. 30000)>
 TZPAY_NETWORK_FEE=<TODO (e.g. 3000)>
 TZPAY_MINIMUM_PAYMENT=<TODO (e.g. 3000)>
+TZPAY_BOLT_DB=<TODO (e.g. ~/home/apps/.tzpay/tzpay.db)>
 ```
 
 ### Help

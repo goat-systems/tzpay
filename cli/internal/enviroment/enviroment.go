@@ -2,11 +2,13 @@ package enviroment
 
 import (
 	"context"
+	"os"
 	"strings"
 
 	cenv "github.com/caarlos0/env/v6"
 	"github.com/go-playground/validator"
 	gotezos "github.com/goat-systems/go-tezos/v2"
+	"github.com/goat-systems/tzpay/v2/cli/internal/db"
 	"github.com/pkg/errors"
 )
 
@@ -30,8 +32,9 @@ type Enviroment struct {
 	MinimumPayment int     `env:"TZPAY_MINIMUM_PAYMENT" envDefault:"0"`
 	EarningsOnly   bool    `env:"TZPAY_EARNINGS_ONLY"` // If this is turned on, tzpay won't pay for missed blocks or endorsements
 	NetworkFee     int     `env:"TZPAY_NETWORK_FEE" envDefault:"2941"`
-	WalletSecret   string  `validate:"required" env:"TZPAY_WALLET_SECRET"`
+	WalletSecret   string  `env:"TZPAY_WALLET_SECRET"`
 	WalletPassword string  `validate:"required" env:"TZPAY_WALLET_PASSWORD"`
+	BoltDB         string  `env:"TZPAY_BOLT_DB"`
 }
 
 // ContextEnviroment is the enviroment to be attatched to context
@@ -44,6 +47,8 @@ type ContextEnviroment struct {
 	MinimumPayment int
 	EarningsOnly   bool
 	NetworkFee     int
+	BoltDB         string
+	Password       string
 	Wallet         gotezos.Wallet
 }
 
@@ -112,7 +117,38 @@ func ParseBlackList(list string) []string {
 }
 
 func enviromentToContextEnviroment(env Enviroment) (ContextEnviroment, error) {
-	wallet, err := gotezos.ImportEncryptedWallet(env.WalletPassword, env.WalletSecret) // TODO ImportEncryptedWallet second parameter name should be edesk
+	// open tzpay db
+	db, err := db.Open(env.BoltDB)
+	if err != nil {
+		return ContextEnviroment{}, errors.Wrap(err, "failed to open tzpay db")
+	}
+
+	// check if tzpay is initialized with a wallet by seeing if there is an edesk in the store
+	if env.WalletSecret == "" {
+		init := db.IsWalletInitialized()
+		if init {
+			return ContextEnviroment{}, errors.New("failed to find existing wallet: initialize tzpay by passing TZPAY_WALLET_SECRET and TZPAY_WALLET_PASSWORD: please refer to the README")
+		}
+	}
+
+	if env.WalletSecret != "" {
+		err := db.InitWallet(env.WalletPassword, env.WalletSecret)
+		if err != nil {
+			return ContextEnviroment{}, errors.Wrap(err, "failed to initialize wallet")
+		}
+
+		err = os.Unsetenv("TZPAY_WALLET_SECRET")
+		if err != nil {
+			return ContextEnviroment{}, errors.Wrap(err, "failed to unset TZPAY_WALLET_SECRET from enviroment")
+		}
+	}
+
+	secret, err := db.GetSecret(env.WalletPassword)
+	if err != nil {
+		return ContextEnviroment{}, errors.Wrap(err, "failed to get secret")
+	}
+
+	wallet, err := gotezos.ImportEncryptedWallet(env.WalletPassword, secret) // TODO ImportEncryptedWallet second parameter name should be edesk
 	if err != nil {
 		return ContextEnviroment{}, errors.Wrap(err, "failed to set enviroment to context")
 	}
@@ -126,6 +162,7 @@ func enviromentToContextEnviroment(env Enviroment) (ContextEnviroment, error) {
 		MinimumPayment: env.MinimumPayment,
 		EarningsOnly:   env.EarningsOnly,
 		NetworkFee:     env.NetworkFee,
+		BoltDB:         env.BoltDB,
 		Wallet:         *wallet,
 	}, nil
 }

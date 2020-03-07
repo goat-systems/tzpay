@@ -3,10 +3,11 @@ module github.com/goat-systems/tzpay/v2
 go 1.13
 
 require (
+	github.com/boltdb/bolt v1.3.1
 	github.com/caarlos0/env/v6 v6.2.1
 	github.com/go-playground/validator v9.31.0+incompatible
 	github.com/go-playground/validator/v10 v10.2.0 // indirect
-	github.com/goat-systems/go-tezos/v2 v2.5.2-alpha
+	github.com/goat-systems/go-tezos/v2 v2.6.0-alpha
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/mattn/go-runewidth v0.0.8 // indirect
 	github.com/olekukonko/tablewriter v0.0.4

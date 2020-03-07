@@ -78,14 +78,14 @@ var (
 		reflect.TypeOf(url.URL{}): func(v string) (interface{}, error) {
 			u, err := url.Parse(v)
 			if err != nil {
-				return nil, fmt.Errorf("unable parse URL: %v", err)
+				return nil, fmt.Errorf("unable to parse URL: %v", err)
 			}
 			return *u, nil
 		},
 		reflect.TypeOf(time.Nanosecond): func(v string) (interface{}, error) {
 			s, err := time.ParseDuration(v)
 			if err != nil {
-				return nil, fmt.Errorf("unable to parser duration: %v", err)
+				return nil, fmt.Errorf("unable to parse duration: %v", err)
 			}
 			return s, err
 		},
@@ -193,7 +193,7 @@ func get(field reflect.StructField) (val string, err error) {
 		return "", fmt.Errorf(`env: required environment variable %q is not set`, key)
 	}
 
-	if loadFile {
+	if loadFile && val != "" {
 		filename := val
 		val, err = getFromFile(filename)
 		if err != nil {
