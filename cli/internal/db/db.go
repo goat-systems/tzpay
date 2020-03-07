@@ -27,7 +27,7 @@ func Open(path string) (*DB, error) {
 		if err != nil {
 			return &DB{}, errors.Wrap(err, "failed to open boltdb")
 		}
-		path = fmt.Sprintf("%s.tzpay/tzpay.db", usr)
+		path = fmt.Sprintf("%s/.tzpay/tzpay.db", usr.HomeDir)
 	}
 	db, err := bolt.Open(path, 0600, nil)
 	if err != nil {
