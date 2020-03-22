@@ -298,6 +298,7 @@ func Test_run(t *testing.T) {
 						Net:     big.NewInt(80500000),
 					},
 					CycleHash:      "some_hash",
+					Cycle:          130,
 					FrozenBalance:  big.NewInt(70000000),
 					StakingBalance: big.NewInt(10000000000),
 					Operations:     []string{"ooYympR9wfV98X4MUHtE78NjXYRDeMTAD4ei7zEZDqoHv2rfb1M", "ooYympR9wfV98X4MUHtE78NjXYRDeMTAD4ei7zEZDqoHv2rfb1M", "ooYympR9wfV98X4MUHtE78NjXYRDeMTAD4ei7zEZDqoHv2rfb1M"},

@@ -210,23 +210,23 @@ func Test_Payouts(t *testing.T) {
 				false,
 				"",
 				&model.Payout{
-					DelegationEarnings: []model.DelegationEarning{
+					DelegationEarnings: model.DelegationEarnings{
 						model.DelegationEarning{
-							Address:      "tz1b",
+							Address:      "tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
 							Fee:          big.NewInt(3500000),
 							GrossRewards: big.NewInt(70000000),
 							NetRewards:   big.NewInt(66500000),
 							Share:        1,
 						},
 						model.DelegationEarning{
-							Address:      "tz1c",
+							Address:      "tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
 							Fee:          big.NewInt(3500000),
 							GrossRewards: big.NewInt(70000000),
 							NetRewards:   big.NewInt(66500000),
 							Share:        1,
 						},
 						model.DelegationEarning{
-							Address:      "tz1a",
+							Address:      "tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
 							Fee:          big.NewInt(3500000),
 							GrossRewards: big.NewInt(70000000),
 							NetRewards:   big.NewInt(66500000),
@@ -241,8 +241,11 @@ func Test_Payouts(t *testing.T) {
 						Net:     big.NewInt(80500000),
 					},
 					CycleHash:      "some_hash",
+					Cycle:          100,
 					FrozenBalance:  big.NewInt(70000000),
 					StakingBalance: big.NewInt(10000000000),
+					Operations:     nil,
+					OperationsLink: nil,
 				},
 			},
 		},
