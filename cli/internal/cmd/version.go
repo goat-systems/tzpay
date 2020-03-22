@@ -7,7 +7,8 @@ import (
 )
 
 const (
-	version = "v2.1.0-alpha"
+	version = "v2.2.0-alpha"
+	changed = "Fixed:\n Batch payment issue."
 )
 
 // NewVersionCommand returns a version cobra command
@@ -19,6 +20,7 @@ func NewVersionCommand() *cobra.Command {
 		Example: `tzpay version`,
 		Run: func(cmd *cobra.Command, args []string) {
 			fmt.Println(version)
+			fmt.Println(changed)
 		},
 	}
 	return version

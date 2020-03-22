@@ -3,21 +3,12 @@ package baker
 import (
 	"context"
 	"math/big"
-	"unicode"
 
 	gotezos "github.com/goat-systems/go-tezos/v2"
+	"github.com/goat-systems/tzpay/v2/cli/internal/db/model"
 	"github.com/goat-systems/tzpay/v2/cli/internal/enviroment"
 	"github.com/pkg/errors"
 )
-
-// DelegationEarning -
-type DelegationEarning struct {
-	Delegation   string
-	Fee          *big.Int
-	GrossRewards *big.Int
-	NetRewards   *big.Int
-	Share        float64
-}
 
 // Baker is a tezos baker that can get payouts and execute them.
 type Baker struct {
@@ -31,8 +22,16 @@ type processDelegationsInput struct {
 	blockHash            string
 }
 
+type processDelegateInput struct {
+	delegate             string
+	delegations          []model.DelegationEarning
+	stakingBalance       *big.Int
+	frozenBalanceRewards *gotezos.FrozenBalance
+	blockHash            string
+}
+
 type processDelegationsOutput struct {
-	delegationEarning DelegationEarning
+	delegationEarning model.DelegationEarning
 	err               error
 }
 
@@ -43,58 +42,13 @@ type processDelegationInput struct {
 	blockHash            string
 }
 
-// Payout contains all needed information for a payout
-type Payout struct {
-	DelegationEarnings DelegationEarnings `json:"delegaions"`
-	Cycle              int                `json:"cycle"`
-	FrozenBalance      *big.Int           `json:"rewards"`
-	StakingBalance     *big.Int           `json:"staking_balance"`
-	Delegate           string             `json:"delegate"`
-}
-
-// DelegationEarnings contains list of DelegationEarning and implements sort.
-type DelegationEarnings []DelegationEarning
-
-func (d DelegationEarnings) Len() int { return len(d) }
-func (d DelegationEarnings) Swap(i, j int) {
-	d[i], d[j] = d[j], d[i]
-}
-
-func (d DelegationEarnings) Less(i, j int) bool {
-	iRunes := []rune(d[i].Delegation)
-	jRunes := []rune(d[j].Delegation)
-
-	max := len(iRunes)
-	if max > len(jRunes) {
-		max = len(jRunes)
-	}
-
-	for idx := 0; idx < max; idx++ {
-		ir := iRunes[idx]
-		jr := jRunes[idx]
-
-		lir := unicode.ToLower(ir)
-		ljr := unicode.ToLower(jr)
-
-		if lir != ljr {
-			return lir < ljr
-		}
-
-		if ir != jr {
-			return ir < jr
-		}
-	}
-
-	return false
-}
-
 // NewBaker returns a pointer to a new Baker
 func NewBaker(gt gotezos.IFace) *Baker {
 	return &Baker{gt: gt}
 }
 
 // Payouts returns all payouts for a cycle
-func (b *Baker) Payouts(ctx context.Context, cycle int) (*Payout, error) {
+func (b *Baker) Payouts(ctx context.Context, cycle int) (*model.Payout, error) {
 	params := enviroment.GetEnviromentFromContext(ctx)
 	frozenBalanceRewards, err := b.gt.FrozenBalance(cycle, params.Delegate)
 	if err != nil {
@@ -123,21 +77,58 @@ func (b *Baker) Payouts(ctx context.Context, cycle int) (*Payout, error) {
 		blockHash:            networkCycle.BlockHash,
 	})
 
-	payouts := Payout{
-		Delegate:       params.Delegate,
+	payouts := model.Payout{
 		StakingBalance: stakingBalance,
+		CycleHash:      networkCycle.BlockHash,
 		Cycle:          cycle,
 		FrozenBalance:  frozenBalanceRewards.Rewards.Big,
 	}
+
 	for _, delegation := range out {
 		if delegation.err != nil {
-			err = errors.Wrapf(delegation.err, "failed to get payout for delegation %s", delegation.delegationEarning.Delegation)
+			err = errors.Wrapf(delegation.err, "failed to get payout for delegation %s", delegation.delegationEarning.Address)
 		} else {
 			payouts.DelegationEarnings = append(payouts.DelegationEarnings, delegation.delegationEarning)
 		}
 	}
 
+	payouts.DelegateEarnings, err = b.processDelegate(ctx, &processDelegateInput{
+		delegate:             params.Delegate,
+		delegations:          payouts.DelegationEarnings,
+		stakingBalance:       stakingBalance,
+		frozenBalanceRewards: frozenBalanceRewards,
+		blockHash:            networkCycle.BlockHash,
+	})
+	if err != nil {
+		err = errors.Wrap(err, "failed to get contruct payout info for delegate")
+	}
+
 	return &payouts, err
+}
+
+func (b *Baker) processDelegate(ctx context.Context, input *processDelegateInput) (model.DelegateEarnings, error) {
+	delegateEarning := model.DelegateEarnings{
+		Address: input.delegate,
+		Net:     big.NewInt(0),
+	}
+	balance, err := b.gt.Balance(input.blockHash, input.delegate)
+	if err != nil {
+		return delegateEarning, errors.Wrapf(err, "failed to process delegate earnings for %s", input.delegate)
+	}
+
+	delegateEarning.Share = float64(balance.Int64()) / float64(input.stakingBalance.Int64())
+	rewardsFloat := delegateEarning.Share * float64(input.frozenBalanceRewards.Rewards.Big.Int64())
+	delegateEarning.Rewards = big.NewInt(int64(rewardsFloat))
+
+	fees := big.NewInt(0)
+	for _, delegation := range input.delegations {
+		fees.Add(fees, delegation.Fee)
+	}
+
+	delegateEarning.Fees = fees
+	delegateEarning.Net.Add(delegateEarning.Fees, delegateEarning.Rewards)
+
+	return delegateEarning, nil
 }
 
 func (b *Baker) proccessDelegations(ctx context.Context, input *processDelegationsInput) []processDelegationsOutput {
@@ -183,9 +174,9 @@ func (b *Baker) proccessDelegationWorker(ctx context.Context, jobs <-chan proces
 	}
 }
 
-func (b *Baker) processDelegation(ctx context.Context, input *processDelegationInput) (*DelegationEarning, error) {
+func (b *Baker) processDelegation(ctx context.Context, input *processDelegationInput) (*model.DelegationEarning, error) {
 	params := enviroment.GetEnviromentFromContext(ctx)
-	delegationEarning := &DelegationEarning{Delegation: input.delegation}
+	delegationEarning := &model.DelegationEarning{Address: input.delegation}
 	balance, err := b.gt.Balance(input.blockHash, input.delegation)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to process delegation earnings for delegation %s", input.delegation)
@@ -203,7 +194,7 @@ func (b *Baker) processDelegation(ctx context.Context, input *processDelegationI
 }
 
 // ForgePayout converts Payout into operation contents and forges them locally
-func (b *Baker) ForgePayout(ctx context.Context, payout Payout) (string, error) {
+func (b *Baker) ForgePayout(ctx context.Context, payout model.Payout) (string, error) {
 	base := enviroment.GetEnviromentFromContext(ctx)
 	head, err := b.gt.Head()
 	if err != nil {
@@ -225,15 +216,15 @@ func (b *Baker) ForgePayout(ctx context.Context, payout Payout) (string, error) 
 	return *forge, nil
 }
 
-func (b *Baker) constructPayoutContents(ctx context.Context, counter int, payout Payout) []gotezos.ForgeTransactionOperationInput {
+func (b *Baker) constructPayoutContents(ctx context.Context, counter int, payout model.Payout) []gotezos.ForgeTransactionOperationInput {
 	base := enviroment.GetEnviromentFromContext(ctx)
 	var contents []gotezos.ForgeTransactionOperationInput
 	for _, delegation := range payout.DelegationEarnings {
-		counter++
 		if delegation.NetRewards.Int64() >= int64(base.MinimumPayment) {
+			counter++
 			contents = append(contents, gotezos.ForgeTransactionOperationInput{
 				Source:       base.Wallet.Address,
-				Destination:  delegation.Delegation,
+				Destination:  delegation.Address,
 				Amount:       gotezos.Int{Big: delegation.NetRewards},
 				Fee:          gotezos.Int{Big: big.NewInt(int64(base.NetworkFee))}, //TODO: expose NewInt function in GoTezos
 				GasLimit:     gotezos.Int{Big: big.NewInt(int64(base.GasLimit))},
@@ -242,6 +233,5 @@ func (b *Baker) constructPayoutContents(ctx context.Context, counter int, payout
 			})
 		}
 	}
-
 	return contents
 }

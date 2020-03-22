@@ -15,6 +15,8 @@ import (
 // ContextKey is a key to context for enviroment or wallet
 type ContextKey string
 
+var newgt = gotezos.New
+
 const (
 	// ENVIROMENTKEY is a key to get the tzpay enviroment off of context
 	ENVIROMENTKEY ContextKey = "ffe0524c-a49c-401c-8b38-556b013fbdd4"
@@ -47,8 +49,9 @@ type ContextEnviroment struct {
 	MinimumPayment int
 	EarningsOnly   bool
 	NetworkFee     int
-	BoltDB         string
+	BoltDB         *db.DB
 	Password       string
+	GoTezos        gotezos.IFace
 	Wallet         gotezos.Wallet
 }
 
@@ -60,8 +63,8 @@ func GetEnviromentFromContext(ctx context.Context) *ContextEnviroment {
 }
 
 // setEnviromentToContext sets tzpays enviroment to context
-func setEnviromentToContext(ctx context.Context, env *Enviroment) (context.Context, error) {
-	cenv, err := enviromentToContextEnviroment(*env)
+func setEnviromentToContext(ctx context.Context, env *Enviroment, gt gotezos.IFace) (context.Context, error) {
+	cenv, err := enviromentToContextEnviroment(*env, gt)
 	if err != nil {
 		return ctx, errors.Wrap(err, "failed to set context enviroment")
 	}
@@ -70,7 +73,7 @@ func setEnviromentToContext(ctx context.Context, env *Enviroment) (context.Conte
 }
 
 // InitContext returns and validates the enviroment for tzpay in context
-func InitContext() (context.Context, error) {
+func InitContext(gt gotezos.IFace) (context.Context, error) {
 	env, err := loadEnviroment()
 	if err != nil {
 		return context.Background(), err
@@ -80,7 +83,7 @@ func InitContext() (context.Context, error) {
 		return context.Background(), err
 	}
 
-	ctx, err := setEnviromentToContext(context.Background(), env)
+	ctx, err := setEnviromentToContext(context.Background(), env, gt)
 	if err != nil {
 		return ctx, err
 	}
@@ -116,9 +119,17 @@ func ParseBlackList(list string) []string {
 	return blacklist
 }
 
-func enviromentToContextEnviroment(env Enviroment) (ContextEnviroment, error) {
+func enviromentToContextEnviroment(env Enviroment, gt gotezos.IFace) (ContextEnviroment, error) {
+	if gt == nil {
+		var err error
+		gt, err = newgt(env.HostNode)
+		if err != nil {
+			return ContextEnviroment{}, errors.Wrap(err, "failed to connect to host node")
+		}
+	}
+
 	// open tzpay db
-	db, err := db.Open(env.BoltDB)
+	db, err := db.New(gt, env.BoltDB)
 	if err != nil {
 		return ContextEnviroment{}, errors.Wrap(err, "failed to open tzpay db")
 	}
@@ -126,7 +137,7 @@ func enviromentToContextEnviroment(env Enviroment) (ContextEnviroment, error) {
 	// check if tzpay is initialized with a wallet by seeing if there is an edesk in the store
 	if env.WalletSecret == "" {
 		init := db.IsWalletInitialized()
-		if init {
+		if !init {
 			return ContextEnviroment{}, errors.New("failed to find existing wallet: initialize tzpay by passing TZPAY_WALLET_SECRET and TZPAY_WALLET_PASSWORD: please refer to the README")
 		}
 	}
@@ -162,7 +173,8 @@ func enviromentToContextEnviroment(env Enviroment) (ContextEnviroment, error) {
 		MinimumPayment: env.MinimumPayment,
 		EarningsOnly:   env.EarningsOnly,
 		NetworkFee:     env.NetworkFee,
-		BoltDB:         env.BoltDB,
+		GoTezos:        gt,
+		BoltDB:         db,
 		Wallet:         *wallet,
 	}, nil
 }
