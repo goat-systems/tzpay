@@ -1,10 +1,14 @@
 package cmd
 
 import (
+	"context"
 	"strconv"
+
+	"github.com/pkg/errors"
 
 	gotezos "github.com/goat-systems/go-tezos/v2"
 	"github.com/goat-systems/tzpay/v2/cli/internal/baker"
+	"github.com/goat-systems/tzpay/v2/cli/internal/db/model"
 	"github.com/goat-systems/tzpay/v2/cli/internal/enviroment"
 	"github.com/goat-systems/tzpay/v2/cli/internal/print"
 	log "github.com/sirupsen/logrus"
@@ -14,6 +18,7 @@ import (
 // NewRunCommand returns a new run cobra command
 func NewRunCommand() *cobra.Command {
 	var table bool
+	var batchSize int
 
 	var report = &cobra.Command{
 		Use:     "run",
@@ -24,101 +29,137 @@ func NewRunCommand() *cobra.Command {
 			if len(args) == 0 {
 				log.WithFields(nil).Fatal("Missing cycle as argument.")
 			}
-			run(args[0], table)
+			runner, err := newRunner(newRunnerInput{
+				cycle:     args[0],
+				table:     table,
+				batchSize: batchSize,
+			})
+			if err != nil {
+				log.WithFields(log.Fields{
+					"error": err.Error(),
+				}).Fatal("Failed to run payout.")
+			}
+			payout, err := runner.run()
+			if err != nil {
+				log.WithFields(log.Fields{
+					"error": err.Error(),
+				}).Fatal("Failed to run payout.")
+			}
+
+			runner.print(payout)
 		},
 	}
 
 	report.PersistentFlags().BoolVarP(&table, "table", "t", false, "formats result into a table (Default: json)")
+	report.PersistentFlags().IntVarP(&batchSize, "batch-size", "b", 125, "changes the size of the payout batches (too large may result in failure).")
 
 	return report
 }
 
-func run(arg string, table bool) {
-	cycle, err := strconv.Atoi(arg)
+type runner struct {
+	ctx       context.Context
+	base      *enviroment.ContextEnviroment
+	cycle     int
+	table     bool
+	batchSize int
+}
+
+type newRunnerInput struct {
+	cycle     string
+	table     bool
+	batchSize int
+	gt        gotezos.IFace // only pass for testing
+}
+
+func newRunner(input newRunnerInput) (*runner, error) {
+	cycle, err := strconv.Atoi(input.cycle)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err.Error(),
-		}).Fatal("Failed to read cycle argument.")
+		return nil, errors.New("failed to read cycle argument")
 	}
 
-	ctx, err := enviroment.InitContext()
+	ctx, err := enviroment.InitContext(input.gt)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err.Error(),
-		}).Fatal("Failed to get enviroment and initialize context.")
+		return nil, errors.Wrap(err, "failed to initialize enviroment")
 	}
 
-	base := enviroment.GetEnviromentFromContext(ctx)
+	return &runner{
+		ctx:       ctx,
+		cycle:     cycle,
+		table:     input.table,
+		base:      enviroment.GetEnviromentFromContext(ctx),
+		batchSize: input.batchSize,
+	}, nil
+}
 
-	gt, err := gotezos.New(base.HostNode)
+func (r *runner) run() (*model.Payout, error) {
+	baker := baker.NewBaker(r.base.GoTezos)
+
+	payout, err := baker.Payouts(r.ctx, r.cycle)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err.Error(),
-		}).Fatal("Failed to connect to node.")
-	}
-	baker := baker.NewBaker(gt)
-
-	payout, err := baker.Payouts(ctx, cycle)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err.Error(),
-		}).Fatal("Failed to get payouts.")
+		return nil, err
 	}
 
-	payouts := splitPayouts(payout)
+	payouts := splitPayouts(*payout, r.batchSize)
+
 	var operations []string
 	for _, p := range payouts {
-		forge, err := baker.ForgePayout(ctx, *p)
+		forge, err := baker.ForgePayout(r.ctx, *p)
 		if err != nil {
-			log.WithFields(log.Fields{
-				"error": err.Error(),
-			}).Fatal("Failed to forge operation.")
+			return nil, err
 		}
 
-		signedop, err := base.Wallet.SignOperation(forge)
+		signedop, err := r.base.Wallet.SignOperation(forge)
 		if err != nil {
-			log.WithFields(log.Fields{
-				"error": err.Error(),
-			}).Fatal("Failed to sign operation.")
+			return nil, err
 		}
 
-		op, err := gt.InjectionOperation(&gotezos.InjectionOperationInput{
+		op, err := r.base.GoTezos.InjectionOperation(&gotezos.InjectionOperationInput{
 			Operation: &signedop,
 		})
 		if err != nil {
-			log.WithFields(log.Fields{
-				"error": err.Error(),
-			}).Fatal("Failed to inject operation.")
+			return nil, err
 		}
 
 		operations = append(operations, string(*op))
 	}
 
-	if table {
-		print.Table(ctx, payout, operations...)
+	payout.SetOperations(operations...)
+
+	return payout, nil
+}
+
+func (r *runner) save(payout *model.Payout) error {
+	err := r.base.BoltDB.SavePayout(*payout)
+	if err != nil {
+		return errors.Wrap(err, "failed to save payout in tzpay.db")
+	}
+	return nil
+}
+
+func (r *runner) print(payout *model.Payout) {
+	if r.table {
+		print.Table(r.ctx, payout)
 	} else {
-		print.JSON(payout, operations...)
+		print.JSON(payout)
 	}
 }
 
-func splitPayouts(payout *baker.Payout) []*baker.Payout {
-	var payouts []*baker.Payout
-	size := 125
-
-	if len(payout.DelegationEarnings) <= 125 {
-		payouts = append(payouts, payout)
+func splitPayouts(payout model.Payout, split int) []*model.Payout {
+	var payouts []*model.Payout
+	if len(payout.DelegationEarnings) <= split {
+		payouts = append(payouts, &payout)
 		return payouts
 	}
-	for len(payout.DelegationEarnings) > size {
-		p := &baker.Payout{
-			Cycle:              payout.Cycle,
+	for len(payout.DelegationEarnings) >= split {
+		p := &model.Payout{
+			CycleHash:          payout.CycleHash,
 			FrozenBalance:      payout.FrozenBalance,
 			StakingBalance:     payout.StakingBalance,
-			Delegate:           payout.Delegate,
-			DelegationEarnings: payout.DelegationEarnings[:size],
+			DelegateEarnings:   payout.DelegateEarnings,
+			DelegationEarnings: payout.DelegationEarnings[:split],
 		}
 		payouts = append(payouts, p)
-		payout.DelegationEarnings = payout.DelegationEarnings[size:]
+		payout.DelegationEarnings = payout.DelegationEarnings[split:]
 	}
 
 	return payouts

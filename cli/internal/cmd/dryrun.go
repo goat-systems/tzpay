@@ -41,7 +41,7 @@ func dryrun(arg string, table bool) {
 		}).Fatal("Failed to read cycle argument.")
 	}
 
-	ctx, err := enviroment.InitContext()
+	ctx, err := enviroment.InitContext(nil)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err.Error(),

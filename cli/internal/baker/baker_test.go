@@ -2,13 +2,14 @@ package baker
 
 import (
 	"context"
-	"errors"
 	"math/big"
 	"sort"
 	"testing"
 
 	gotezos "github.com/goat-systems/go-tezos/v2"
+	"github.com/goat-systems/tzpay/v2/cli/internal/db/model"
 	"github.com/goat-systems/tzpay/v2/cli/internal/enviroment"
+	"github.com/goat-systems/tzpay/v2/cli/internal/test"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -16,7 +17,7 @@ func Test_processDelegation(t *testing.T) {
 	type want struct {
 		err                bool
 		errContains        string
-		delegationEarnings *DelegationEarning
+		delegationEarnings *model.DelegationEarning
 	}
 
 	cases := []struct {
@@ -35,7 +36,7 @@ func Test_processDelegation(t *testing.T) {
 			want{
 				false,
 				"",
-				&DelegationEarning{Fee: big.NewInt(4000000), GrossRewards: big.NewInt(80000000), NetRewards: big.NewInt(76000000), Share: 0.1},
+				&model.DelegationEarning{Fee: big.NewInt(4000000), GrossRewards: big.NewInt(80000000), NetRewards: big.NewInt(76000000), Share: 0.1},
 			},
 		},
 		{
@@ -57,8 +58,8 @@ func Test_processDelegation(t *testing.T) {
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
 			baker := &Baker{
-				gt: &gotezosMock{
-					balanceErr: tt.want.err,
+				gt: &test.GoTezosMock{
+					BalanceErr: tt.want.err,
 				},
 			}
 			out, err := baker.processDelegation(goldenContext, tt.input)
@@ -123,8 +124,8 @@ func Test_processDelegations(t *testing.T) {
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
 			baker := &Baker{
-				gt: &gotezosMock{
-					balanceErr: tt.want.err,
+				gt: &test.GoTezosMock{
+					BalanceErr: tt.want.err,
 				},
 			}
 
@@ -150,7 +151,7 @@ func Test_Payouts(t *testing.T) {
 	type want struct {
 		err         bool
 		errContains string
-		payouts     *Payout
+		payouts     *model.Payout
 	}
 
 	cases := []struct {
@@ -160,8 +161,8 @@ func Test_Payouts(t *testing.T) {
 	}{
 		{
 			"handles FrozenBalance failue",
-			&gotezosMock{
-				frozenBalanceErr: true,
+			&test.GoTezosMock{
+				FrozenBalanceErr: true,
 			},
 			want{
 				true,
@@ -171,8 +172,8 @@ func Test_Payouts(t *testing.T) {
 		},
 		{
 			"handles DelegatedContractsAtCycle failue",
-			&gotezosMock{
-				delegatedContractsErr: true,
+			&test.GoTezosMock{
+				DelegatedContractsErr: true,
 			},
 			want{
 				true,
@@ -182,8 +183,8 @@ func Test_Payouts(t *testing.T) {
 		},
 		{
 			"handles Cycle failue",
-			&gotezosMock{
-				cycleErr: true,
+			&test.GoTezosMock{
+				CycleErr: true,
 			},
 			want{
 				true,
@@ -193,8 +194,8 @@ func Test_Payouts(t *testing.T) {
 		},
 		{
 			"handles StakingBalance failue",
-			&gotezosMock{
-				stakingBalanceErr: true,
+			&test.GoTezosMock{
+				StakingBalanceErr: true,
 			},
 			want{
 				true,
@@ -204,38 +205,47 @@ func Test_Payouts(t *testing.T) {
 		},
 		{
 			"is successful",
-			&gotezosMock{},
+			&test.GoTezosMock{},
 			want{
 				false,
 				"",
-				&Payout{
-					DelegationEarnings: []DelegationEarning{
-						DelegationEarning{
-							Delegation:   "tz1b",
+				&model.Payout{
+					DelegationEarnings: model.DelegationEarnings{
+						model.DelegationEarning{
+							Address:      "tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
 							Fee:          big.NewInt(3500000),
 							GrossRewards: big.NewInt(70000000),
 							NetRewards:   big.NewInt(66500000),
 							Share:        1,
 						},
-						DelegationEarning{
-							Delegation:   "tz1c",
+						model.DelegationEarning{
+							Address:      "tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
 							Fee:          big.NewInt(3500000),
 							GrossRewards: big.NewInt(70000000),
 							NetRewards:   big.NewInt(66500000),
 							Share:        1,
 						},
-						DelegationEarning{
-							Delegation:   "tz1a",
+						model.DelegationEarning{
+							Address:      "tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
 							Fee:          big.NewInt(3500000),
 							GrossRewards: big.NewInt(70000000),
 							NetRewards:   big.NewInt(66500000),
 							Share:        1,
 						},
 					},
+					DelegateEarnings: model.DelegateEarnings{
+						Address: "somedelegate",
+						Fees:    big.NewInt(10500000),
+						Share:   1,
+						Rewards: big.NewInt(70000000),
+						Net:     big.NewInt(80500000),
+					},
+					CycleHash:      "some_hash",
 					Cycle:          100,
 					FrozenBalance:  big.NewInt(70000000),
 					StakingBalance: big.NewInt(10000000000),
-					Delegate:       "somedelegate",
+					Operations:     nil,
+					OperationsLink: nil,
 				},
 			},
 		},
@@ -261,33 +271,33 @@ func Test_Payouts(t *testing.T) {
 }
 
 func Test_PayoutsSort(t *testing.T) {
-	delegationEarnings := DelegationEarnings{}
+	delegationEarnings := model.DelegationEarnings{}
 	delegationEarnings = append(delegationEarnings,
-		[]DelegationEarning{
-			DelegationEarning{
-				Delegation: "tz1c",
+		[]model.DelegationEarning{
+			model.DelegationEarning{
+				Address: "tz1c",
 			},
-			DelegationEarning{
-				Delegation: "tz1a",
+			model.DelegationEarning{
+				Address: "tz1a",
 			},
-			DelegationEarning{
-				Delegation: "tz1b",
+			model.DelegationEarning{
+				Address: "tz1b",
 			},
 		}...,
 	)
 	sort.Sort(&delegationEarnings)
 
-	want := DelegationEarnings{}
+	want := model.DelegationEarnings{}
 	want = append(want,
-		[]DelegationEarning{
-			DelegationEarning{
-				Delegation: "tz1a",
+		[]model.DelegationEarning{
+			model.DelegationEarning{
+				Address: "tz1a",
 			},
-			DelegationEarning{
-				Delegation: "tz1b",
+			model.DelegationEarning{
+				Address: "tz1b",
 			},
-			DelegationEarning{
-				Delegation: "tz1c",
+			model.DelegationEarning{
+				Address: "tz1c",
 			},
 		}...,
 	)
@@ -297,7 +307,7 @@ func Test_PayoutsSort(t *testing.T) {
 
 func Test_ForgePayout(t *testing.T) {
 	type input struct {
-		payout Payout
+		payout model.Payout
 		gt     gotezos.IFace
 	}
 
@@ -315,21 +325,21 @@ func Test_ForgePayout(t *testing.T) {
 		{
 			"is successful",
 			input{
-				Payout{
-					DelegationEarnings: DelegationEarnings{
-						DelegationEarning{
-							Delegation:   "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+				model.Payout{
+					DelegationEarnings: model.DelegationEarnings{
+						model.DelegationEarning{
+							Address:      "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
 							GrossRewards: big.NewInt(1000000),
 							NetRewards:   big.NewInt(900000),
 						},
-						DelegationEarning{
-							Delegation:   "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+						model.DelegationEarning{
+							Address:      "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
 							GrossRewards: big.NewInt(1000000),
 							NetRewards:   big.NewInt(950000),
 						},
 					},
 				},
-				&gotezosMock{},
+				&test.GoTezosMock{},
 			},
 			want{
 				false,
@@ -341,7 +351,7 @@ func Test_ForgePayout(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			baker := &Baker{gt: &gotezosMock{}}
+			baker := &Baker{gt: &test.GoTezosMock{}}
 			forge, err := baker.ForgePayout(goldenContext, tt.input.payout)
 			checkErr(t, tt.want.err, tt.want.errContains, err)
 			assert.Equal(t, tt.want.forge, forge)
@@ -352,7 +362,7 @@ func Test_ForgePayout(t *testing.T) {
 func Test_constructPayoutContents(t *testing.T) {
 	type input struct {
 		counter int
-		payout  Payout
+		payout  model.Payout
 	}
 
 	cases := []struct {
@@ -364,15 +374,15 @@ func Test_constructPayoutContents(t *testing.T) {
 			"is successful",
 			input{
 				100,
-				Payout{
-					DelegationEarnings: DelegationEarnings{
-						DelegationEarning{
-							Delegation:   "somedelegation",
+				model.Payout{
+					DelegationEarnings: model.DelegationEarnings{
+						model.DelegationEarning{
+							Address:      "somedelegation",
 							GrossRewards: big.NewInt(1000000),
 							NetRewards:   big.NewInt(900000),
 						},
-						DelegationEarning{
-							Delegation:   "someotherdelegation",
+						model.DelegationEarning{
+							Address:      "someotherdelegation",
 							GrossRewards: big.NewInt(1000000),
 							NetRewards:   big.NewInt(950000),
 						},
@@ -404,7 +414,7 @@ func Test_constructPayoutContents(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			baker := &Baker{gt: &gotezosMock{}}
+			baker := &Baker{gt: &test.GoTezosMock{}}
 			contents := baker.constructPayoutContents(goldenContext, tt.input.counter, tt.input.payout)
 			assert.Equal(t, tt.want, contents)
 		})
@@ -436,79 +446,3 @@ var goldenContext = context.WithValue(
 		},
 	},
 )
-
-type gotezosMock struct {
-	gotezos.IFace
-	headErr               bool
-	counterErr            bool
-	balanceErr            bool
-	frozenBalanceErr      bool
-	delegatedContractsErr bool
-	cycleErr              bool
-	stakingBalanceErr     bool
-}
-
-func (g *gotezosMock) Head() (*gotezos.Block, error) {
-	if g.headErr {
-		return &gotezos.Block{}, errors.New("failed to get block")
-	}
-	return &gotezos.Block{
-		Hash: "BLfEWKVudXH15N8nwHZehyLNjRuNLoJavJDjSZ7nq8ggfzbZ18p",
-	}, nil
-}
-
-func (g *gotezosMock) Counter(blockhash, pkh string) (*int, error) {
-	counter := 0
-	if g.counterErr {
-		return &counter, errors.New("failed to get block")
-	}
-	counter = 100
-	return &counter, nil
-}
-
-func (g *gotezosMock) Balance(blockhash, address string) (*big.Int, error) {
-	if g.balanceErr {
-		return big.NewInt(0), errors.New("failed to get balance")
-	}
-	return big.NewInt(10000000000), nil
-}
-
-func (g *gotezosMock) FrozenBalance(cycle int, delegate string) (*gotezos.FrozenBalance, error) {
-	if g.frozenBalanceErr {
-		return &gotezos.FrozenBalance{}, errors.New("failed to get frozen balance")
-	}
-	return &gotezos.FrozenBalance{
-		Deposits: gotezos.Int{Big: big.NewInt(10000000000)},
-		Fees:     gotezos.Int{Big: big.NewInt(3000)},
-		Rewards:  gotezos.Int{Big: big.NewInt(70000000)},
-	}, nil
-}
-
-func (g *gotezosMock) DelegatedContractsAtCycle(cycle int, delegate string) (*[]string, error) {
-	if g.delegatedContractsErr {
-		return &[]string{}, errors.New("failed to get delegated contracts at cycle")
-	}
-	return &[]string{
-		"tz1a",
-		"tz1b",
-		"tz1c",
-	}, nil
-}
-
-func (g *gotezosMock) Cycle(cycle int) (*gotezos.Cycle, error) {
-	if g.cycleErr {
-		return &gotezos.Cycle{}, errors.New("failed to get cycle")
-	}
-	return &gotezos.Cycle{
-		RandomSeed:   "some_seed",
-		RollSnapshot: 10,
-		BlockHash:    "some_hash",
-	}, nil
-}
-
-func (g *gotezosMock) StakingBalance(blockhash, delegate string) (*big.Int, error) {
-	if g.stakingBalanceErr {
-		return big.NewInt(0), errors.New("failed to get staking balance")
-	}
-	return big.NewInt(10000000000), nil
-}

@@ -36,7 +36,7 @@ func Test_InitWallet(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			db, err := Open("./tzpay.db")
+			db, err := New(nil, "./tzpay.db")
 			assert.Nil(t, err)
 			assert.NotNil(t, db)
 
@@ -105,7 +105,7 @@ func Test_GetSecret(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			db, err := Open("./tzpay.db")
+			db, err := New(nil, "./tzpay.db")
 			assert.Nil(t, err)
 			assert.NotNil(t, db)
 
@@ -176,7 +176,7 @@ func Test_IsWalletInitialized(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			db, err := Open("./tzpay.db")
+			db, err := New(nil, "./tzpay.db")
 			assert.Nil(t, err)
 			assert.NotNil(t, db)
 
