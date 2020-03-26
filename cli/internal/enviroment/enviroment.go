@@ -15,6 +15,7 @@ import (
 // ContextKey is a key to context for enviroment or wallet
 type ContextKey string
 
+// BlackList contains a string of addresses not to be paid out
 type BlackList []string
 
 var newgt = gotezos.New

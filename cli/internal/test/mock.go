@@ -7,6 +7,7 @@ import (
 	gotezos "github.com/goat-systems/go-tezos/v2"
 )
 
+// GoTezosMock is a test helper mocking the GoTezos lib
 type GoTezosMock struct {
 	gotezos.IFace
 	HeadErr               bool
@@ -19,6 +20,7 @@ type GoTezosMock struct {
 	InjectionOperationErr bool
 }
 
+// Head -
 func (g *GoTezosMock) Head() (*gotezos.Block, error) {
 	if g.HeadErr {
 		return &gotezos.Block{}, errors.New("failed to get block")
@@ -28,6 +30,7 @@ func (g *GoTezosMock) Head() (*gotezos.Block, error) {
 	}, nil
 }
 
+// Counter -
 func (g *GoTezosMock) Counter(blockhash, pkh string) (*int, error) {
 	counter := 0
 	if g.CounterErr {
@@ -37,6 +40,7 @@ func (g *GoTezosMock) Counter(blockhash, pkh string) (*int, error) {
 	return &counter, nil
 }
 
+// Balance -
 func (g *GoTezosMock) Balance(blockhash, address string) (*big.Int, error) {
 	if g.BalanceErr {
 		return big.NewInt(0), errors.New("failed to get balance")
@@ -44,6 +48,7 @@ func (g *GoTezosMock) Balance(blockhash, address string) (*big.Int, error) {
 	return big.NewInt(10000000000), nil
 }
 
+// FrozenBalance -
 func (g *GoTezosMock) FrozenBalance(cycle int, delegate string) (*gotezos.FrozenBalance, error) {
 	if g.FrozenBalanceErr {
 		return &gotezos.FrozenBalance{}, errors.New("failed to get frozen balance")
@@ -55,6 +60,7 @@ func (g *GoTezosMock) FrozenBalance(cycle int, delegate string) (*gotezos.Frozen
 	}, nil
 }
 
+// DelegatedContractsAtCycle -
 func (g *GoTezosMock) DelegatedContractsAtCycle(cycle int, delegate string) (*[]string, error) {
 	if g.DelegatedContractsErr {
 		return &[]string{}, errors.New("failed to get delegated contracts at cycle")
@@ -66,6 +72,7 @@ func (g *GoTezosMock) DelegatedContractsAtCycle(cycle int, delegate string) (*[]
 	}, nil
 }
 
+// Cycle -
 func (g *GoTezosMock) Cycle(cycle int) (*gotezos.Cycle, error) {
 	if g.CycleErr {
 		return &gotezos.Cycle{}, errors.New("failed to get cycle")
@@ -77,6 +84,7 @@ func (g *GoTezosMock) Cycle(cycle int) (*gotezos.Cycle, error) {
 	}, nil
 }
 
+// StakingBalance -
 func (g *GoTezosMock) StakingBalance(blockhash, delegate string) (*big.Int, error) {
 	if g.StakingBalanceErr {
 		return big.NewInt(0), errors.New("failed to get staking balance")
@@ -84,6 +92,7 @@ func (g *GoTezosMock) StakingBalance(blockhash, delegate string) (*big.Int, erro
 	return big.NewInt(10000000000), nil
 }
 
+// InjectionOperation -
 func (g *GoTezosMock) InjectionOperation(input *gotezos.InjectionOperationInput) (*[]byte, error) {
 	if g.StakingBalanceErr {
 		return nil, errors.New("failed to inject operation")

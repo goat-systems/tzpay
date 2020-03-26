@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"math/big"
 	"os"
 	"testing"
@@ -377,23 +376,6 @@ func Test_ConfirmInjection(t *testing.T) {
 		})
 	}
 }
-
-var goldenContext = context.WithValue(
-	context.TODO(),
-	enviroment.ENVIROMENTKEY,
-	&enviroment.ContextEnviroment{
-		BakersFee:      0.05,
-		BlackList:      []string{"somehash", "somehash1"},
-		Delegate:       "somedelegate",
-		GasLimit:       100000,
-		HostNode:       "http://somenode.com:8732",
-		MinimumPayment: 1000,
-		NetworkFee:     100000,
-		Wallet: gotezos.Wallet{
-			Address: "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
-		},
-	},
-)
 
 var env = map[string]string{
 	"TZPAY_BAKERS_FEE":        "0.05",

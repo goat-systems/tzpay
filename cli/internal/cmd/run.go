@@ -161,13 +161,13 @@ func (r *runner) ConfirmInjection(lastCounter int) bool {
 	}
 }
 
-func (r *runner) save(payout *model.Payout) error {
-	err := r.base.BoltDB.SavePayout(*payout)
-	if err != nil {
-		return errors.Wrap(err, "failed to save payout in tzpay.db")
-	}
-	return nil
-}
+// func (r *runner) save(payout *model.Payout) error {
+// 	err := r.base.BoltDB.SavePayout(*payout)
+// 	if err != nil {
+// 		return errors.Wrap(err, "failed to save payout in tzpay.db")
+// 	}
+// 	return nil
+// }
 
 func (r *runner) print(payout *model.Payout) {
 	if r.table {
