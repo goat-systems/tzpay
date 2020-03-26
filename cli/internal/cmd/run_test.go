@@ -4,8 +4,11 @@ import (
 	"math/big"
 	"os"
 	"testing"
+	"time"
 
+	gotezos "github.com/goat-systems/go-tezos/v2"
 	"github.com/goat-systems/tzpay/v2/cli/internal/db/model"
+	"github.com/goat-systems/tzpay/v2/cli/internal/enviroment"
 	"github.com/goat-systems/tzpay/v2/cli/internal/test"
 	"github.com/stretchr/testify/assert"
 )
@@ -313,6 +316,8 @@ func Test_run(t *testing.T) {
 			initTestEnv()
 			r, err := newRunner(tt.input.runnerInput)
 			assert.NoError(t, err)
+
+			confirm = false
 			payout, err := r.run()
 			if tt.want.err {
 				assert.Error(t, err)
@@ -323,6 +328,51 @@ func Test_run(t *testing.T) {
 
 			assert.Equal(t, tt.want.payout, payout)
 			uninitTestEnv()
+		})
+	}
+}
+
+func Test_ConfirmInjection(t *testing.T) {
+	type input struct {
+		counter int
+		gt      gotezos.IFace
+	}
+	cases := []struct {
+		name  string
+		input input
+		want  bool
+	}{
+		{
+			"is successful",
+			input{
+				100,
+				&test.GoTezosMock{},
+			},
+			true,
+		},
+		{
+			"handles timeout",
+			input{
+				100,
+				&test.GoTezosMock{CounterErr: true},
+			},
+			false,
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			confirmationDurationInterval = time.Millisecond * 500
+			confirmationTimoutInterval = time.Second * 1
+
+			r := runner{
+				base: &enviroment.ContextEnviroment{
+					GoTezos: tt.input.gt,
+				},
+			}
+
+			ok := r.ConfirmInjection(tt.input.counter)
+			assert.Equal(t, tt.want, ok)
 		})
 	}
 }

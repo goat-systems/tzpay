@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"strconv"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -13,6 +14,12 @@ import (
 	"github.com/goat-systems/tzpay/v2/cli/internal/print"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+)
+
+var (
+	confirmationDurationInterval = time.Second * 1
+	confirmationTimoutInterval   = time.Minute * 2
+	confirm                      = true
 )
 
 // NewRunCommand returns a new run cobra command
@@ -103,7 +110,7 @@ func (r *runner) run() (*model.Payout, error) {
 
 	var operations []string
 	for _, p := range payouts {
-		forge, err := baker.ForgePayout(r.ctx, *p)
+		forge, lastCounter, err := baker.ForgePayout(r.ctx, *p)
 		if err != nil {
 			return nil, err
 		}
@@ -120,6 +127,13 @@ func (r *runner) run() (*model.Payout, error) {
 			return nil, err
 		}
 
+		if confirm {
+			ok := r.ConfirmInjection(lastCounter)
+			if !ok {
+				return p, errors.New("failed to confirm injection")
+			}
+		}
+
 		operations = append(operations, string(*op))
 	}
 
@@ -128,13 +142,32 @@ func (r *runner) run() (*model.Payout, error) {
 	return payout, nil
 }
 
-func (r *runner) save(payout *model.Payout) error {
-	err := r.base.BoltDB.SavePayout(*payout)
-	if err != nil {
-		return errors.Wrap(err, "failed to save payout in tzpay.db")
+func (r *runner) ConfirmInjection(lastCounter int) bool {
+	timer := time.After(confirmationTimoutInterval)
+	ticker := time.Tick(confirmationDurationInterval)
+	for {
+		select {
+		case <-ticker:
+			if head, err := r.base.GoTezos.Head(); err == nil {
+				if counter, err := r.base.GoTezos.Counter(head.Hash, r.base.Wallet.Address); err == nil {
+					if *counter == lastCounter {
+						return true
+					}
+				}
+			}
+		case <-timer:
+			return false
+		}
 	}
-	return nil
 }
+
+// func (r *runner) save(payout *model.Payout) error {
+// 	err := r.base.BoltDB.SavePayout(*payout)
+// 	if err != nil {
+// 		return errors.Wrap(err, "failed to save payout in tzpay.db")
+// 	}
+// 	return nil
+// }
 
 func (r *runner) print(payout *model.Payout) {
 	if r.table {

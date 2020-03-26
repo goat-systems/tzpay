@@ -15,6 +15,9 @@ import (
 // ContextKey is a key to context for enviroment or wallet
 type ContextKey string
 
+// BlackList contains a string of addresses not to be paid out
+type BlackList []string
+
 var newgt = gotezos.New
 
 const (
@@ -42,7 +45,7 @@ type Enviroment struct {
 // ContextEnviroment is the enviroment to be attatched to context
 type ContextEnviroment struct {
 	BakersFee      float64
-	BlackList      string
+	BlackList      BlackList
 	Delegate       string
 	GasLimit       int
 	HostNode       string
@@ -53,6 +56,17 @@ type ContextEnviroment struct {
 	Password       string
 	GoTezos        gotezos.IFace
 	Wallet         gotezos.Wallet
+}
+
+// Contains returns true if the pkh is apart of BlackList
+func (b *BlackList) Contains(pkh string) bool {
+	for _, addr := range *b {
+		if addr == pkh {
+			return true
+		}
+	}
+
+	return false
 }
 
 // GetEnviromentFromContext gets the Enviroment off context
@@ -164,9 +178,11 @@ func enviromentToContextEnviroment(env Enviroment, gt gotezos.IFace) (ContextEnv
 		return ContextEnviroment{}, errors.Wrap(err, "failed to set enviroment to context")
 	}
 
+	blacklist := strings.Split(env.BlackList, " ,")
+
 	return ContextEnviroment{
 		BakersFee:      env.BakersFee,
-		BlackList:      env.BlackList,
+		BlackList:      blacklist,
 		Delegate:       env.Delegate,
 		GasLimit:       env.GasLimit,
 		HostNode:       env.HostNode,
