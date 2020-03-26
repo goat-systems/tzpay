@@ -152,3 +152,40 @@ func Test_ParseBlackList(t *testing.T) {
 		})
 	}
 }
+
+func Test_Contains(t *testing.T) {
+	cases := []struct {
+		name string
+		pkh  string
+		want bool
+	}{
+		{
+			"handles true",
+			"tz1a",
+			true,
+		},
+
+		{
+			"handles false",
+			"tz1z",
+			false,
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			var blacklist BlackList = []string{
+				"tz1a",
+				"tz1b",
+				"tz1c",
+				"tz1d",
+				"tz1e",
+				"tz1f",
+				"tz1g",
+			}
+			ok := blacklist.Contains(tt.pkh)
+			assert.Equal(t, tt.want, ok)
+		})
+
+	}
+}

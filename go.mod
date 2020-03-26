@@ -3,6 +3,7 @@ module github.com/goat-systems/tzpay/v2
 go 1.13
 
 require (
+	github.com/DefinitelyNotAGoat/go-tezos v1.0.9
 	github.com/boltdb/bolt v1.3.1
 	github.com/caarlos0/env/v6 v6.2.1
 	github.com/go-playground/validator v9.31.0+incompatible

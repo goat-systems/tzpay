@@ -103,6 +103,12 @@ func (b *Baker) Payouts(ctx context.Context, cycle int) (*model.Payout, error) {
 		err = errors.Wrap(err, "failed to get contruct payout info for delegate")
 	}
 
+	for i, delegation := range payouts.DelegationEarnings {
+		if params.BlackList.Contains(delegation.Address) {
+			payouts.DelegationEarnings = append(payouts.DelegationEarnings[:i], payouts.DelegationEarnings[i+1:]...)
+		}
+	}
+
 	return &payouts, err
 }
 
@@ -194,29 +200,29 @@ func (b *Baker) processDelegation(ctx context.Context, input *processDelegationI
 }
 
 // ForgePayout converts Payout into operation contents and forges them locally
-func (b *Baker) ForgePayout(ctx context.Context, payout model.Payout) (string, error) {
+func (b *Baker) ForgePayout(ctx context.Context, payout model.Payout) (string, int, error) {
 	base := enviroment.GetEnviromentFromContext(ctx)
 	head, err := b.gt.Head()
 	if err != nil {
-		return "", errors.Wrap(err, "failed to forge payout")
+		return "", 0, errors.Wrap(err, "failed to forge payout")
 	}
 
 	counter, err := b.gt.Counter(head.Hash, base.Wallet.Address)
 	if err != nil {
-		return "", errors.Wrap(err, "failed to forge payout")
+		return "", 0, errors.Wrap(err, "failed to forge payout")
 	}
 
-	transactions := b.constructPayoutContents(ctx, *counter, payout)
+	transactions, lastCounter := b.constructPayoutContents(ctx, *counter, payout)
 
 	forge, err := gotezos.ForgeTransactionOperation(head.Hash, transactions...)
 	if err != nil {
-		return "", errors.Wrap(err, "failed to forge payout")
+		return "", lastCounter, errors.Wrap(err, "failed to forge payout")
 	}
 
-	return *forge, nil
+	return *forge, lastCounter, nil
 }
 
-func (b *Baker) constructPayoutContents(ctx context.Context, counter int, payout model.Payout) []gotezos.ForgeTransactionOperationInput {
+func (b *Baker) constructPayoutContents(ctx context.Context, counter int, payout model.Payout) ([]gotezos.ForgeTransactionOperationInput, int) {
 	base := enviroment.GetEnviromentFromContext(ctx)
 	var contents []gotezos.ForgeTransactionOperationInput
 	for _, delegation := range payout.DelegationEarnings {
@@ -233,5 +239,5 @@ func (b *Baker) constructPayoutContents(ctx context.Context, counter int, payout
 			})
 		}
 	}
-	return contents
+	return contents, counter
 }

@@ -352,7 +352,7 @@ func Test_ForgePayout(t *testing.T) {
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
 			baker := &Baker{gt: &test.GoTezosMock{}}
-			forge, err := baker.ForgePayout(goldenContext, tt.input.payout)
+			forge, _, err := baker.ForgePayout(goldenContext, tt.input.payout)
 			checkErr(t, tt.want.err, tt.want.errContains, err)
 			assert.Equal(t, tt.want.forge, forge)
 		})
@@ -415,7 +415,7 @@ func Test_constructPayoutContents(t *testing.T) {
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
 			baker := &Baker{gt: &test.GoTezosMock{}}
-			contents := baker.constructPayoutContents(goldenContext, tt.input.counter, tt.input.payout)
+			contents, _ := baker.constructPayoutContents(goldenContext, tt.input.counter, tt.input.payout)
 			assert.Equal(t, tt.want, contents)
 		})
 	}
@@ -435,7 +435,7 @@ var goldenContext = context.WithValue(
 	enviroment.ENVIROMENTKEY,
 	&enviroment.ContextEnviroment{
 		BakersFee:      0.05,
-		BlackList:      "somehash, somehash1",
+		BlackList:      []string{"somehash, somehash1"},
 		Delegate:       "somedelegate",
 		GasLimit:       100000,
 		HostNode:       "http://somenode.com:8732",
