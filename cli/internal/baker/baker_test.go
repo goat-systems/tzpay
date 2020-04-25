@@ -446,3 +446,55 @@ var goldenContext = context.WithValue(
 		},
 	},
 )
+
+func Test_Filter(t *testing.T) {
+	type input struct {
+		blacklist          enviroment.BlackList
+		delegationEarnings model.DelegationEarnings
+	}
+
+	cases := []struct {
+		name  string
+		input input
+		want  model.DelegationEarnings
+	}{
+		{
+			"is successfull",
+			input{
+				enviroment.BlackList{
+					"some_public_key_hash_10",
+					"some_public_key_hash_11",
+				},
+				model.DelegationEarnings{
+					{
+						Address: "some_public_key_hash_10",
+					},
+					{
+						Address: "some_public_key_hash_11",
+					},
+					{
+						Address: "some_public_key_hash_12",
+					},
+					{
+						Address: "some_public_key_hash_13",
+					},
+				},
+			},
+			model.DelegationEarnings{
+				{
+					Address: "some_public_key_hash_12",
+				},
+				{
+					Address: "some_public_key_hash_13",
+				},
+			},
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			delegationEarnings := FilterEarnings(tt.input.blacklist, tt.input.delegationEarnings)
+			assert.Equal(t, tt.want, delegationEarnings)
+		})
+	}
+}

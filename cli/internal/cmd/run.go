@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -109,7 +110,7 @@ func (r *runner) run() (*model.Payout, error) {
 	payouts := splitPayouts(*payout, r.batchSize)
 
 	var operations []string
-	for _, p := range payouts {
+	for i, p := range payouts {
 		forge, lastCounter, err := baker.ForgePayout(r.ctx, *p)
 		if err != nil {
 			return nil, err
@@ -128,6 +129,10 @@ func (r *runner) run() (*model.Payout, error) {
 		}
 
 		if confirm {
+			log.WithFields(log.Fields{
+				"Injection": fmt.Sprintf("%d/%d", (i + 1), len(payouts)),
+			}).Info("Confirming Injection.")
+
 			ok := r.ConfirmInjection(lastCounter)
 			if !ok {
 				return p, errors.New("failed to confirm injection")

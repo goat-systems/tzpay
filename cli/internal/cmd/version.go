@@ -7,8 +7,8 @@ import (
 )
 
 const (
-	version = "v2.3.0-alpha"
-	changed = "Fixed:\n Fixes batch problem by waiting for the confirmation of each injection, and blacklist."
+	version = "v2.4.0-alpha"
+	changed = "Fixed:\n Fixed logic around blacklist."
 )
 
 // NewVersionCommand returns a version cobra command
