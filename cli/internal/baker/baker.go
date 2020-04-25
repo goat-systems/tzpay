@@ -103,11 +103,7 @@ func (b *Baker) Payouts(ctx context.Context, cycle int) (*model.Payout, error) {
 		err = errors.Wrap(err, "failed to get contruct payout info for delegate")
 	}
 
-	for i, delegation := range payouts.DelegationEarnings {
-		if params.BlackList.Contains(delegation.Address) {
-			payouts.DelegationEarnings = append(payouts.DelegationEarnings[:i], payouts.DelegationEarnings[i+1:]...)
-		}
-	}
+	payouts.DelegationEarnings = FilterEarnings(params.BlackList, payouts.DelegationEarnings)
 
 	return &payouts, err
 }
@@ -240,4 +236,15 @@ func (b *Baker) constructPayoutContents(ctx context.Context, counter int, payout
 		}
 	}
 	return contents, counter
+}
+
+func FilterEarnings(blacklist enviroment.BlackList, delegationEarnings model.DelegationEarnings) model.DelegationEarnings {
+	var de model.DelegationEarnings
+	for _, delegation := range delegationEarnings {
+		if !blacklist.Contains(delegation.Address) {
+			de = append(de, delegation)
+		}
+	}
+
+	return de
 }
