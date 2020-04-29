@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/boltdb/bolt"
-	"github.com/goat-systems/tzpay/v2/cli/internal/db/model"
+	"github.com/goat-systems/tzpay/v2/internal/db/model"
 	"github.com/pkg/errors"
 )
 

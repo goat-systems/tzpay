@@ -8,7 +8,7 @@ import (
 	cenv "github.com/caarlos0/env/v6"
 	"github.com/go-playground/validator"
 	gotezos "github.com/goat-systems/go-tezos/v2"
-	"github.com/goat-systems/tzpay/v2/cli/internal/db"
+	"github.com/goat-systems/tzpay/v2/internal/db"
 	"github.com/pkg/errors"
 )
 

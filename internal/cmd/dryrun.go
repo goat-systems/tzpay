@@ -4,15 +4,32 @@ import (
 	"strconv"
 
 	gotezos "github.com/goat-systems/go-tezos/v2"
-	"github.com/goat-systems/tzpay/v2/cli/internal/baker"
-	"github.com/goat-systems/tzpay/v2/cli/internal/enviroment"
-	"github.com/goat-systems/tzpay/v2/cli/internal/print"
+	"github.com/goat-systems/tzpay/v2/internal/enviroment"
+	"github.com/goat-systems/tzpay/v2/internal/payouts"
+	"github.com/goat-systems/tzpay/v2/internal/print"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
-// NewDryRunCommand returns a new dryrun cobra command
-func NewDryRunCommand() *cobra.Command {
+// DryRun configures and exposes functions to allow tzpay to simulate a payout without injecting it into the network.
+type DryRun struct {
+	payouts payouts.Payout
+}
+
+// DryRunInput is the input for NewDryRun
+type DryRunInput struct {
+	GoTezos gotezos.IFace
+}
+
+// NewDryRun returns a pointer to a DryRun
+func NewDryRun(input DryRunInput) *DryRun {
+	return &DryRun{
+		payouts: payouts.NewBaker(input.GoTezos),
+	}
+}
+
+// Command returns the cobra command for dryrun
+func (d *DryRun) Command() *cobra.Command {
 	var table bool
 
 	var report = &cobra.Command{
@@ -24,7 +41,7 @@ func NewDryRunCommand() *cobra.Command {
 			if len(args) == 0 {
 				log.WithFields(nil).Fatal("Missing cycle as argument.")
 			}
-			dryrun(args[0], table)
+			d.execute(args[0], table)
 		},
 	}
 
@@ -33,7 +50,7 @@ func NewDryRunCommand() *cobra.Command {
 	return report
 }
 
-func dryrun(arg string, table bool) {
+func (d *DryRun) execute(arg string, table bool) {
 	cycle, err := strconv.Atoi(arg)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -47,16 +64,6 @@ func dryrun(arg string, table bool) {
 			"error": err.Error(),
 		}).Fatal("Failed to get enviroment and initialize context.")
 	}
-
-	base := enviroment.GetEnviromentFromContext(ctx)
-
-	gt, err := gotezos.New(base.HostNode)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err.Error(),
-		}).Fatal("Failed to connect to node.")
-	}
-	baker := baker.NewBaker(gt)
 
 	payouts, err := baker.Payouts(ctx, cycle)
 	if err != nil {

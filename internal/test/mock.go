@@ -18,6 +18,8 @@ type GoTezosMock struct {
 	CycleErr              bool
 	StakingBalanceErr     bool
 	InjectionOperationErr bool
+	OperationHashesErr    bool
+	ForgeOperationErr     bool
 }
 
 // Head -
@@ -31,13 +33,13 @@ func (g *GoTezosMock) Head() (*gotezos.Block, error) {
 }
 
 // Counter -
-func (g *GoTezosMock) Counter(blockhash, pkh string) (*int, error) {
+func (g *GoTezosMock) Counter(blockhash, pkh string) (int, error) {
 	counter := 0
 	if g.CounterErr {
-		return &counter, errors.New("failed to get block")
+		return counter, errors.New("failed to get block")
 	}
 	counter = 100
-	return &counter, nil
+	return counter, nil
 }
 
 // Balance -
@@ -49,35 +51,42 @@ func (g *GoTezosMock) Balance(blockhash, address string) (*big.Int, error) {
 }
 
 // FrozenBalance -
-func (g *GoTezosMock) FrozenBalance(cycle int, delegate string) (*gotezos.FrozenBalance, error) {
+func (g *GoTezosMock) FrozenBalance(cycle int, delegate string) (gotezos.FrozenBalance, error) {
 	if g.FrozenBalanceErr {
-		return &gotezos.FrozenBalance{}, errors.New("failed to get frozen balance")
+		return gotezos.FrozenBalance{}, errors.New("failed to get frozen balance")
 	}
-	return &gotezos.FrozenBalance{
-		Deposits: gotezos.Int{Big: big.NewInt(10000000000)},
-		Fees:     gotezos.Int{Big: big.NewInt(3000)},
-		Rewards:  gotezos.Int{Big: big.NewInt(70000000)},
+	return gotezos.FrozenBalance{
+		Deposits: gotezos.NewInt(10000000000),
+		Fees:     gotezos.NewInt(3000),
+		Rewards:  gotezos.NewInt(70000000),
 	}, nil
 }
 
 // DelegatedContractsAtCycle -
-func (g *GoTezosMock) DelegatedContractsAtCycle(cycle int, delegate string) (*[]string, error) {
+func (g *GoTezosMock) DelegatedContractsAtCycle(cycle int, delegate string) ([]*string, error) {
 	if g.DelegatedContractsErr {
-		return &[]string{}, errors.New("failed to get delegated contracts at cycle")
+		return []*string{}, errors.New("failed to get delegated contracts at cycle")
 	}
-	return &[]string{
+	strs := []string{
 		"tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
 		"tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
 		"tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
-	}, nil
+	}
+
+	var rtnstrs []*string
+	for _, str := range strs {
+		rtnstrs = append(rtnstrs, &str)
+	}
+
+	return rtnstrs, nil
 }
 
 // Cycle -
-func (g *GoTezosMock) Cycle(cycle int) (*gotezos.Cycle, error) {
+func (g *GoTezosMock) Cycle(cycle int) (gotezos.Cycle, error) {
 	if g.CycleErr {
-		return &gotezos.Cycle{}, errors.New("failed to get cycle")
+		return gotezos.Cycle{}, errors.New("failed to get cycle")
 	}
-	return &gotezos.Cycle{
+	return gotezos.Cycle{
 		RandomSeed:   "some_seed",
 		RollSnapshot: 10,
 		BlockHash:    "some_hash",
@@ -93,10 +102,24 @@ func (g *GoTezosMock) StakingBalance(blockhash, delegate string) (*big.Int, erro
 }
 
 // InjectionOperation -
-func (g *GoTezosMock) InjectionOperation(input *gotezos.InjectionOperationInput) (*[]byte, error) {
+func (g *GoTezosMock) InjectionOperation(input gotezos.InjectionOperationInput) ([]byte, error) {
 	if g.StakingBalanceErr {
 		return nil, errors.New("failed to inject operation")
 	}
 	resp := []byte("ooYympR9wfV98X4MUHtE78NjXYRDeMTAD4ei7zEZDqoHv2rfb1M")
-	return &resp, nil
+	return resp, nil
+}
+
+// OperationHashes -
+func (g *GoTezosMock) OperationHashes(blockhash string) ([][]string, error) {
+	if g.OperationHashesErr {
+		return nil, errors.New("failed to get operation hashes")
+	}
+
+	return [][]string{
+		{
+			"ooYympR9wfV98X4MUHtE78NjXYRDeMTAD4ei7zEZDqoHv2rfb1M",
+			"ooYympR9wfV98X4MUHtE78NjXYRDeMTAD4ei7zEZDqoHv2rfFGD",
+		},
+	}, nil
 }

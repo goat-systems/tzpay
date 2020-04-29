@@ -9,10 +9,10 @@ import (
 	"github.com/pkg/errors"
 
 	gotezos "github.com/goat-systems/go-tezos/v2"
-	"github.com/goat-systems/tzpay/v2/cli/internal/baker"
-	"github.com/goat-systems/tzpay/v2/cli/internal/db/model"
-	"github.com/goat-systems/tzpay/v2/cli/internal/enviroment"
-	"github.com/goat-systems/tzpay/v2/cli/internal/print"
+	"github.com/goat-systems/tzpay/v2/internal/baker"
+	"github.com/goat-systems/tzpay/v2/internal/db/model"
+	"github.com/goat-systems/tzpay/v2/internal/enviroment"
+	"github.com/goat-systems/tzpay/v2/internal/print"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )

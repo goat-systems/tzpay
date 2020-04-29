@@ -7,9 +7,9 @@ import (
 	"time"
 
 	gotezos "github.com/goat-systems/go-tezos/v2"
-	"github.com/goat-systems/tzpay/v2/cli/internal/db/model"
-	"github.com/goat-systems/tzpay/v2/cli/internal/enviroment"
-	"github.com/goat-systems/tzpay/v2/cli/internal/test"
+	"github.com/goat-systems/tzpay/v2/internal/db/model"
+	"github.com/goat-systems/tzpay/v2/internal/enviroment"
+	"github.com/goat-systems/tzpay/v2/internal/test"
 	"github.com/stretchr/testify/assert"
 )
 

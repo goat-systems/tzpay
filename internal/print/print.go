@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	gotezos "github.com/goat-systems/go-tezos/v2"
-	"github.com/goat-systems/tzpay/v2/cli/internal/db/model"
-	"github.com/goat-systems/tzpay/v2/cli/internal/enviroment"
+	"github.com/goat-systems/tzpay/v2/internal/db/model"
+	"github.com/goat-systems/tzpay/v2/internal/enviroment"
 	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
 )

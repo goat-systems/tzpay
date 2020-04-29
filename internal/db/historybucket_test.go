@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	gotezos "github.com/goat-systems/go-tezos/v2"
-	"github.com/goat-systems/tzpay/v2/cli/internal/db/model"
+	"github.com/goat-systems/tzpay/v2/internal/db/model"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
