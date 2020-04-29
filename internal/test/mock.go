@@ -36,7 +36,7 @@ func (g *GoTezosMock) Head() (*gotezos.Block, error) {
 func (g *GoTezosMock) Counter(blockhash, pkh string) (int, error) {
 	counter := 0
 	if g.CounterErr {
-		return counter, errors.New("failed to get block")
+		return counter, errors.New("failed to get counter")
 	}
 	counter = 100
 	return counter, nil
