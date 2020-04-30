@@ -9,7 +9,7 @@ import (
 
 // NewSetupCommand returns a new setup cobra command
 func NewSetupCommand() *cobra.Command {
-	var version = &cobra.Command{
+	var setup = &cobra.Command{
 		Use:     "setup",
 		Short:   "setup prints a list of enviroment variables needed to get started.",
 		Example: `tzpay setup`,
@@ -22,7 +22,7 @@ func NewSetupCommand() *cobra.Command {
 			sb.WriteString("TZPAY_WALLET_SECRET=<TODO (e.g. edesk...)>\n")
 			sb.WriteString("TZPAY_WALLET_PASSWORD=<TODO (e.g. password)>\n\n")
 			sb.WriteString("###### OPTIONAL ENVIROMENT VARIABLES ######\n")
-			sb.WriteString("TZPAY_BLACKLIST=<TODO (e.g. tz1W3HW533csCBLor4NPtU79R2TT2sbKfJDH, tz1W3HW533csCBLor4NPtU79R2TT2sbKfjh7)>\n")
+			sb.WriteString("TZPAY_BLACKLIST=<TODO (e.g. some_blacklist_file.json)>\n")
 			sb.WriteString("TZPAY_NETWORK_GAS_LIMIT=<TODO (e.g. 30000)>\n")
 			sb.WriteString("TZPAY_NETWORK_FEE=<TODO (e.g. 3000)>\n")
 			sb.WriteString("TZPAY_MINIMUM_PAYMENT=<TODO (e.g. 3000)>\n")
@@ -30,5 +30,5 @@ func NewSetupCommand() *cobra.Command {
 			fmt.Println(sb.String())
 		},
 	}
-	return version
+	return setup
 }

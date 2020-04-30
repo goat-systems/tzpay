@@ -3,8 +3,10 @@ package test
 import (
 	"errors"
 	"math/big"
+	"testing"
 
 	gotezos "github.com/goat-systems/go-tezos/v2"
+	"github.com/stretchr/testify/assert"
 )
 
 // GoTezosMock is a test helper mocking the GoTezos lib
@@ -47,7 +49,7 @@ func (g *GoTezosMock) Balance(blockhash, address string) (*big.Int, error) {
 	if g.BalanceErr {
 		return big.NewInt(0), errors.New("failed to get balance")
 	}
-	return big.NewInt(10000000000), nil
+	return big.NewInt(5000000), nil
 }
 
 // FrozenBalance -
@@ -68,14 +70,14 @@ func (g *GoTezosMock) DelegatedContractsAtCycle(cycle int, delegate string) ([]*
 		return []*string{}, errors.New("failed to get delegated contracts at cycle")
 	}
 	strs := []string{
-		"tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
-		"tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
-		"tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
+		"KT1LinsZAnyxajEv4eNFWtwHMdyhbJsGfvp3",
+		"KT1K4xei3yozp7UP5rHV5wuoDzWwBXqCGRBt",
+		"KT1GcSsQaTtMB2HvUKU9b6WRFUnGpGx9JwGk",
 	}
 
 	var rtnstrs []*string
-	for _, str := range strs {
-		rtnstrs = append(rtnstrs, &str)
+	for i := range strs {
+		rtnstrs = append(rtnstrs, &strs[i])
 	}
 
 	return rtnstrs, nil
@@ -122,4 +124,14 @@ func (g *GoTezosMock) OperationHashes(blockhash string) ([][]string, error) {
 			"ooYympR9wfV98X4MUHtE78NjXYRDeMTAD4ei7zEZDqoHv2rfFGD",
 		},
 	}, nil
+}
+
+// CheckErr -
+func CheckErr(t *testing.T, wantErr bool, errContains string, err error) {
+	if wantErr {
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), errContains)
+	} else {
+		assert.Nil(t, err)
+	}
 }

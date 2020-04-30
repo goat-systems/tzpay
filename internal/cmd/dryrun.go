@@ -5,7 +5,7 @@ import (
 
 	gotezos "github.com/goat-systems/go-tezos/v2"
 	"github.com/goat-systems/tzpay/v2/internal/enviroment"
-	"github.com/goat-systems/tzpay/v2/internal/payouts"
+	"github.com/goat-systems/tzpay/v2/internal/payout"
 	"github.com/goat-systems/tzpay/v2/internal/print"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -13,75 +13,96 @@ import (
 
 // DryRun configures and exposes functions to allow tzpay to simulate a payout without injecting it into the network.
 type DryRun struct {
-	payouts payouts.Payout
+	gt             gotezos.IFace
+	bakersFee      float64
+	delegate       string
+	gasLimit       int
+	minimumPayment int
+	networkFee     int
+	blackList      []string
 }
 
 // DryRunInput is the input for NewDryRun
 type DryRunInput struct {
-	GoTezos gotezos.IFace
+	GoTezos        gotezos.IFace
+	BakersFee      float64
+	Delegate       string
+	GasLimit       int
+	MinimumPayment int
+	NetworkFee     int
+	BlackList      []string
 }
 
 // NewDryRun returns a pointer to a DryRun
 func NewDryRun(input DryRunInput) *DryRun {
 	return &DryRun{
-		payouts: payouts.NewBaker(input.GoTezos),
+		gt:             input.GoTezos,
+		bakersFee:      input.BakersFee,
+		delegate:       input.Delegate,
+		gasLimit:       input.GasLimit,
+		minimumPayment: input.MinimumPayment,
+		networkFee:     input.NetworkFee,
+		blackList:      input.BlackList,
 	}
 }
 
-// Command returns the cobra command for dryrun
-func (d *DryRun) Command() *cobra.Command {
+// DryRunCommand returns the cobra command for dryrun
+func DryRunCommand() *cobra.Command {
 	var table bool
 
-	var report = &cobra.Command{
+	var dryrun = &cobra.Command{
 		Use:     "dryrun",
 		Short:   "dryrun simulates a payout",
 		Long:    "dryrun simulates a payout and prints the result in json or a table",
 		Example: `tzpay dryrun <cycle>`,
 		Run: func(cmd *cobra.Command, args []string) {
 			if len(args) == 0 {
-				log.WithFields(nil).Fatal("Missing cycle as argument.")
+				log.Fatal("Missing cycle as argument.")
 			}
-			d.execute(args[0], table)
+
+			env, err := enviroment.NewDryRunEnviroment()
+			if err != nil {
+				log.WithField("error", err.Error()).Fatal("Failed to load enviroment.")
+			}
+
+			NewDryRun(DryRunInput{
+				GoTezos:        env.GoTezos,
+				BakersFee:      env.BakersFee,
+				Delegate:       env.Delegate,
+				GasLimit:       env.GasLimit,
+				MinimumPayment: env.MinimumPayment,
+				NetworkFee:     env.NetworkFee,
+				BlackList:      env.BlackList,
+			}).execute(args[0], table)
 		},
 	}
 
-	report.PersistentFlags().BoolVarP(&table, "table", "t", false, "formats result into a table (Default: json)")
+	dryrun.PersistentFlags().BoolVarP(&table, "table", "t", false, "formats result into a table (Default: json)")
 
-	return report
+	return dryrun
 }
 
 func (d *DryRun) execute(arg string, table bool) {
 	cycle, err := strconv.Atoi(arg)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err.Error(),
-		}).Fatal("Failed to read cycle argument.")
+		log.Fatal("Failed to parse cycle argument into integer.")
 	}
 
-	ctx, err := enviroment.InitContext(nil)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err.Error(),
-		}).Fatal("Failed to get enviroment and initialize context.")
-	}
-
-	payouts, err := baker.Payouts(ctx, cycle)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err.Error(),
-		}).Fatal("Failed to get payouts.")
-	}
-
-	_, _, err = baker.ForgePayout(ctx, *payouts)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err.Error(),
-		}).Fatal("Failed to forge operation.")
-	}
+	report, err := payout.NewPayout(payout.NewPayoutInput{
+		GoTezos:    d.gt,
+		Cycle:      cycle,
+		Delegate:   d.delegate,
+		BakerFee:   d.bakersFee,
+		MinPayment: d.minimumPayment,
+		BlackList:  d.blackList,
+		BatchSize:  125,
+		NetworkFee: d.networkFee,
+		GasLimit:   d.gasLimit,
+	}).Execute()
 
 	if table {
-		print.Table(ctx, payouts)
+		print.Table(d.delegate, "", report)
 	} else {
-		print.JSON(payouts)
+		print.JSON(report)
 	}
 }

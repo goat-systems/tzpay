@@ -1,7 +1,6 @@
 package print
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -10,23 +9,21 @@ import (
 	"strings"
 
 	gotezos "github.com/goat-systems/go-tezos/v2"
-	"github.com/goat-systems/tzpay/v2/internal/db/model"
-	"github.com/goat-systems/tzpay/v2/internal/enviroment"
+	"github.com/goat-systems/tzpay/v2/internal/payout"
 	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
 )
 
 // Table prints a payout in table format
-func Table(ctx context.Context, payouts *model.Payout) {
-	base := enviroment.GetEnviromentFromContext(ctx)
+func Table(delegate, walletAddress string, report payout.Report) {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{"Cylce", "Baker", "Wallet", "Rewards", "Operation"})
 	table.Append([]string{
-		strconv.Itoa(payouts.Cycle),
-		base.Delegate,
-		base.Wallet.Address,
-		fmt.Sprintf("%.6f", float64(payouts.FrozenBalance.Int64())/float64(gotezos.MUTEZ)),
-		groomOperations(payouts.OperationsLink...),
+		strconv.Itoa(report.Cycle),
+		delegate,
+		walletAddress,
+		fmt.Sprintf("%.6f", float64(report.FrozenBalance.Int64())/float64(gotezos.MUTEZ)),
+		groomOperations(report.OperationsLink...),
 	})
 
 	table.Render()
@@ -35,8 +32,8 @@ func Table(ctx context.Context, payouts *model.Payout) {
 	table.SetHeader([]string{"Delegation", "Share", "Gross", "Net", "Fee"})
 
 	var net, fee float64
-	sort.Sort(payouts.DelegationEarnings)
-	for _, delegation := range payouts.DelegationEarnings {
+	sort.Sort(report.DelegationEarnings)
+	for _, delegation := range report.DelegationEarnings {
 		table.Append([]string{
 			delegation.Address,
 			fmt.Sprintf("%.6f", delegation.Share),
@@ -54,8 +51,8 @@ func Table(ctx context.Context, payouts *model.Payout) {
 }
 
 // JSON prints a payout to json
-func JSON(payouts *model.Payout) error {
-	prettyJSON, err := json.MarshalIndent(payouts, "", "    ")
+func JSON(report payout.Report) error {
+	prettyJSON, err := json.MarshalIndent(report, "", "    ")
 	if err != nil {
 		return errors.Wrap(err, "failed to print json")
 	}

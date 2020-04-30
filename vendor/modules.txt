@@ -1,8 +1,6 @@
 # github.com/Messer4/base58check v0.0.0-20180328134002-7531a92ae9ba
 github.com/Messer4/base58check
-# github.com/boltdb/bolt v1.3.1
-github.com/boltdb/bolt
-# github.com/btcsuite/btcutil v1.0.1
+# github.com/btcsuite/btcutil v1.0.2
 github.com/btcsuite/btcutil/base58
 # github.com/caarlos0/env/v6 v6.2.1
 github.com/caarlos0/env/v6
@@ -13,11 +11,9 @@ github.com/go-playground/locales
 github.com/go-playground/locales/currency
 # github.com/go-playground/universal-translator v0.17.0
 github.com/go-playground/universal-translator
-# github.com/go-playground/validator v9.31.0+incompatible
-github.com/go-playground/validator
 # github.com/go-playground/validator/v10 v10.2.0
 github.com/go-playground/validator/v10
-# github.com/goat-systems/go-tezos/v2 v2.6.0-alpha
+# github.com/goat-systems/go-tezos/v2 v2.7.0-alpha
 github.com/goat-systems/go-tezos/v2
 # github.com/inconshreveable/mousetrap v1.0.0
 github.com/inconshreveable/mousetrap
@@ -41,7 +37,7 @@ github.com/spf13/cobra
 github.com/spf13/pflag
 # github.com/stretchr/testify v1.5.1
 github.com/stretchr/testify/assert
-# golang.org/x/crypto v0.0.0-20200302210943-78000ba7a073
+# golang.org/x/crypto v0.0.0-20200427165652-729f1e841bcc
 golang.org/x/crypto/blake2b
 golang.org/x/crypto/ed25519
 golang.org/x/crypto/ed25519/internal/edwards25519
@@ -50,7 +46,7 @@ golang.org/x/crypto/nacl/secretbox
 golang.org/x/crypto/pbkdf2
 golang.org/x/crypto/poly1305
 golang.org/x/crypto/salsa20/salsa
-# golang.org/x/sys v0.0.0-20200302150141-5c8b2ff67527
+# golang.org/x/sys v0.0.0-20200427175716-29b57079015a
 golang.org/x/sys/cpu
 golang.org/x/sys/unix
 # gopkg.in/yaml.v2 v2.2.4

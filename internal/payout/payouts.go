@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"sort"
 	"time"
 	"unicode"
 
@@ -201,6 +202,7 @@ func (p *Payout) Execute() (Report, error) {
 			report.DelegationEarnings = append(report.DelegationEarnings, delegation.delegationEarning)
 		}
 	}
+	sort.Sort(report.DelegationEarnings)
 
 	if report.DelegateEarnings, err = p.processDelegate(processDelegateInput{
 		delegate:             p.delegate,
@@ -280,8 +282,8 @@ func (p *Payout) proccessDelegations(input processDelegationsInput) []processDel
 	for i := 1; i <= numJobs; i++ {
 		out = append(out, <-results)
 	}
-	close(results)
 
+	close(results)
 	return out
 }
 

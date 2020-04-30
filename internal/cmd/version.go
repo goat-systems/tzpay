@@ -7,8 +7,8 @@ import (
 )
 
 const (
-	version = "v2.4.0-alpha"
-	changed = "Fixed:\n Fixed logic around blacklist."
+	version = "v2.5.0-alpha"
+	changed = "Increased test coverage by refactoring to a fluid design. Removed boltdb requirement."
 )
 
 // NewVersionCommand returns a version cobra command
@@ -19,8 +19,7 @@ func NewVersionCommand() *cobra.Command {
 		Long:    "version prints tzpay's version to stdout",
 		Example: `tzpay version`,
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println(version)
-			fmt.Println(changed)
+			fmt.Printf("%s - %s\n", version, changed)
 		},
 	}
 	return version

@@ -7,51 +7,50 @@ import (
 	"time"
 
 	gotezos "github.com/goat-systems/go-tezos/v2"
-	"github.com/goat-systems/tzpay/v2/internal/db/model"
 	"github.com/goat-systems/tzpay/v2/internal/test"
 	"github.com/stretchr/testify/assert"
 )
 
-// func Test_PayoutsSort(t *testing.T) {
-// 	delegationEarnings := model.DelegationEarnings{}
-// 	delegationEarnings = append(delegationEarnings,
-// 		[]model.DelegationEarning{
-// 			model.DelegationEarning{
-// 				Address: "tz1c",
-// 			},
-// 			model.DelegationEarning{
-// 				Address: "tz1a",
-// 			},
-// 			model.DelegationEarning{
-// 				Address: "tz1b",
-// 			},
-// 		}...,
-// 	)
-// 	sort.Sort(&delegationEarnings)
+func Test_PayoutsSort(t *testing.T) {
+	delegationEarnings := DelegationEarnings{}
+	delegationEarnings = append(delegationEarnings,
+		[]DelegationEarning{
+			{
+				Address: "tz1c",
+			},
+			{
+				Address: "tz1a",
+			},
+			{
+				Address: "tz1b",
+			},
+		}...,
+	)
+	sort.Sort(&delegationEarnings)
 
-// 	want := model.DelegationEarnings{}
-// 	want = append(want,
-// 		[]model.DelegationEarning{
-// 			model.DelegationEarning{
-// 				Address: "tz1a",
-// 			},
-// 			model.DelegationEarning{
-// 				Address: "tz1b",
-// 			},
-// 			model.DelegationEarning{
-// 				Address: "tz1c",
-// 			},
-// 		}...,
-// 	)
+	want := DelegationEarnings{}
+	want = append(want,
+		[]DelegationEarning{
+			{
+				Address: "tz1a",
+			},
+			{
+				Address: "tz1b",
+			},
+			{
+				Address: "tz1c",
+			},
+		}...,
+	)
 
-// 	assert.Equal(t, want, delegationEarnings)
-// }
+	assert.Equal(t, want, delegationEarnings)
+}
 
 func Test_Execute(t *testing.T) {
 	type want struct {
 		err         bool
 		errContains string
-		payouts     *model.Payout
+		report      Report
 	}
 
 	cases := []struct {
@@ -66,8 +65,8 @@ func Test_Execute(t *testing.T) {
 			},
 			want{
 				true,
-				"failed to get delegation earnings for cycle 100: failed to get frozen balance",
-				nil,
+				"failed to get delegation earnings for cycle 0: failed to get frozen balance",
+				Report{},
 			},
 		},
 		{
@@ -77,8 +76,8 @@ func Test_Execute(t *testing.T) {
 			},
 			want{
 				true,
-				"failed to get delegation earnings for cycle 100: failed to get delegated contracts at cycle",
-				nil,
+				"failed to get delegation earnings for cycle 0: failed to get delegated contracts at cycle",
+				Report{},
 			},
 		},
 		{
@@ -88,8 +87,8 @@ func Test_Execute(t *testing.T) {
 			},
 			want{
 				true,
-				"failed to get delegation earnings for cycle 100: failed to get cycle",
-				nil,
+				"failed to get delegation earnings for cycle 0: failed to get cycle",
+				Report{},
 			},
 		},
 		{
@@ -99,8 +98,8 @@ func Test_Execute(t *testing.T) {
 			},
 			want{
 				true,
-				"failed to get delegation earnings for cycle 100: failed to get staking balance",
-				nil,
+				"failed to get delegation earnings for cycle 0: failed to get staking balance",
+				Report{},
 			},
 		},
 		{
@@ -109,39 +108,39 @@ func Test_Execute(t *testing.T) {
 			want{
 				false,
 				"",
-				&model.Payout{
-					DelegationEarnings: model.DelegationEarnings{
-						model.DelegationEarning{
-							Address:      "tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
-							Fee:          big.NewInt(3500000),
-							GrossRewards: big.NewInt(70000000),
-							NetRewards:   big.NewInt(66500000),
-							Share:        1,
+				Report{
+					DelegationEarnings: DelegationEarnings{
+						DelegationEarning{
+							Address:      "KT1GcSsQaTtMB2HvUKU9b6WRFUnGpGx9JwGk",
+							Fee:          big.NewInt(1750),
+							GrossRewards: big.NewInt(35000),
+							NetRewards:   big.NewInt(33250),
+							Share:        0.0005,
 						},
-						model.DelegationEarning{
-							Address:      "tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
-							Fee:          big.NewInt(3500000),
-							GrossRewards: big.NewInt(70000000),
-							NetRewards:   big.NewInt(66500000),
-							Share:        1,
+						DelegationEarning{
+							Address:      "KT1K4xei3yozp7UP5rHV5wuoDzWwBXqCGRBt",
+							Fee:          big.NewInt(1750),
+							GrossRewards: big.NewInt(35000),
+							NetRewards:   big.NewInt(33250),
+							Share:        0.0005,
 						},
-						model.DelegationEarning{
-							Address:      "tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
-							Fee:          big.NewInt(3500000),
-							GrossRewards: big.NewInt(70000000),
-							NetRewards:   big.NewInt(66500000),
-							Share:        1,
+						DelegationEarning{
+							Address:      "KT1LinsZAnyxajEv4eNFWtwHMdyhbJsGfvp3",
+							Fee:          big.NewInt(1750),
+							GrossRewards: big.NewInt(35000),
+							NetRewards:   big.NewInt(33250),
+							Share:        0.0005,
 						},
 					},
-					DelegateEarnings: model.DelegateEarnings{
-						Address: "somedelegate",
-						Fees:    big.NewInt(10500000),
-						Share:   1,
-						Rewards: big.NewInt(70000000),
-						Net:     big.NewInt(80500000),
+					DelegateEarnings: DelegateEarnings{
+						Address: "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+						Fees:    big.NewInt(5250),
+						Share:   0.0005,
+						Rewards: big.NewInt(35000),
+						Net:     big.NewInt(40250),
 					},
 					CycleHash:      "some_hash",
-					Cycle:          100,
+					Cycle:          0,
 					FrozenBalance:  big.NewInt(70000000),
 					StakingBalance: big.NewInt(10000000000),
 					Operations:     nil,
@@ -153,19 +152,18 @@ func Test_Execute(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			payout := &Payout{gt: tt.input}
+			payout := &Payout{
+				gt: tt.input,
+				wallet: gotezos.Wallet{
+					Address: "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+				},
+				batchSize: 2,
+				delegate:  "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+				bakerFee:  0.05,
+			}
 			report, err := payout.Execute()
-			checkErr(t, tt.want.err, tt.want.errContains, err)
-
-			if tt.want.payouts != nil {
-				sort.Sort(tt.want.payouts.DelegationEarnings)
-			}
-
-			if payout != nil {
-				sort.Sort(report.DelegationEarnings)
-			}
-
-			assert.Equal(t, tt.want.payouts, payout)
+			test.CheckErr(t, tt.want.err, tt.want.errContains, err)
+			assert.Equal(t, tt.want.report, report)
 		})
 	}
 }
@@ -213,7 +211,7 @@ func Test_processDelegate(t *testing.T) {
 			want{
 				false,
 				"",
-				DelegateEarnings{Address: "some_delegate", Fees: big.NewInt(3000), Share: 1000, Rewards: big.NewInt(700000), Net: big.NewInt(703000)},
+				DelegateEarnings{Address: "some_delegate", Fees: big.NewInt(3000), Share: 0.5, Rewards: big.NewInt(350), Net: big.NewInt(3350)},
 			},
 		},
 		{
@@ -254,7 +252,7 @@ func Test_processDelegate(t *testing.T) {
 				gt: tt.input.gt,
 			}
 			delegateEarnings, err := payout.processDelegate(tt.input.delegateInput)
-			checkErr(t, tt.want.err, tt.want.errContains, err)
+			test.CheckErr(t, tt.want.err, tt.want.errContains, err)
 			assert.Equal(t, tt.want.delegateEarnings, delegateEarnings)
 		})
 	}
@@ -361,7 +359,7 @@ func Test_processDelegation(t *testing.T) {
 			want{
 				false,
 				"",
-				&DelegationEarning{Fee: big.NewInt(4000000), GrossRewards: big.NewInt(80000000), NetRewards: big.NewInt(76000000), Share: 0.1},
+				&DelegationEarning{Fee: big.NewInt(2000), GrossRewards: big.NewInt(40000), NetRewards: big.NewInt(38000), Share: 5e-05},
 			},
 		},
 		{
@@ -389,7 +387,7 @@ func Test_processDelegation(t *testing.T) {
 				bakerFee: 0.05,
 			}
 			out, err := payout.processDelegation(tt.input)
-			checkErr(t, tt.want.err, tt.want.errContains, err)
+			test.CheckErr(t, tt.want.err, tt.want.errContains, err)
 			assert.Equal(t, tt.want.delegationEarnings, out)
 		})
 	}
@@ -517,7 +515,7 @@ func Test_getOperationHexStrings(t *testing.T) {
 				},
 			}
 			ophexes, err := payout.getOperationHexStrings(tt.input.delegationEarnings)
-			checkErr(t, tt.want.err, tt.want.errContains, err)
+			test.CheckErr(t, tt.want.err, tt.want.errContains, err)
 			assert.Equal(t, tt.want.ophexes, ophexes)
 		})
 	}
@@ -628,7 +626,7 @@ func Test_forgeOperation(t *testing.T) {
 				},
 			}
 			ophash, counter, err := payout.forgeOperation(tt.input.counter, tt.input.delegationEarnings)
-			checkErr(t, tt.want.err, tt.want.errContains, err)
+			test.CheckErr(t, tt.want.err, tt.want.errContains, err)
 			assert.Equal(t, tt.want.counter, counter)
 			assert.Equal(t, tt.want.ophash, ophash)
 		})
@@ -858,15 +856,6 @@ func Test_isInBlacklist(t *testing.T) {
 			actual := payout.isInBlacklist(tt.input)
 			assert.Equal(t, tt.want, actual)
 		})
-	}
-}
-
-func checkErr(t *testing.T, wantErr bool, errContains string, err error) {
-	if wantErr {
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), errContains)
-	} else {
-		assert.Nil(t, err)
 	}
 }
 
