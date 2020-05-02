@@ -156,6 +156,7 @@ func NewPayout(input NewPayoutInput) *Payout {
 		networkFee: input.NetworkFee,
 		gasLimit:   input.GasLimit,
 		verbose:    input.Verbose,
+		batchSize:  input.BatchSize,
 	}
 }
 
@@ -426,6 +427,13 @@ func (p *Payout) injectOperations(operations []string) ([]string, error) {
 
 		ophashes = append(ophashes, ophash)
 
+		if p.verbose {
+			logrus.WithFields(logrus.Fields{
+				"hash":      ophash,
+				"operation": fmt.Sprintf("%d/%d", (i + 1), len(operations)),
+			}).Info("Confirming injection.")
+		}
+
 		if !p.confirmOperation(ophash) {
 			return ophashes, errors.Wrap(err, "failed to inject operation: failed to confirm operation")
 		}
@@ -434,7 +442,7 @@ func (p *Payout) injectOperations(operations []string) ([]string, error) {
 			logrus.WithFields(logrus.Fields{
 				"hash":      ophash,
 				"operation": fmt.Sprintf("%d/%d", (i + 1), len(operations)),
-			}).Info("Injected and confirmed")
+			}).Info("Injection confirmed.")
 		}
 	}
 

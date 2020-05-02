@@ -16,6 +16,10 @@ import (
 
 // Table prints a payout in table format
 func Table(delegate, walletAddress string, report payout.Report) {
+	if walletAddress == "" {
+		walletAddress = "N/A"
+	}
+
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{"Cylce", "Baker", "Wallet", "Rewards", "Operation"})
 	table.Append([]string{
