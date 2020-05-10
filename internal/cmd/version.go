@@ -7,8 +7,8 @@ import (
 )
 
 const (
-	version = "v2.5.0-alpha"
-	changed = "Increased test coverage by refactoring to a fluid design. Removed boltdb requirement."
+	version = "v2.6.0-alpha"
+	changed = "Fixed Blacklist."
 )
 
 // NewVersionCommand returns a version cobra command

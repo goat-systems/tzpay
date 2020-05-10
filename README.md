@@ -11,7 +11,7 @@ go get -u github.com/goat-systems/tzpay/v2
 
 ### Linux
 ```
-wget https://github.com/goat-systems/tzpay/releases/download/v2.5.0-alpha/tzpay_linux_amd64
+wget https://github.com/goat-systems/tzpay/releases/download/v2.6.0-alpha/tzpay_linux_amd64
 sudo mv tzpay_linux_amd64 /usr/local/bin/tzpay
 sudo chmod a+x /usr/local/bin/tzpay
 ```
