@@ -637,7 +637,6 @@ func Test_forgeOperation(t *testing.T) {
 func Test_constructPayoutContents(t *testing.T) {
 	type input struct {
 		counter            int
-		blacklist          []string
 		delegationEarnings DelegationEarnings
 	}
 
@@ -650,7 +649,6 @@ func Test_constructPayoutContents(t *testing.T) {
 			"is successful",
 			input{
 				100,
-				[]string{},
 				DelegationEarnings{
 					DelegationEarning{
 						Address:      "somedelegation",
@@ -685,38 +683,6 @@ func Test_constructPayoutContents(t *testing.T) {
 				},
 			},
 		},
-		{
-			"is successful in respecting blacklist",
-			input{
-				100,
-				[]string{
-					"someotherdelegation",
-				},
-				DelegationEarnings{
-					DelegationEarning{
-						Address:      "somedelegation",
-						GrossRewards: big.NewInt(1000000),
-						NetRewards:   big.NewInt(900000),
-					},
-					DelegationEarning{
-						Address:      "someotherdelegation",
-						GrossRewards: big.NewInt(1000000),
-						NetRewards:   big.NewInt(950000),
-					},
-				},
-			},
-			[]gotezos.ForgeTransactionOperationInput{
-				{
-					Source:       "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
-					Fee:          gotezos.NewInt(0),
-					Counter:      101,
-					GasLimit:     gotezos.NewInt(0),
-					StorageLimit: gotezos.NewInt(0),
-					Amount:       gotezos.NewInt(900000),
-					Destination:  "somedelegation",
-				},
-			},
-		},
 	}
 
 	for _, tt := range cases {
@@ -725,7 +691,6 @@ func Test_constructPayoutContents(t *testing.T) {
 				wallet: gotezos.Wallet{
 					Address: "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
 				},
-				blacklist: tt.input.blacklist,
 			}
 			contents, _ := payout.constructPayoutContents(tt.input.counter, tt.input.delegationEarnings)
 			assert.Equal(t, tt.want, contents)

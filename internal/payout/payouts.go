@@ -157,6 +157,7 @@ func NewPayout(input NewPayoutInput) *Payout {
 		gasLimit:   input.GasLimit,
 		verbose:    input.Verbose,
 		batchSize:  input.BatchSize,
+		blacklist:  input.BlackList,
 	}
 }
 
@@ -167,9 +168,16 @@ func (p *Payout) Execute() (Report, error) {
 		return Report{}, errors.Wrapf(err, "failed to get delegation earnings for cycle %d", p.cycle)
 	}
 
-	delegations, err := p.gt.DelegatedContractsAtCycle(p.cycle, p.delegate)
+	rpcDelegations, err := p.gt.DelegatedContractsAtCycle(p.cycle, p.delegate)
 	if err != nil {
 		return Report{}, errors.Wrapf(err, "failed to get delegation earnings for cycle %d", p.cycle)
+	}
+
+	var delegations []*string
+	for _, delegation := range rpcDelegations {
+		if !p.isInBlacklist(*delegation) {
+			delegations = append(delegations, delegation)
+		}
 	}
 
 	networkCycle, err := p.gt.Cycle(p.cycle)
@@ -366,19 +374,17 @@ func (p *Payout) forgeOperation(counter int, delegationEarnings DelegationEarnin
 func (p *Payout) constructPayoutContents(counter int, delegationEarnings DelegationEarnings) ([]gotezos.ForgeTransactionOperationInput, int) {
 	var contents []gotezos.ForgeTransactionOperationInput
 	for _, delegation := range delegationEarnings {
-		if !p.isInBlacklist(delegation.Address) {
-			if delegation.NetRewards.Int64() >= int64(p.minPayment) {
-				counter++
-				contents = append(contents, gotezos.ForgeTransactionOperationInput{
-					Source:       p.wallet.Address,
-					Destination:  delegation.Address,
-					Amount:       &gotezos.Int{Big: delegation.NetRewards},
-					Fee:          gotezos.NewInt(p.networkFee),
-					GasLimit:     gotezos.NewInt(p.gasLimit),
-					Counter:      counter,
-					StorageLimit: gotezos.NewInt(0),
-				})
-			}
+		if delegation.NetRewards.Int64() >= int64(p.minPayment) {
+			counter++
+			contents = append(contents, gotezos.ForgeTransactionOperationInput{
+				Source:       p.wallet.Address,
+				Destination:  delegation.Address,
+				Amount:       &gotezos.Int{Big: delegation.NetRewards},
+				Fee:          gotezos.NewInt(p.networkFee),
+				GasLimit:     gotezos.NewInt(p.gasLimit),
+				Counter:      counter,
+				StorageLimit: gotezos.NewInt(0),
+			})
 		}
 	}
 	return contents, counter
