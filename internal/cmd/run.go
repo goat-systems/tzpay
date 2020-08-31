@@ -3,7 +3,7 @@ package cmd
 import (
 	"strconv"
 
-	gotezos "github.com/goat-systems/go-tezos/v2"
+	gotezos "github.com/goat-systems/go-tezos/v3"
 	"github.com/goat-systems/tzpay/v2/internal/enviroment"
 	"github.com/goat-systems/tzpay/v2/internal/payout"
 	"github.com/goat-systems/tzpay/v2/internal/print"

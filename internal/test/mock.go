@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"testing"
 
-	gotezos "github.com/goat-systems/go-tezos/v2"
+	gotezos "github.com/goat-systems/go-tezos/v3"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -104,12 +104,11 @@ func (g *GoTezosMock) StakingBalance(blockhash, delegate string) (*big.Int, erro
 }
 
 // InjectionOperation -
-func (g *GoTezosMock) InjectionOperation(input gotezos.InjectionOperationInput) ([]byte, error) {
-	if g.StakingBalanceErr {
-		return nil, errors.New("failed to inject operation")
+func (g *GoTezosMock) InjectionOperation(input gotezos.InjectionOperationInput) (string, error) {
+	if g.InjectionOperationErr {
+		return "", errors.New("failed to inject operation")
 	}
-	resp := []byte("ooYympR9wfV98X4MUHtE78NjXYRDeMTAD4ei7zEZDqoHv2rfb1M")
-	return resp, nil
+	return "ooYympR9wfV98X4MUHtE78NjXYRDeMTAD4ei7zEZDqoHv2rfb1M", nil
 }
 
 // OperationHashes -

@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	gotezos "github.com/goat-systems/go-tezos/v2"
+	gotezos "github.com/goat-systems/go-tezos/v3"
 	"github.com/goat-systems/tzpay/v2/internal/test"
 	"github.com/stretchr/testify/assert"
 )
@@ -38,10 +38,11 @@ func Test_NewDryRunEnviroment(t *testing.T) {
 					return []byte(`["a","b"]`), nil
 				},
 				enviroment: map[string]string{
-					"TZPAY_BAKERS_FEE": "0.05",
-					"TZPAY_DELEGATE":   "some_delegate",
-					"TZPAY_HOST_NODE":  "http://127.0.0.1:8732",
-					"TZPAY_BLACKLIST":  "some_blacklist_file.json",
+					"TZPAY_BAKERS_FEE":                 "0.05",
+					"TZPAY_DELEGATE":                   "some_delegate",
+					"TZPAY_HOST_NODE":                  "http://127.0.0.1:8732",
+					"TZPAY_BLACKLIST":                  "some_blacklist_file.json",
+					"TZPAY_DEXTER_LIQUIDITY_CONTRACTS": "KT1a,KT1b,KT1c",
 				},
 			},
 			want{
@@ -55,6 +56,11 @@ func Test_NewDryRunEnviroment(t *testing.T) {
 					MinimumPayment: 100,
 					NetworkFee:     2941,
 					BlackListFile:  "some_blacklist_file.json",
+					DexterLiquidiyContracts: []string{
+						"KT1a",
+						"KT1b",
+						"KT1c",
+					},
 					BlackList: []string{
 						"a",
 						"b",

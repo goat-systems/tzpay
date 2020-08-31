@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	gotezos "github.com/goat-systems/go-tezos/v2"
+	gotezos "github.com/goat-systems/go-tezos/v3"
 	"github.com/goat-systems/tzpay/v2/internal/test"
 	"github.com/stretchr/testify/assert"
 )
@@ -643,7 +643,7 @@ func Test_constructPayoutContents(t *testing.T) {
 	cases := []struct {
 		name  string
 		input input
-		want  []gotezos.ForgeTransactionOperationInput
+		want  gotezos.Contents
 	}{
 		{
 			"is successful",
@@ -662,24 +662,28 @@ func Test_constructPayoutContents(t *testing.T) {
 					},
 				},
 			},
-			[]gotezos.ForgeTransactionOperationInput{
-				{
-					Source:       "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
-					Fee:          gotezos.NewInt(0),
-					Counter:      101,
-					GasLimit:     gotezos.NewInt(0),
-					StorageLimit: gotezos.NewInt(0),
-					Amount:       gotezos.NewInt(900000),
-					Destination:  "somedelegation",
-				},
-				{
-					Source:       "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
-					Fee:          gotezos.NewInt(0),
-					Counter:      102,
-					GasLimit:     gotezos.NewInt(0),
-					StorageLimit: gotezos.NewInt(0),
-					Amount:       gotezos.NewInt(950000),
-					Destination:  "someotherdelegation",
+			gotezos.Contents{
+				Transactions: []gotezos.Transaction{
+					{
+						Kind:         gotezos.TRANSACTION,
+						Source:       "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+						Fee:          gotezos.NewInt(0),
+						Counter:      101,
+						GasLimit:     gotezos.NewInt(0),
+						StorageLimit: gotezos.NewInt(0),
+						Amount:       gotezos.NewInt(900000),
+						Destination:  "somedelegation",
+					},
+					{
+						Kind:         gotezos.TRANSACTION,
+						Source:       "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+						Fee:          gotezos.NewInt(0),
+						Counter:      102,
+						GasLimit:     gotezos.NewInt(0),
+						StorageLimit: gotezos.NewInt(0),
+						Amount:       gotezos.NewInt(950000),
+						Destination:  "someotherdelegation",
+					},
 				},
 			},
 		},

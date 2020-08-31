@@ -1,14 +1,13 @@
 package payout
 
 import (
-	"encoding/json"
 	"fmt"
 	"math/big"
 	"sort"
 	"time"
 	"unicode"
 
-	gotezos "github.com/goat-systems/go-tezos/v2"
+	gotezos "github.com/goat-systems/go-tezos/v3"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -363,20 +362,21 @@ func (p *Payout) forgeOperation(counter int, delegationEarnings DelegationEarnin
 
 	transactions, lastCounter := p.constructPayoutContents(counter, delegationEarnings)
 
-	forge, err := gotezos.ForgeTransactionOperation(head.Hash, transactions...)
+	forge, err := gotezos.ForgeOperation(head.Hash, transactions)
 	if err != nil {
 		return "", lastCounter, errors.Wrap(err, "failed to forge payout")
 	}
 
-	return *forge, lastCounter, nil
+	return forge, lastCounter, nil
 }
 
-func (p *Payout) constructPayoutContents(counter int, delegationEarnings DelegationEarnings) ([]gotezos.ForgeTransactionOperationInput, int) {
-	var contents []gotezos.ForgeTransactionOperationInput
+func (p *Payout) constructPayoutContents(counter int, delegationEarnings DelegationEarnings) (gotezos.Contents, int) {
+	var transactions []gotezos.Transaction
 	for _, delegation := range delegationEarnings {
 		if delegation.NetRewards.Int64() >= int64(p.minPayment) {
 			counter++
-			contents = append(contents, gotezos.ForgeTransactionOperationInput{
+			transactions = append(transactions, gotezos.Transaction{
+				Kind:         gotezos.TRANSACTION,
 				Source:       p.wallet.Address,
 				Destination:  delegation.Address,
 				Amount:       &gotezos.Int{Big: delegation.NetRewards},
@@ -387,7 +387,10 @@ func (p *Payout) constructPayoutContents(counter int, delegationEarnings Delegat
 			})
 		}
 	}
-	return contents, counter
+
+	return gotezos.Contents{
+		Transactions: transactions,
+	}, counter
 }
 
 func (p *Payout) batch(delegationEarnings DelegationEarnings) []DelegationEarnings {
@@ -417,18 +420,11 @@ func (p *Payout) injectOperations(operations []string) ([]string, error) {
 			return ophashes, errors.Wrap(err, "failed to inject operation")
 		}
 
-		resp, err := p.gt.InjectionOperation(gotezos.InjectionOperationInput{
-			Operation: &signedop,
+		ophash, err := p.gt.InjectionOperation(gotezos.InjectionOperationInput{
+			Operation: signedop.SignedOperation,
 		})
 		if err != nil {
 			return ophashes, errors.Wrap(err, "failed to inject operation")
-		}
-
-		// TODO this unmarshaling should be done in the go lib
-		var ophash string
-		err = json.Unmarshal(resp, &ophash)
-		if err != nil {
-			return ophashes, errors.Wrap(err, "failed to inject operation: failed to unmarshal operation hash")
 		}
 
 		ophashes = append(ophashes, ophash)
