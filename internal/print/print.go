@@ -12,6 +12,7 @@ import (
 	"github.com/goat-systems/tzpay/v2/internal/payout"
 	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
 
 // Table prints a payout in table format
@@ -56,12 +57,12 @@ func Table(delegate, walletAddress string, report payout.Report) {
 
 // JSON prints a payout to json
 func JSON(report payout.Report) error {
-	prettyJSON, err := json.MarshalIndent(report, "", "    ")
+	prettyJSON, err := json.Marshal(report)
 	if err != nil {
-		return errors.Wrap(err, "failed to print json")
+		return errors.Wrap(err, "failed to parse report into json")
 	}
 
-	fmt.Println(string(prettyJSON))
+	log.WithField("payout", string(prettyJSON)).Info("Payout for cycle complete.")
 	return nil
 }
 

@@ -27,7 +27,6 @@ type DryRunEnviroment struct {
 
 	DexterLiquidiyContracts []string `env:"TZPAY_DEXTER_LIQUIDITY_CONTRACTS" envSeparator:","`
 	BlackListFile           string   `env:"TZPAY_BLACKLIST"`
-	EarningsOnly            bool     `env:"TZPAY_EARNINGS_ONLY"`
 
 	GoTezos   gotezos.IFace `env:"-"`
 	BlackList []string      `env:"-"`
@@ -46,7 +45,6 @@ type RunEnviroment struct {
 
 	DexterLiquidiyContracts []string `env:"TZPAY_DEXTER_LIQUIDITY_CONTRACTS" envSeparator:","`
 	BlackListFile           string   `env:"TZPAY_BLACKLIST"`
-	EarningsOnly            bool     `env:"TZPAY_EARNINGS_ONLY"`
 
 	GoTezos   gotezos.IFace  `env:"-"`
 	BlackList []string       `env:"-"`
