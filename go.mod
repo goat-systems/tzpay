@@ -6,7 +6,7 @@ require (
 	github.com/caarlos0/env/v6 v6.2.1
 	github.com/go-playground/validator/v10 v10.2.0
 	github.com/goat-systems/go-tezos/v2 v2.0.0
-	github.com/goat-systems/go-tezos/v3 v3.0.0-20200831153437-e96dc210991e
+	github.com/goat-systems/go-tezos/v3 v3.0.0-20200902172416-19846f66e38c
 	github.com/mattn/go-runewidth v0.0.8 // indirect
 	github.com/olekukonko/tablewriter v0.0.4
 	github.com/pkg/errors v0.9.1

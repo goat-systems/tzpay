@@ -2,7 +2,6 @@ package payout
 
 import (
 	"fmt"
-	"math/big"
 	"sort"
 	"time"
 	"unicode"
@@ -55,8 +54,8 @@ type Report struct {
 	DelegateEarnings   DelegateEarnings   `json:"delegate"`
 	CycleHash          string             `json:"cycle_hash"`
 	Cycle              int                `json:"cycle"`
-	FrozenBalance      *big.Int           `json:"rewards"`
-	StakingBalance     *big.Int           `json:"staking_balance"`
+	FrozenBalance      int                `json:"rewards"`
+	StakingBalance     int                `json:"staking_balance"`
 	Operations         []string           `json:"operation"`
 	OperationsLink     []string           `json:"operation_link"`
 }
@@ -64,19 +63,19 @@ type Report struct {
 // DelegationEarning -
 type DelegationEarning struct {
 	Address      string
-	Fee          *big.Int
-	GrossRewards *big.Int
-	NetRewards   *big.Int
+	Fee          int
+	GrossRewards int
+	NetRewards   int
 	Share        float64
 }
 
 // DelegateEarnings -
 type DelegateEarnings struct {
 	Address string
-	Fees    *big.Int
+	Fees    int
 	Share   float64
-	Rewards *big.Int
-	Net     *big.Int
+	Rewards int
+	Net     int
 }
 
 // DelegationEarnings contains list of DelegationEarning and implements sort.
@@ -117,7 +116,7 @@ func (d DelegationEarnings) Less(i, j int) bool {
 
 type processDelegationsInput struct {
 	delegations          []*string
-	stakingBalance       *big.Int
+	stakingBalance       int
 	frozenBalanceRewards gotezos.FrozenBalance
 	blockHash            string
 }
@@ -125,7 +124,7 @@ type processDelegationsInput struct {
 type processDelegateInput struct {
 	delegate             string
 	delegations          []DelegationEarning
-	stakingBalance       *big.Int
+	stakingBalance       int
 	frozenBalanceRewards gotezos.FrozenBalance
 	blockHash            string
 }
@@ -137,7 +136,7 @@ type processDelegationsOutput struct {
 
 type processDelegationInput struct {
 	delegation           string
-	stakingBalance       *big.Int
+	stakingBalance       int
 	frozenBalanceRewards gotezos.FrozenBalance
 	blockHash            string
 }
@@ -200,7 +199,7 @@ func (p *Payout) Execute() (Report, error) {
 		StakingBalance: stakingBalance,
 		CycleHash:      networkCycle.BlockHash,
 		Cycle:          p.cycle,
-		FrozenBalance:  frozenBalanceRewards.Rewards.Big,
+		FrozenBalance:  frozenBalanceRewards.Rewards,
 	}
 
 	for _, delegation := range delegationsOutput {
@@ -244,7 +243,7 @@ func (p *Payout) Execute() (Report, error) {
 func (p *Payout) processDelegate(input processDelegateInput) (DelegateEarnings, error) {
 	delegateEarning := DelegateEarnings{
 		Address: input.delegate,
-		Net:     big.NewInt(0),
+		Net:     0,
 	}
 
 	balance, err := p.gt.Balance(input.blockHash, input.delegate)
@@ -252,17 +251,17 @@ func (p *Payout) processDelegate(input processDelegateInput) (DelegateEarnings, 
 		return delegateEarning, errors.Wrapf(err, "failed to process delegate earnings for %s", input.delegate)
 	}
 
-	delegateEarning.Share = float64(balance.Int64()) / float64(input.stakingBalance.Int64())
-	rewardsFloat := delegateEarning.Share * float64(input.frozenBalanceRewards.Rewards.Big.Int64())
-	delegateEarning.Rewards = big.NewInt(int64(rewardsFloat))
+	delegateEarning.Share = float64(balance) / float64(input.stakingBalance)
+	rewardsFloat := delegateEarning.Share * float64(input.frozenBalanceRewards.Rewards)
+	delegateEarning.Rewards = int(rewardsFloat)
 
-	fees := big.NewInt(0)
+	fees := 0
 	for _, delegation := range input.delegations {
-		fees.Add(fees, delegation.Fee)
+		fees += delegation.Fee
 	}
 
 	delegateEarning.Fees = fees
-	delegateEarning.Net.Add(delegateEarning.Fees, delegateEarning.Rewards)
+	delegateEarning.Net = delegateEarning.Fees + delegateEarning.Rewards
 
 	return delegateEarning, nil
 }
@@ -317,13 +316,13 @@ func (p *Payout) processDelegation(input processDelegationInput) (*DelegationEar
 		return nil, errors.Wrapf(err, "failed to process delegation earnings for delegation %s", input.delegation)
 	}
 
-	delegationEarning.Share = float64(balance.Int64()) / float64(input.stakingBalance.Int64())
-	grossRewardsFloat := delegationEarning.Share * float64(input.frozenBalanceRewards.Rewards.Big.Int64())
+	delegationEarning.Share = float64(balance) / float64(input.stakingBalance)
+	grossRewardsFloat := delegationEarning.Share * float64(input.frozenBalanceRewards.Rewards)
 	feeFloat := grossRewardsFloat * p.bakerFee
 
-	delegationEarning.GrossRewards = big.NewInt(int64(grossRewardsFloat))
-	delegationEarning.Fee = big.NewInt(int64(feeFloat))
-	delegationEarning.NetRewards = big.NewInt(0).Sub(delegationEarning.GrossRewards, delegationEarning.Fee)
+	delegationEarning.GrossRewards = int(grossRewardsFloat)
+	delegationEarning.Fee = int(feeFloat)
+	delegationEarning.NetRewards = delegationEarning.GrossRewards - delegationEarning.Fee
 
 	return delegationEarning, nil
 }
@@ -362,7 +361,12 @@ func (p *Payout) forgeOperation(counter int, delegationEarnings DelegationEarnin
 
 	transactions, lastCounter := p.constructPayoutContents(counter, delegationEarnings)
 
-	forge, err := gotezos.ForgeOperation(head.Hash, transactions)
+	var contents []gotezos.OperationContents
+	for _, transaction := range transactions {
+		contents = append(contents, &transaction)
+	}
+
+	forge, err := gotezos.ForgeOperation(head.Hash, contents...)
 	if err != nil {
 		return "", lastCounter, errors.Wrap(err, "failed to forge payout")
 	}
@@ -370,27 +374,24 @@ func (p *Payout) forgeOperation(counter int, delegationEarnings DelegationEarnin
 	return forge, lastCounter, nil
 }
 
-func (p *Payout) constructPayoutContents(counter int, delegationEarnings DelegationEarnings) (gotezos.Contents, int) {
+func (p *Payout) constructPayoutContents(counter int, delegationEarnings DelegationEarnings) ([]gotezos.Transaction, int) {
 	var transactions []gotezos.Transaction
 	for _, delegation := range delegationEarnings {
-		if delegation.NetRewards.Int64() >= int64(p.minPayment) {
+		if delegation.NetRewards >= p.minPayment {
 			counter++
 			transactions = append(transactions, gotezos.Transaction{
-				Kind:         gotezos.TRANSACTION,
 				Source:       p.wallet.Address,
 				Destination:  delegation.Address,
-				Amount:       &gotezos.Int{Big: delegation.NetRewards},
-				Fee:          gotezos.NewInt(p.networkFee),
-				GasLimit:     gotezos.NewInt(p.gasLimit),
+				Amount:       int64(delegation.NetRewards),
+				Fee:          int64(p.networkFee),
+				GasLimit:     int64(p.gasLimit),
 				Counter:      counter,
-				StorageLimit: gotezos.NewInt(0),
+				StorageLimit: 0,
 			})
 		}
 	}
 
-	return gotezos.Contents{
-		Transactions: transactions,
-	}, counter
+	return transactions, counter
 }
 
 func (p *Payout) batch(delegationEarnings DelegationEarnings) []DelegationEarnings {

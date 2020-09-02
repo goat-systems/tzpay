@@ -1,7 +1,6 @@
 package payout
 
 import (
-	"math/big"
 	"sort"
 	"testing"
 	"time"
@@ -112,37 +111,37 @@ func Test_Execute(t *testing.T) {
 					DelegationEarnings: DelegationEarnings{
 						DelegationEarning{
 							Address:      "KT1GcSsQaTtMB2HvUKU9b6WRFUnGpGx9JwGk",
-							Fee:          big.NewInt(1750),
-							GrossRewards: big.NewInt(35000),
-							NetRewards:   big.NewInt(33250),
+							Fee:          1750,
+							GrossRewards: 35000,
+							NetRewards:   33250,
 							Share:        0.0005,
 						},
 						DelegationEarning{
 							Address:      "KT1K4xei3yozp7UP5rHV5wuoDzWwBXqCGRBt",
-							Fee:          big.NewInt(1750),
-							GrossRewards: big.NewInt(35000),
-							NetRewards:   big.NewInt(33250),
+							Fee:          1750,
+							GrossRewards: 35000,
+							NetRewards:   33250,
 							Share:        0.0005,
 						},
 						DelegationEarning{
 							Address:      "KT1LinsZAnyxajEv4eNFWtwHMdyhbJsGfvp3",
-							Fee:          big.NewInt(1750),
-							GrossRewards: big.NewInt(35000),
-							NetRewards:   big.NewInt(33250),
+							Fee:          1750,
+							GrossRewards: 35000,
+							NetRewards:   33250,
 							Share:        0.0005,
 						},
 					},
 					DelegateEarnings: DelegateEarnings{
 						Address: "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
-						Fees:    big.NewInt(5250),
+						Fees:    5250,
 						Share:   0.0005,
-						Rewards: big.NewInt(35000),
-						Net:     big.NewInt(40250),
+						Rewards: 35000,
+						Net:     40250,
 					},
 					CycleHash:      "some_hash",
 					Cycle:          0,
-					FrozenBalance:  big.NewInt(70000000),
-					StakingBalance: big.NewInt(10000000000),
+					FrozenBalance:  70000000,
+					StakingBalance: 10000000000,
 					Operations:     nil,
 					OperationsLink: nil,
 				},
@@ -157,9 +156,11 @@ func Test_Execute(t *testing.T) {
 				wallet: gotezos.Wallet{
 					Address: "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
 				},
-				batchSize: 2,
-				delegate:  "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
-				bakerFee:  0.05,
+				batchSize:  2,
+				delegate:   "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+				bakerFee:   0.05,
+				networkFee: 1345,
+				gasLimit:   203999,
 			}
 			report, err := payout.Execute()
 			test.CheckErr(t, tt.want.err, tt.want.errContains, err)
@@ -192,18 +193,18 @@ func Test_processDelegate(t *testing.T) {
 					delegate: "some_delegate",
 					delegations: []DelegationEarning{
 						{
-							Fee: big.NewInt(1000),
+							Fee: 1000,
 						},
 						{
-							Fee: big.NewInt(1000),
+							Fee: 1000,
 						},
 						{
-							Fee: big.NewInt(1000),
+							Fee: 1000,
 						},
 					},
-					stakingBalance: big.NewInt(10000000),
+					stakingBalance: 10000000,
 					frozenBalanceRewards: gotezos.FrozenBalance{
-						Rewards: gotezos.NewInt(700),
+						Rewards: 700,
 					},
 					blockHash: "block_hash",
 				},
@@ -211,7 +212,7 @@ func Test_processDelegate(t *testing.T) {
 			want{
 				false,
 				"",
-				DelegateEarnings{Address: "some_delegate", Fees: big.NewInt(3000), Share: 0.5, Rewards: big.NewInt(350), Net: big.NewInt(3350)},
+				DelegateEarnings{Address: "some_delegate", Fees: 3000, Share: 0.5, Rewards: 350, Net: 3350},
 			},
 		},
 		{
@@ -222,18 +223,18 @@ func Test_processDelegate(t *testing.T) {
 					delegate: "some_delegate",
 					delegations: []DelegationEarning{
 						{
-							Fee: big.NewInt(1000),
+							Fee: 1000,
 						},
 						{
-							Fee: big.NewInt(1000),
+							Fee: 1000,
 						},
 						{
-							Fee: big.NewInt(1000),
+							Fee: 1000,
 						},
 					},
-					stakingBalance: big.NewInt(10000000),
+					stakingBalance: 10000000,
 					frozenBalanceRewards: gotezos.FrozenBalance{
-						Rewards: gotezos.NewInt(700),
+						Rewards: 700,
 					},
 					blockHash: "block_hash",
 				},
@@ -241,7 +242,7 @@ func Test_processDelegate(t *testing.T) {
 			want{
 				true,
 				"failed to process delegate earnings",
-				DelegateEarnings{Address: "some_delegate", Fees: nil, Share: 0, Rewards: nil, Net: big.NewInt(0)},
+				DelegateEarnings{Address: "some_delegate", Fees: 0, Share: 0, Rewards: 0, Net: 0},
 			},
 		},
 	}
@@ -278,9 +279,9 @@ func Test_processDelegations(t *testing.T) {
 					strToPointer("some_delegation1"),
 					strToPointer("some_delegation2"),
 				},
-				stakingBalance: big.NewInt(100000000000),
+				stakingBalance: 100000000000,
 				frozenBalanceRewards: gotezos.FrozenBalance{
-					Rewards: gotezos.NewInt(800000000),
+					Rewards: 800000000,
 				},
 			},
 			want{
@@ -297,9 +298,9 @@ func Test_processDelegations(t *testing.T) {
 					strToPointer("some_delegation1"),
 					strToPointer("some_delegation2"),
 				},
-				stakingBalance: big.NewInt(100000000000),
+				stakingBalance: 100000000000,
 				frozenBalanceRewards: gotezos.FrozenBalance{
-					Rewards: gotezos.NewInt(800000000),
+					Rewards: 800000000,
 				},
 			},
 			want{
@@ -351,23 +352,23 @@ func Test_processDelegation(t *testing.T) {
 		{
 			"is successful",
 			processDelegationInput{
-				stakingBalance: big.NewInt(100000000000),
+				stakingBalance: 100000000000,
 				frozenBalanceRewards: gotezos.FrozenBalance{
-					Rewards: gotezos.NewInt(800000000),
+					Rewards: 800000000,
 				},
 			},
 			want{
 				false,
 				"",
-				&DelegationEarning{Fee: big.NewInt(2000), GrossRewards: big.NewInt(40000), NetRewards: big.NewInt(38000), Share: 5e-05},
+				&DelegationEarning{Fee: 2000, GrossRewards: 40000, NetRewards: 38000, Share: 5e-05},
 			},
 		},
 		{
 			"handles failure",
 			processDelegationInput{
-				stakingBalance: big.NewInt(100000000000),
+				stakingBalance: 100000000000,
 				frozenBalanceRewards: gotezos.FrozenBalance{
-					Rewards: gotezos.NewInt(800000000),
+					Rewards: 800000000,
 				},
 			},
 			want{
@@ -416,13 +417,13 @@ func Test_getOperationHexStrings(t *testing.T) {
 				DelegationEarnings{
 					DelegationEarning{
 						Address:      "tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
-						GrossRewards: big.NewInt(1000000),
-						NetRewards:   big.NewInt(900000),
+						GrossRewards: 1000000,
+						NetRewards:   900000,
 					},
 					DelegationEarning{
 						Address:      "tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
-						GrossRewards: big.NewInt(1000000),
-						NetRewards:   big.NewInt(950000),
+						GrossRewards: 1000000,
+						NetRewards:   950000,
 					},
 				},
 			},
@@ -430,7 +431,7 @@ func Test_getOperationHexStrings(t *testing.T) {
 				false,
 				"",
 				[]string{
-					"7cc601d2729c90b267e6a79d902f8b048d37fd990f2f7447efefb0cfb2f8e8a46c004b04ad1e57c2f13b61b3d2c95b3073d961a4132b00650000a0f7360000056a59972593bdc74a5295671c8f5d43c21348da006c004b04ad1e57c2f13b61b3d2c95b3073d961a4132b00660000f0fd390000056a59972593bdc74a5295671c8f5d43c21348da00",
+					"7cc601d2729c90b267e6a79d902f8b048d37fd990f2f7447efefb0cfb2f8e8a46c004b04ad1e57c2f13b61b3d2c95b3073d961a4132bc10a66dfb90c00f0fd390000056a59972593bdc74a5295671c8f5d43c21348da006c004b04ad1e57c2f13b61b3d2c95b3073d961a4132bc10a66dfb90c00f0fd390000056a59972593bdc74a5295671c8f5d43c21348da00",
 				},
 			},
 		},
@@ -441,13 +442,13 @@ func Test_getOperationHexStrings(t *testing.T) {
 				DelegationEarnings{
 					DelegationEarning{
 						Address:      "tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
-						GrossRewards: big.NewInt(1000000),
-						NetRewards:   big.NewInt(900000),
+						GrossRewards: 1000000,
+						NetRewards:   900000,
 					},
 					DelegationEarning{
 						Address:      "tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
-						GrossRewards: big.NewInt(1000000),
-						NetRewards:   big.NewInt(950000),
+						GrossRewards: 1000000,
+						NetRewards:   950000,
 					},
 				},
 			},
@@ -464,42 +465,19 @@ func Test_getOperationHexStrings(t *testing.T) {
 				DelegationEarnings{
 					DelegationEarning{
 						Address:      "tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
-						GrossRewards: big.NewInt(1000000),
-						NetRewards:   big.NewInt(900000),
+						GrossRewards: 1000000,
+						NetRewards:   900000,
 					},
 					DelegationEarning{
 						Address:      "tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
-						GrossRewards: big.NewInt(1000000),
-						NetRewards:   big.NewInt(950000),
+						GrossRewards: 1000000,
+						NetRewards:   950000,
 					},
 				},
 			},
 			want{
 				true,
 				"failed to get operation hex string: failed to get counter",
-				nil,
-			},
-		},
-		{
-			"handles failure to forge",
-			input{
-				&test.GoTezosMock{},
-				DelegationEarnings{
-					DelegationEarning{
-						Address:      "invalid_addr",
-						GrossRewards: big.NewInt(1000000),
-						NetRewards:   big.NewInt(900000),
-					},
-					DelegationEarning{
-						Address:      "tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
-						GrossRewards: big.NewInt(1000000),
-						NetRewards:   big.NewInt(950000),
-					},
-				},
-			},
-			want{
-				true,
-				"failed to get operation hex string: failed to forge payout",
 				nil,
 			},
 		},
@@ -513,6 +491,8 @@ func Test_getOperationHexStrings(t *testing.T) {
 				wallet: gotezos.Wallet{
 					Address: "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
 				},
+				networkFee: 1345,
+				gasLimit:   203999,
 			}
 			ophexes, err := payout.getOperationHexStrings(tt.input.delegationEarnings)
 			test.CheckErr(t, tt.want.err, tt.want.errContains, err)
@@ -547,13 +527,13 @@ func Test_forgeOperation(t *testing.T) {
 				DelegationEarnings{
 					DelegationEarning{
 						Address:      "tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
-						GrossRewards: big.NewInt(1000000),
-						NetRewards:   big.NewInt(900000),
+						GrossRewards: 1000000,
+						NetRewards:   900000,
 					},
 					DelegationEarning{
 						Address:      "tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
-						GrossRewards: big.NewInt(1000000),
-						NetRewards:   big.NewInt(950000),
+						GrossRewards: 1000000,
+						NetRewards:   950000,
 					},
 				},
 				&test.GoTezosMock{},
@@ -561,7 +541,7 @@ func Test_forgeOperation(t *testing.T) {
 			want{
 				err:         false,
 				errContains: "",
-				ophash:      "7cc601d2729c90b267e6a79d902f8b048d37fd990f2f7447efefb0cfb2f8e8a46c004b04ad1e57c2f13b61b3d2c95b3073d961a4132b00060000a0f7360000056a59972593bdc74a5295671c8f5d43c21348da006c004b04ad1e57c2f13b61b3d2c95b3073d961a4132b00070000f0fd390000056a59972593bdc74a5295671c8f5d43c21348da00",
+				ophash:      "7cc601d2729c90b267e6a79d902f8b048d37fd990f2f7447efefb0cfb2f8e8a46c004b04ad1e57c2f13b61b3d2c95b3073d961a4132bc10a07dfb90c00f0fd390000056a59972593bdc74a5295671c8f5d43c21348da006c004b04ad1e57c2f13b61b3d2c95b3073d961a4132bc10a07dfb90c00f0fd390000056a59972593bdc74a5295671c8f5d43c21348da00",
 				counter:     7,
 			},
 		},
@@ -572,13 +552,13 @@ func Test_forgeOperation(t *testing.T) {
 				DelegationEarnings{
 					DelegationEarning{
 						Address:      "tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
-						GrossRewards: big.NewInt(1000000),
-						NetRewards:   big.NewInt(900000),
+						GrossRewards: 1000000,
+						NetRewards:   900000,
 					},
 					DelegationEarning{
 						Address:      "tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
-						GrossRewards: big.NewInt(1000000),
-						NetRewards:   big.NewInt(950000),
+						GrossRewards: 1000000,
+						NetRewards:   950000,
 					},
 				},
 				&test.GoTezosMock{HeadErr: true},
@@ -590,31 +570,6 @@ func Test_forgeOperation(t *testing.T) {
 				counter:     5,
 			},
 		},
-		{
-			"handles failure to forge",
-			input{
-				5,
-				DelegationEarnings{
-					DelegationEarning{
-						Address:      "invalid_addr",
-						GrossRewards: big.NewInt(1000000),
-						NetRewards:   big.NewInt(900000),
-					},
-					DelegationEarning{
-						Address:      "tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
-						GrossRewards: big.NewInt(1000000),
-						NetRewards:   big.NewInt(950000),
-					},
-				},
-				&test.GoTezosMock{},
-			},
-			want{
-				err:         true,
-				errContains: "failed to forge payout: failed to forge operation",
-				ophash:      "",
-				counter:     7,
-			},
-		},
 	}
 
 	for _, tt := range cases {
@@ -624,6 +579,8 @@ func Test_forgeOperation(t *testing.T) {
 				wallet: gotezos.Wallet{
 					Address: "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
 				},
+				networkFee: 1345,
+				gasLimit:   203999,
 			}
 			ophash, counter, err := payout.forgeOperation(tt.input.counter, tt.input.delegationEarnings)
 			test.CheckErr(t, tt.want.err, tt.want.errContains, err)
@@ -643,7 +600,7 @@ func Test_constructPayoutContents(t *testing.T) {
 	cases := []struct {
 		name  string
 		input input
-		want  gotezos.Contents
+		want  []gotezos.Transaction
 	}{
 		{
 			"is successful",
@@ -652,38 +609,34 @@ func Test_constructPayoutContents(t *testing.T) {
 				DelegationEarnings{
 					DelegationEarning{
 						Address:      "somedelegation",
-						GrossRewards: big.NewInt(1000000),
-						NetRewards:   big.NewInt(900000),
+						GrossRewards: 1000000,
+						NetRewards:   900000,
 					},
 					DelegationEarning{
 						Address:      "someotherdelegation",
-						GrossRewards: big.NewInt(1000000),
-						NetRewards:   big.NewInt(950000),
+						GrossRewards: 1000000,
+						NetRewards:   950000,
 					},
 				},
 			},
-			gotezos.Contents{
-				Transactions: []gotezos.Transaction{
-					{
-						Kind:         gotezos.TRANSACTION,
-						Source:       "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
-						Fee:          gotezos.NewInt(0),
-						Counter:      101,
-						GasLimit:     gotezos.NewInt(0),
-						StorageLimit: gotezos.NewInt(0),
-						Amount:       gotezos.NewInt(900000),
-						Destination:  "somedelegation",
-					},
-					{
-						Kind:         gotezos.TRANSACTION,
-						Source:       "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
-						Fee:          gotezos.NewInt(0),
-						Counter:      102,
-						GasLimit:     gotezos.NewInt(0),
-						StorageLimit: gotezos.NewInt(0),
-						Amount:       gotezos.NewInt(950000),
-						Destination:  "someotherdelegation",
-					},
+			[]gotezos.Transaction{
+				{
+					Source:       "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+					Fee:          0,
+					Counter:      101,
+					GasLimit:     0,
+					StorageLimit: 0,
+					Amount:       900000,
+					Destination:  "somedelegation",
+				},
+				{
+					Source:       "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+					Fee:          0,
+					Counter:      102,
+					GasLimit:     0,
+					StorageLimit: 0,
+					Amount:       950000,
+					Destination:  "someotherdelegation",
 				},
 			},
 		},

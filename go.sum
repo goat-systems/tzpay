@@ -65,6 +65,14 @@ github.com/goat-systems/go-tezos/v3 v3.0.0-20200831144736-c9c057d0dbf7 h1:y/JZ9w
 github.com/goat-systems/go-tezos/v3 v3.0.0-20200831144736-c9c057d0dbf7/go.mod h1:FrZr9xX/50tqeBraSndzqMfBivRnTw/bHcltaJ6Z1vs=
 github.com/goat-systems/go-tezos/v3 v3.0.0-20200831153437-e96dc210991e h1:BRxbWnndG4H6KP++tfXKscXodNh/8dTqlq2JkDwctC8=
 github.com/goat-systems/go-tezos/v3 v3.0.0-20200831153437-e96dc210991e/go.mod h1:FrZr9xX/50tqeBraSndzqMfBivRnTw/bHcltaJ6Z1vs=
+github.com/goat-systems/go-tezos/v3 v3.0.0-20200902165337-cd08ccd4a04a h1:JVnBZ0+fQXWAXj0avBkryC76onVATkR6QGIzxffrdrM=
+github.com/goat-systems/go-tezos/v3 v3.0.0-20200902165337-cd08ccd4a04a/go.mod h1:FrZr9xX/50tqeBraSndzqMfBivRnTw/bHcltaJ6Z1vs=
+github.com/goat-systems/go-tezos/v3 v3.0.0-20200902170758-a6a370ac09a9 h1:igg9VV+VQCc5BWVUVSFwBako4iw+FheIXIMB6uKi5wc=
+github.com/goat-systems/go-tezos/v3 v3.0.0-20200902170758-a6a370ac09a9/go.mod h1:FrZr9xX/50tqeBraSndzqMfBivRnTw/bHcltaJ6Z1vs=
+github.com/goat-systems/go-tezos/v3 v3.0.0-20200902172201-a5fdacf0daef h1:uGqesDjr339xhEo6wttJfyDab6pMaw4swQj3lERUy9k=
+github.com/goat-systems/go-tezos/v3 v3.0.0-20200902172201-a5fdacf0daef/go.mod h1:FrZr9xX/50tqeBraSndzqMfBivRnTw/bHcltaJ6Z1vs=
+github.com/goat-systems/go-tezos/v3 v3.0.0-20200902172416-19846f66e38c h1:ptXBjKFmeeSQJSlC9BRjd6BbMuSMFzfs1qMqMehXrBo=
+github.com/goat-systems/go-tezos/v3 v3.0.0-20200902172416-19846f66e38c/go.mod h1:FrZr9xX/50tqeBraSndzqMfBivRnTw/bHcltaJ6Z1vs=
 github.com/gogo/protobuf v1.1.1/go.mod h1:r8qH/GZQm5c6nD/R0oafs1akxWv10x8SbQlK7atdtwQ=
 github.com/gogo/protobuf v1.2.1/go.mod h1:hp+jE20tsWTFYpLwKvXlhS1hjn+gTNwPg2I6zVXpSg4=
 github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b/go.mod h1:SBH7ygxi8pfUlaOkMMuAQtPIUF8ecWP5IEl/CR7VP2Q=

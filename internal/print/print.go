@@ -27,7 +27,7 @@ func Table(delegate, walletAddress string, report payout.Report) {
 		strconv.Itoa(report.Cycle),
 		delegate,
 		walletAddress,
-		fmt.Sprintf("%.6f", float64(report.FrozenBalance.Int64())/float64(gotezos.MUTEZ)),
+		fmt.Sprintf("%.6f", float64(report.FrozenBalance)/float64(gotezos.MUTEZ)),
 		groomOperations(report.OperationsLink...),
 	})
 
@@ -42,12 +42,12 @@ func Table(delegate, walletAddress string, report payout.Report) {
 		table.Append([]string{
 			delegation.Address,
 			fmt.Sprintf("%.6f", delegation.Share),
-			fmt.Sprintf("%.6f", float64(delegation.GrossRewards.Int64())/float64(gotezos.MUTEZ)),
-			fmt.Sprintf("%.6f", float64(delegation.NetRewards.Int64())/float64(gotezos.MUTEZ)),
-			fmt.Sprintf("%.6f", float64(delegation.Fee.Int64())/float64(gotezos.MUTEZ)),
+			fmt.Sprintf("%.6f", float64(delegation.GrossRewards)/float64(gotezos.MUTEZ)),
+			fmt.Sprintf("%.6f", float64(delegation.NetRewards)/float64(gotezos.MUTEZ)),
+			fmt.Sprintf("%.6f", float64(delegation.Fee)/float64(gotezos.MUTEZ)),
 		})
-		net += float64(delegation.NetRewards.Int64()) / float64(gotezos.MUTEZ)
-		fee += float64(delegation.Fee.Int64()) / float64(gotezos.MUTEZ)
+		net += float64(delegation.NetRewards) / float64(gotezos.MUTEZ)
+		fee += float64(delegation.Fee) / float64(gotezos.MUTEZ)
 	}
 
 	table.SetFooter([]string{"", "", "TOTAL", fmt.Sprintf("%.6f", net), fmt.Sprintf("%.6f", fee)}) // Add Footer

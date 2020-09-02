@@ -2,7 +2,6 @@ package test
 
 import (
 	"errors"
-	"math/big"
 	"testing"
 
 	gotezos "github.com/goat-systems/go-tezos/v3"
@@ -45,11 +44,11 @@ func (g *GoTezosMock) Counter(blockhash, pkh string) (int, error) {
 }
 
 // Balance -
-func (g *GoTezosMock) Balance(blockhash, address string) (*big.Int, error) {
+func (g *GoTezosMock) Balance(blockhash, address string) (int, error) {
 	if g.BalanceErr {
-		return big.NewInt(0), errors.New("failed to get balance")
+		return 0, errors.New("failed to get balance")
 	}
-	return big.NewInt(5000000), nil
+	return 5000000, nil
 }
 
 // FrozenBalance -
@@ -58,9 +57,9 @@ func (g *GoTezosMock) FrozenBalance(cycle int, delegate string) (gotezos.FrozenB
 		return gotezos.FrozenBalance{}, errors.New("failed to get frozen balance")
 	}
 	return gotezos.FrozenBalance{
-		Deposits: gotezos.NewInt(10000000000),
-		Fees:     gotezos.NewInt(3000),
-		Rewards:  gotezos.NewInt(70000000),
+		Deposits: 10000000000,
+		Fees:     3000,
+		Rewards:  70000000,
 	}, nil
 }
 
@@ -96,11 +95,11 @@ func (g *GoTezosMock) Cycle(cycle int) (gotezos.Cycle, error) {
 }
 
 // StakingBalance -
-func (g *GoTezosMock) StakingBalance(blockhash, delegate string) (*big.Int, error) {
+func (g *GoTezosMock) StakingBalance(blockhash, delegate string) (int, error) {
 	if g.StakingBalanceErr {
-		return big.NewInt(0), errors.New("failed to get staking balance")
+		return 0, errors.New("failed to get staking balance")
 	}
-	return big.NewInt(10000000000), nil
+	return 10000000000, nil
 }
 
 // InjectionOperation -
@@ -129,7 +128,9 @@ func (g *GoTezosMock) OperationHashes(blockhash string) ([][]string, error) {
 func CheckErr(t *testing.T, wantErr bool, errContains string, err error) {
 	if wantErr {
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), errContains)
+		if err != nil {
+			assert.Contains(t, err.Error(), errContains)
+		}
 	} else {
 		assert.Nil(t, err)
 	}
