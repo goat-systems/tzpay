@@ -27,7 +27,7 @@ func Table(delegate, walletAddress string, report payout.Report) {
 		strconv.Itoa(report.Cycle),
 		delegate,
 		walletAddress,
-		fmt.Sprintf("%.6f", float64(report.FrozenBalance)/float64(gotezos.MUTEZ)),
+		fmt.Sprintf("%.6f", float64(report.DelegateEarnings.Rewards)/float64(gotezos.MUTEZ)),
 		groomOperations(report.OperationsLink...),
 	})
 

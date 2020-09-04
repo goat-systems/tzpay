@@ -5,8 +5,33 @@ import (
 	"testing"
 
 	gotezos "github.com/goat-systems/go-tezos/v3"
+	"github.com/goat-systems/tzpay/v2/internal/tzkt"
 	"github.com/stretchr/testify/assert"
 )
+
+// TzktMock is a test helper mocking the tzkt package
+type TzktMock struct {
+	tzkt.IFace
+	TransactionsErr bool
+}
+
+func (t *TzktMock) GetTransactions(options ...tzkt.URLParameters) ([]tzkt.Transaction, error) {
+	if t.TransactionsErr {
+		return []tzkt.Transaction{}, errors.New("failed to get counter")
+	}
+
+	return []tzkt.Transaction{
+		{
+			Sender: struct {
+				Name    string "json:\"name\""
+				Address string "json:\"address\""
+			}{
+				Address: "tz1S82rGFZK8cVbNDpP1Hf9VhTUa4W8oc2WV",
+			}, // sanity
+		},
+	}, nil
+
+}
 
 // GoTezosMock is a test helper mocking the GoTezos lib
 type GoTezosMock struct {
@@ -21,6 +46,8 @@ type GoTezosMock struct {
 	InjectionOperationErr bool
 	OperationHashesErr    bool
 	ForgeOperationErr     bool
+	ContractStorageErr    bool
+	BigMapErr             bool
 }
 
 // Head -
@@ -63,23 +90,17 @@ func (g *GoTezosMock) FrozenBalance(cycle int, delegate string) (gotezos.FrozenB
 	}, nil
 }
 
-// DelegatedContractsAtCycle -
-func (g *GoTezosMock) DelegatedContractsAtCycle(cycle int, delegate string) ([]*string, error) {
+// DelegatedContracts -
+func (g *GoTezosMock) DelegatedContracts(input gotezos.DelegatedContractsInput) ([]string, error) {
 	if g.DelegatedContractsErr {
-		return []*string{}, errors.New("failed to get delegated contracts at cycle")
+		return []string{}, errors.New("failed to get delegated contracts at cycle")
 	}
-	strs := []string{
+
+	return []string{
 		"KT1LinsZAnyxajEv4eNFWtwHMdyhbJsGfvp3",
 		"KT1K4xei3yozp7UP5rHV5wuoDzWwBXqCGRBt",
 		"KT1GcSsQaTtMB2HvUKU9b6WRFUnGpGx9JwGk",
-	}
-
-	var rtnstrs []*string
-	for i := range strs {
-		rtnstrs = append(rtnstrs, &strs[i])
-	}
-
-	return rtnstrs, nil
+	}, nil
 }
 
 // Cycle -
@@ -95,7 +116,7 @@ func (g *GoTezosMock) Cycle(cycle int) (gotezos.Cycle, error) {
 }
 
 // StakingBalance -
-func (g *GoTezosMock) StakingBalance(blockhash, delegate string) (int, error) {
+func (g *GoTezosMock) StakingBalance(input gotezos.StakingBalanceInput) (int, error) {
 	if g.StakingBalanceErr {
 		return 0, errors.New("failed to get staking balance")
 	}
@@ -122,6 +143,22 @@ func (g *GoTezosMock) OperationHashes(blockhash string) ([][]string, error) {
 			"ooYympR9wfV98X4MUHtE78NjXYRDeMTAD4ei7zEZDqoHv2rfFGD",
 		},
 	}, nil
+}
+
+func (g *GoTezosMock) ContractStorage(blockhash string, KT1 string) ([]byte, error) {
+	if g.ContractStorageErr {
+		return nil, errors.New("failed to get contract storage")
+	}
+
+	return []byte(`{"prim":"Pair","args":[{"int":"16033"},{"prim":"Pair","args":[{"prim":"Pair","args":[{"prim":"False"},{"prim":"Pair","args":[{"prim":"False"},{"int":"23567891"}]}]},{"prim":"Pair","args":[{"prim":"Pair","args":[{"string":"tz1S82rGFZK8cVbNDpP1Hf9VhTUa4W8oc2WV"},{"string":"KT1GQcLae1ve1ZEPNfD9z1dyv5ev9ki39SNW"}]},{"prim":"Pair","args":[{"int":"123456"},{"int":"23567891"}]}]}]}]}`), nil
+}
+
+func (g *GoTezosMock) BigMap(input gotezos.BigMapInput) ([]byte, error) {
+	if g.BigMapErr {
+		return nil, errors.New("failed to get contract storage")
+	}
+
+	return []byte(`{"prim":"Pair","args":[{"int":"23567891"},[]]}`), nil
 }
 
 // CheckErr -
