@@ -106,7 +106,8 @@ func (p *Payout) constructPayout() (tzkt.RewardsSplit, error) {
 		rewardsSplit.Delegators[i].Fee = int(float64(rewardsSplit.Delegators[i].GrossRewards) * p.bakerFee)
 		rewardsSplit.Delegators[i].NetRewards = int(rewardsSplit.Delegators[i].GrossRewards - rewardsSplit.Delegators[i].Fee)
 
-		if isDex := p.isDexterContract(rewardsSplit.Delegators[i].Address); isDex {
+		if rewardsSplit.Delegators[i], err = p.constructDexterContractPayout(rewardsSplit.Delegators[i]); err != nil {
+			return rewardsSplit, errors.Wrap(err, "failed to contruct payout")
 		}
 	}
 

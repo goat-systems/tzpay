@@ -62,6 +62,288 @@ func Test_Execute(t *testing.T) {
 	}
 }
 
+func Test_constructPayout(t *testing.T) {
+	type input struct {
+		payout Payout
+	}
+
+	type want struct {
+		err         bool
+		errContains string
+		rewardSplit tzkt.RewardsSplit
+	}
+	cases := []struct {
+		name  string
+		input input
+		want  want
+	}{
+		{
+			"handles failure to get rewards split",
+			input{
+				payout: Payout{
+					gt: &test.GoTezosMock{},
+					tzkt: &test.TzktMock{
+						RewardsSplitErr: true,
+					},
+				},
+			},
+			want{
+				true,
+				"failed to contruct payout",
+				tzkt.RewardsSplit{},
+			},
+		},
+		{
+			"is successful",
+			input{
+				payout: Payout{
+					gt:       &test.GoTezosMock{},
+					tzkt:     &test.TzktMock{},
+					bakerFee: 0.05,
+				},
+			},
+			want{
+				false,
+				"",
+				tzkt.RewardsSplit{
+					Cycle:                    270,
+					StakingBalance:           740613513605,
+					DelegatedBalance:         555430526884,
+					NumDelegators:            107,
+					OwnBlocks:                5,
+					OwnBlockRewards:          191250000,
+					MissedOwnBlocks:          2,
+					MissedOwnBlockRewards:    77500000,
+					BlockDeposits:            2560000000,
+					Endorsements:             126,
+					EndorsementRewards:       157500000,
+					MissedEndorsements:       16,
+					MissedEndorsementRewards: 20000000,
+					EndorsementDeposits:      8064000000,
+					OwnBlockFees:             47180,
+					MissedOwnBlockFees:       54607,
+					Delegators: tzkt.Delegators{
+						{
+							Address:        "tz1icdoLr8vof5oXiEKCFSyrVoouGiKDQ3Gd",
+							Balance:        60545965782,
+							CurrentBalance: 60739073316,
+							Emptied:        false,
+							NetRewards:     34665260,
+							GrossRewards:   36489747,
+							Share:          0.08175109509855863,
+							Fee:            1824487,
+							BlackListed:    false,
+						},
+						{
+							Address:        "KT1FPyY6mAhnzyVGP8ApGvuRyF7SKcT9TDWy",
+							Balance:        60075572992,
+							CurrentBalance: 60267312348,
+							Emptied:        false,
+							NetRewards:     34395939,
+							GrossRewards:   36206251,
+							Share:          0.08111595574266121,
+							Fee:            1810312,
+							BlackListed:    false,
+						},
+						{
+							Address:        "KT1LgkGigaMrnim3TonQWfwDHnM3fHkF1jMv",
+							Balance:        57461165021,
+							CurrentBalance: 57644560137,
+							Emptied:        false,
+							NetRewards:     32899074,
+							GrossRewards:   34630604,
+							Share:          0.07758589867109342,
+							Fee:            1731530,
+							BlackListed:    false,
+						},
+						{
+							Address:        "KT1C8S2vLYbzgQHhdC8MBehunhcp1Q9hj6MC",
+							Balance:        55305195039,
+							CurrentBalance: 176566401,
+							Emptied:        false,
+							NetRewards:     31664685,
+							GrossRewards:   33331247,
+							Share:          0.07467483920161976,
+							Fee:            1666562,
+							BlackListed:    false,
+						},
+					},
+				},
+			},
+		},
+		{
+			"is successful with Earning Only",
+			input{
+				payout: Payout{
+					gt:           &test.GoTezosMock{},
+					tzkt:         &test.TzktMock{},
+					bakerFee:     0.05,
+					earningsOnly: true,
+				},
+			},
+			want{
+				false,
+				"",
+				tzkt.RewardsSplit{
+					Cycle:                    270,
+					StakingBalance:           740613513605,
+					DelegatedBalance:         555430526884,
+					NumDelegators:            107,
+					OwnBlocks:                5,
+					OwnBlockRewards:          191250000,
+					MissedOwnBlocks:          2,
+					MissedOwnBlockRewards:    77500000,
+					BlockDeposits:            2560000000,
+					Endorsements:             126,
+					EndorsementRewards:       157500000,
+					MissedEndorsements:       16,
+					MissedEndorsementRewards: 20000000,
+					EndorsementDeposits:      8064000000,
+					OwnBlockFees:             47180,
+					MissedOwnBlockFees:       54607,
+					Delegators: tzkt.Delegators{
+						{
+							Address:        "tz1icdoLr8vof5oXiEKCFSyrVoouGiKDQ3Gd",
+							Balance:        60545965782,
+							CurrentBalance: 60739073316,
+							Emptied:        false,
+							NetRewards:     27088824,
+							GrossRewards:   28514551,
+							Share:          0.08175109509855863,
+							Fee:            1425727,
+						},
+						{
+							Address:        "KT1FPyY6mAhnzyVGP8ApGvuRyF7SKcT9TDWy",
+							Balance:        60075572992,
+							CurrentBalance: 60267312348,
+							Emptied:        false,
+							NetRewards:     26878366,
+							GrossRewards:   28293016,
+							Share:          0.08111595574266121,
+							Fee:            1414650,
+							BlackListed:    false,
+						},
+						{
+							Address:        "KT1LgkGigaMrnim3TonQWfwDHnM3fHkF1jMv",
+							Balance:        57461165021,
+							CurrentBalance: 57644560137,
+							Emptied:        false,
+							NetRewards:     25708655,
+							GrossRewards:   27061742,
+							Share:          0.07758589867109342,
+							Fee:            1353087,
+							BlackListed:    false,
+						},
+						{
+							Address:            "KT1C8S2vLYbzgQHhdC8MBehunhcp1Q9hj6MC",
+							Balance:            55305195039,
+							CurrentBalance:     176566401,
+							Emptied:            false,
+							NetRewards:         24744055,
+							GrossRewards:       26046373,
+							Share:              0.07467483920161976,
+							Fee:                1302318,
+							LiquidityProviders: []tzkt.LiquidityProvider(nil),
+							BlackListed:        false,
+						},
+					},
+				},
+			},
+		},
+		{
+			"is successful on triggering blacklist",
+			input{
+				payout: Payout{
+					gt:           &test.GoTezosMock{},
+					tzkt:         &test.TzktMock{},
+					bakerFee:     0.05,
+					earningsOnly: true,
+					blacklist: []string{
+						"tz1icdoLr8vof5oXiEKCFSyrVoouGiKDQ3Gd",
+					},
+				},
+			},
+			want{
+				false,
+				"",
+				tzkt.RewardsSplit{
+					Cycle:                    270,
+					StakingBalance:           740613513605,
+					DelegatedBalance:         555430526884,
+					NumDelegators:            107,
+					OwnBlocks:                5,
+					OwnBlockRewards:          191250000,
+					MissedOwnBlocks:          2,
+					MissedOwnBlockRewards:    77500000,
+					BlockDeposits:            2560000000,
+					Endorsements:             126,
+					EndorsementRewards:       157500000,
+					MissedEndorsements:       16,
+					MissedEndorsementRewards: 20000000,
+					EndorsementDeposits:      8064000000,
+					OwnBlockFees:             47180,
+					MissedOwnBlockFees:       54607,
+					Delegators: tzkt.Delegators{
+						{
+							Address:        "tz1icdoLr8vof5oXiEKCFSyrVoouGiKDQ3Gd",
+							Balance:        60545965782,
+							CurrentBalance: 60739073316,
+							Emptied:        false,
+							NetRewards:     27088824,
+							GrossRewards:   28514551,
+							Share:          0.08175109509855863,
+							Fee:            1425727,
+							BlackListed:    true,
+						},
+						{
+							Address:        "KT1FPyY6mAhnzyVGP8ApGvuRyF7SKcT9TDWy",
+							Balance:        60075572992,
+							CurrentBalance: 60267312348,
+							Emptied:        false,
+							NetRewards:     26878366,
+							GrossRewards:   28293016,
+							Share:          0.08111595574266121,
+							Fee:            1414650,
+							BlackListed:    false,
+						},
+						{
+							Address:        "KT1LgkGigaMrnim3TonQWfwDHnM3fHkF1jMv",
+							Balance:        57461165021,
+							CurrentBalance: 57644560137,
+							Emptied:        false,
+							NetRewards:     25708655,
+							GrossRewards:   27061742,
+							Share:          0.07758589867109342,
+							Fee:            1353087,
+							BlackListed:    false,
+						},
+						{
+							Address:            "KT1C8S2vLYbzgQHhdC8MBehunhcp1Q9hj6MC",
+							Balance:            55305195039,
+							CurrentBalance:     176566401,
+							Emptied:            false,
+							NetRewards:         24744055,
+							GrossRewards:       26046373,
+							Share:              0.07467483920161976,
+							Fee:                1302318,
+							LiquidityProviders: []tzkt.LiquidityProvider(nil),
+							BlackListed:        false,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			rewardSplit, err := tt.input.payout.constructPayout()
+			test.CheckErr(t, tt.want.err, tt.want.errContains, err)
+			assert.Equal(t, tt.want.rewardSplit, rewardSplit)
+		})
+	}
+}
+
 func Test_forge(t *testing.T) {
 	type input struct {
 		gt         gotezos.IFace
@@ -123,7 +405,7 @@ func Test_forge(t *testing.T) {
 			want{
 				true,
 				"failed to get operation hex string: failed to get block",
-				nil,
+				[]string{},
 			},
 		},
 		{
@@ -146,7 +428,7 @@ func Test_forge(t *testing.T) {
 			want{
 				true,
 				"failed to get operation hex string: failed to get counter",
-				nil,
+				[]string{},
 			},
 		},
 	}
@@ -285,6 +567,23 @@ func Test_constructPayoutContents(t *testing.T) {
 						GrossRewards: 1000000,
 						NetRewards:   950000,
 					},
+					{
+						Address:      "delegation_dexter",
+						GrossRewards: 1000000,
+						NetRewards:   950000,
+						LiquidityProviders: []tzkt.LiquidityProvider{
+							{
+								Address:      "liquidity_provider",
+								GrossRewards: 1000000,
+								NetRewards:   950000,
+							},
+							{
+								Address:      "liquidity_provider1",
+								GrossRewards: 1000000,
+								NetRewards:   950000,
+							},
+						},
+					},
 				},
 			},
 			[]gotezos.Transaction{
@@ -305,6 +604,24 @@ func Test_constructPayoutContents(t *testing.T) {
 					StorageLimit: 0,
 					Amount:       950000,
 					Destination:  "someotherdelegation",
+				},
+				{
+					Source:       "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+					Fee:          0,
+					Counter:      103,
+					GasLimit:     0,
+					StorageLimit: 0,
+					Amount:       950000,
+					Destination:  "liquidity_provider",
+				},
+				{
+					Source:       "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+					Fee:          0,
+					Counter:      104,
+					GasLimit:     0,
+					StorageLimit: 0,
+					Amount:       950000,
+					Destination:  "liquidity_provider1",
 				},
 			},
 		},
@@ -469,7 +786,7 @@ func Test_isDexterContract(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			payout := Payout{blacklist: []string{
+			payout := Payout{dexterContracts: []string{
 				"some_addr",
 				"some_addr_1",
 			}}

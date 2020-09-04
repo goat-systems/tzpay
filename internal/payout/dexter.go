@@ -50,6 +50,18 @@ type BigMapV1 struct {
 	Args json.RawMessage `json:"args"`
 }
 
+func (p *Payout) constructDexterContractPayout(delegator tzkt.Delegator) (tzkt.Delegator, error) {
+	if isDex := p.isDexterContract(delegator.Address); isDex {
+		var err error
+		delegator, err = p.getLiquidityProvidersEarnings(delegator)
+		if err != nil {
+			return delegator, errors.Wrap(err, "failed to contruct dexter contract payout")
+		}
+	}
+
+	return delegator, nil
+}
+
 func (p *Payout) getLiquidityProvidersEarnings(contract tzkt.Delegator) (tzkt.Delegator, error) {
 	cycle, err := p.gt.Cycle(p.cycle)
 	if err != nil {

@@ -10,6 +10,116 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func Test_constructDexterContractPayout(t *testing.T) {
+	type input struct {
+		payout   Payout
+		contract tzkt.Delegator
+	}
+
+	type want struct {
+		err         bool
+		errContains string
+		delegator   tzkt.Delegator
+	}
+
+	cases := []struct {
+		name  string
+		input input
+		want  want
+	}{
+		{
+			"handles failure to getLiquidityProvidersEarnings",
+			input{
+				payout: Payout{
+					gt: &test.GoTezosMock{
+						CycleErr: true,
+					},
+					bakerFee: 0.05,
+					dexterContracts: []string{
+						"tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+					},
+				},
+				contract: tzkt.Delegator{
+					Address:      "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+					GrossRewards: 149992399,
+				},
+			},
+			want{
+				true,
+				"failed to get earnings for dexter liquidity providers",
+				tzkt.Delegator{
+					Address:      "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+					GrossRewards: 149992399,
+				},
+			},
+		},
+		{
+			"handles a non dexter contract",
+			input{
+				payout: Payout{
+					gt: &test.GoTezosMock{},
+				},
+				contract: tzkt.Delegator{
+					Address:      "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+					GrossRewards: 149992399,
+				},
+			},
+			want{
+				false,
+				"",
+				tzkt.Delegator{
+					Address:      "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+					GrossRewards: 149992399,
+				},
+			},
+		},
+		{
+			"is successful",
+			input{
+				payout: Payout{
+					gt:       &test.GoTezosMock{},
+					tzkt:     &test.TzktMock{},
+					bakerFee: 0.05,
+					dexterContracts: []string{
+						"tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+					},
+				},
+				contract: tzkt.Delegator{
+					Address:      "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+					GrossRewards: 149992399,
+				},
+			},
+			want{
+				false,
+				"",
+				tzkt.Delegator{
+					Address:      "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+					GrossRewards: 149992399,
+					LiquidityProviders: []tzkt.LiquidityProvider{
+						{
+							Address:      "tz1S82rGFZK8cVbNDpP1Hf9VhTUa4W8oc2WV",
+							Balance:      23567891,
+							NetRewards:   142492780,
+							GrossRewards: 149992399,
+							Share:        1,
+							Fee:          7499619,
+							BlackListed:  false,
+						},
+					},
+					BlackListed: false},
+			},
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			delegator, err := tt.input.payout.constructDexterContractPayout(tt.input.contract)
+			test.CheckErr(t, tt.want.err, tt.want.errContains, err)
+			assert.Equal(t, tt.want.delegator, delegator)
+		})
+	}
+}
+
 func Test_getLiquidityProvidersEarnings(t *testing.T) {
 	type input struct {
 		tzkt     tzkt.IFace

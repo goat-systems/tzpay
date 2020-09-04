@@ -1,6 +1,7 @@
 package test
 
 import (
+	"encoding/json"
 	"errors"
 	"testing"
 
@@ -13,11 +14,12 @@ import (
 type TzktMock struct {
 	tzkt.IFace
 	TransactionsErr bool
+	RewardsSplitErr bool
 }
 
 func (t *TzktMock) GetTransactions(options ...tzkt.URLParameters) ([]tzkt.Transaction, error) {
 	if t.TransactionsErr {
-		return []tzkt.Transaction{}, errors.New("failed to get counter")
+		return []tzkt.Transaction{}, errors.New("failed to get transaction")
 	}
 
 	return []tzkt.Transaction{
@@ -31,6 +33,18 @@ func (t *TzktMock) GetTransactions(options ...tzkt.URLParameters) ([]tzkt.Transa
 		},
 	}, nil
 
+}
+
+func (t *TzktMock) GetRewardsSplit(delegate string, cycle int, options ...tzkt.URLParameters) (tzkt.RewardsSplit, error) {
+	if t.RewardsSplitErr {
+		return tzkt.RewardsSplit{}, errors.New("failed to get rewards split")
+	}
+
+	var rewardsSplit tzkt.RewardsSplit
+	v := []byte(`{"cycle":270,"stakingBalance":740613513605,"delegatedBalance":555430526884,"numDelegators":107,"expectedBlocks":4.43,"expectedEndorsements":141.71,"futureBlocks":0,"futureBlockRewards":0,"futureBlockDeposits":0,"ownBlocks":5,"ownBlockRewards":191250000,"extraBlocks":0,"extraBlockRewards":0,"missedOwnBlocks":2,"missedOwnBlockRewards":77500000,"missedExtraBlocks":0,"missedExtraBlockRewards":0,"uncoveredOwnBlocks":0,"uncoveredOwnBlockRewards":0,"uncoveredExtraBlocks":0,"uncoveredExtraBlockRewards":0,"blockDeposits":2560000000,"futureEndorsements":0,"futureEndorsementRewards":0,"futureEndorsementDeposits":0,"endorsements":126,"endorsementRewards":157500000,"missedEndorsements":16,"missedEndorsementRewards":20000000,"uncoveredEndorsements":0,"uncoveredEndorsementRewards":0,"endorsementDeposits":8064000000,"ownBlockFees":47180,"extraBlockFees":0,"missedOwnBlockFees":54607,"missedExtraBlockFees":0,"uncoveredOwnBlockFees":0,"uncoveredExtraBlockFees":0,"doubleBakingRewards":0,"doubleBakingLostDeposits":0,"doubleBakingLostRewards":0,"doubleBakingLostFees":0,"doubleEndorsingRewards":0,"doubleEndorsingLostDeposits":0,"doubleEndorsingLostRewards":0,"doubleEndorsingLostFees":0,"revelationRewards":0,"revelationLostRewards":0,"revelationLostFees":0,"delegators":[{"address":"tz1icdoLr8vof5oXiEKCFSyrVoouGiKDQ3Gd","balance":60545965782,"currentBalance":60739073316,"emptied":false},{"address":"KT1FPyY6mAhnzyVGP8ApGvuRyF7SKcT9TDWy","balance":60075572992,"currentBalance":60267312348,"emptied":false},{"address":"KT1LgkGigaMrnim3TonQWfwDHnM3fHkF1jMv","balance":57461165021,"currentBalance":57644560137,"emptied":false},{"address":"KT1C8S2vLYbzgQHhdC8MBehunhcp1Q9hj6MC","balance":55305195039,"currentBalance":176566401,"emptied":false}]}`)
+	json.Unmarshal(v, &rewardsSplit)
+
+	return rewardsSplit, nil
 }
 
 // GoTezosMock is a test helper mocking the GoTezos lib
