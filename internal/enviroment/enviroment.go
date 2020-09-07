@@ -7,6 +7,7 @@ import (
 	"github.com/caarlos0/env/v6"
 	validate "github.com/go-playground/validator/v10"
 	gotezos "github.com/goat-systems/go-tezos/v3"
+	"github.com/goat-systems/tzpay/v2/internal/tzkt"
 	"github.com/pkg/errors"
 )
 
@@ -22,15 +23,23 @@ type DryRunEnviroment struct {
 	Delegate       string  `env:"TZPAY_DELEGATE" validate:"required"`
 	GasLimit       int     `env:"TZPAY_NETWORK_GAS_LIMIT" envDefault:"26283" validate:"required"`
 	HostNode       string  `env:"TZPAY_HOST_NODE" validate:"required"`
+	HostTzkt       string  `env:"TZPAY_HOST_TZKT" validate:"required"`
 	MinimumPayment int     `env:"TZPAY_MINIMUM_PAYMENT" envDefault:"100" validate:"required"`
 	NetworkFee     int     `env:"TZPAY_NETWORK_FEE" envDefault:"2941" validate:"required"`
 
 	DexterLiquidiyContracts []string `env:"TZPAY_DEXTER_LIQUIDITY_CONTRACTS" envSeparator:","`
 	BlackListFile           string   `env:"TZPAY_BLACKLIST"`
+	EarningsOnly            bool     `env:"TZPAY_EARNINGS_ONLY"`
 
+	Tzkt      tzkt.IFace    `env:"-"`
 	GoTezos   gotezos.IFace `env:"-"`
 	BlackList []string      `env:"-"`
 }
+
+// AccountSID string
+// 	AuthToken  string
+// 	From       string
+// 	To         []string
 
 // RunEnviroment is a list of dry run enviroment variables used to configure the tzpay application
 type RunEnviroment struct {
@@ -38,6 +47,7 @@ type RunEnviroment struct {
 	Delegate       string  `env:"TZPAY_DELEGATE" validate:"required"`
 	GasLimit       int     `env:"TZPAY_NETWORK_GAS_LIMIT" envDefault:"26283" validate:"required"`
 	HostNode       string  `env:"TZPAY_HOST_NODE" validate:"required"`
+	HostTzkt       string  `env:"TZPAY_HOST_TZKT" validate:"required"`
 	WalletPassword string  `env:"TZPAY_WALLET_PASSWORD" validate:"required"`
 	MinimumPayment int     `env:"TZPAY_MINIMUM_PAYMENT" envDefault:"100" validate:"required"`
 	NetworkFee     int     `env:"TZPAY_NETWORK_FEE" envDefault:"2941" validate:"required"`
@@ -45,7 +55,19 @@ type RunEnviroment struct {
 
 	DexterLiquidiyContracts []string `env:"TZPAY_DEXTER_LIQUIDITY_CONTRACTS" envSeparator:","`
 	BlackListFile           string   `env:"TZPAY_BLACKLIST"`
+	EarningsOnly            bool     `env:"TZPAY_EARNINGS_ONLY"`
 
+	// Notifications
+	TwilioAccountSID      string   `env:"TZPAY_TWILIO_ACCOUNT_SID"`
+	TwilioAuthToken       string   `env:"TZPAY_TWILIO_AUTH_TOKEN"`
+	TwilioFrom            string   `env:"TZPAY_TWILIO_FROM"`
+	TwilioTo              []string `env:"TZPAY_TWILIO_TO" envSeparator:","`
+	TwitterConsumerKey    string   `env:"TZPAY_TWITTER_CONSUMER_KEY"`
+	TwitterConsumerSecret string   `env:"TZPAY_TWITTER_CONSUMER_SECRET"`
+	TwitterAccessToken    string   `env:"TZPAY_TWITTER_ACCESS_TOKEN"`
+	TwitterAccessSecret   string   `env:"TZPAY_TWITTER_ACCESS_SECRET"`
+
+	Tzkt      tzkt.IFace     `env:"-"`
 	GoTezos   gotezos.IFace  `env:"-"`
 	BlackList []string       `env:"-"`
 	Wallet    gotezos.Wallet `env:"-"`
@@ -68,6 +90,7 @@ func NewDryRunEnviroment() (*DryRunEnviroment, error) {
 		return nil, errors.Wrap(err, "failed to make connection to host node")
 	}
 	enviroment.GoTezos = gt
+	enviroment.Tzkt = tzkt.NewTZKT(enviroment.HostTzkt)
 
 	var blacklist []string
 	if enviroment.BlackListFile != "" {
@@ -103,6 +126,7 @@ func NewRunEnviroment() (*RunEnviroment, error) {
 		return nil, errors.Wrap(err, "failed to make connection to host node")
 	}
 	enviroment.GoTezos = gt
+	enviroment.Tzkt = tzkt.NewTZKT(enviroment.HostTzkt)
 
 	var blacklist []string
 	if enviroment.BlackListFile != "" {

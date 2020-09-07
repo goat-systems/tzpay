@@ -144,7 +144,7 @@ func (s *Serv) execute(cycle int, batchSize int, verbose, table bool) {
 	}
 
 	if table {
-		print.Table(s.delegate, s.wallet.Address, report)
+		print.Table(cycle, s.delegate, report)
 	} else {
 		print.JSON(report)
 	}

@@ -37,6 +37,7 @@ type Payout struct {
 // NewPayoutInput is the input for NewPayout
 type NewPayoutInput struct {
 	GoTezos         gotezos.IFace
+	Tzkt            tzkt.IFace
 	Cycle           int
 	Delegate        string
 	BakerFee        float64
@@ -49,12 +50,14 @@ type NewPayoutInput struct {
 	GasLimit        int
 	BatchSize       int
 	Verbose         bool
+	EarningsOnly    bool
 }
 
 // NewPayout returns a pointer to a new Baker
 func NewPayout(input NewPayoutInput) *Payout {
 	return &Payout{
 		gt:              input.GoTezos,
+		tzkt:            input.Tzkt,
 		cycle:           input.Cycle,
 		delegate:        input.Delegate,
 		bakerFee:        input.BakerFee,
@@ -67,6 +70,7 @@ func NewPayout(input NewPayoutInput) *Payout {
 		batchSize:       input.BatchSize,
 		blacklist:       input.BlackList,
 		dexterContracts: input.DexterContracts,
+		earningsOnly:    input.EarningsOnly,
 	}
 }
 
@@ -76,6 +80,19 @@ func (p *Payout) constructPayout() (tzkt.RewardsSplit, error) {
 		return rewardsSplit, errors.Wrap(err, "failed to contruct payout")
 	}
 
+	totalRewards := p.calculateTotals(rewardsSplit)
+
+	bakerBalance, err := p.gt.Balance(gotezos.BalanceInput{
+		Cycle:   p.cycle,
+		Address: p.delegate,
+	})
+	if err != nil {
+		return rewardsSplit, errors.Wrap(err, "failed to contruct payout")
+	}
+
+	rewardsSplit.BakerShare = float64(bakerBalance) / float64(rewardsSplit.StakingBalance)
+	rewardsSplit.BakerRewards = int(rewardsSplit.BakerShare * float64(totalRewards))
+
 	for i := range rewardsSplit.Delegators {
 		if p.isInBlacklist(rewardsSplit.Delegators[i].Address) {
 			rewardsSplit.Delegators[i].BlackListed = true
@@ -83,27 +100,12 @@ func (p *Payout) constructPayout() (tzkt.RewardsSplit, error) {
 
 		rewardsSplit.Delegators[i].Share = float64(rewardsSplit.Delegators[i].Balance) / float64(rewardsSplit.StakingBalance)
 		if p.earningsOnly {
-			totalRewards := float64(
-				rewardsSplit.EndorsementRewards +
-					rewardsSplit.RevelationRewards +
-					rewardsSplit.OwnBlockFees +
-					rewardsSplit.OwnBlockRewards +
-					rewardsSplit.ExtraBlockFees +
-					rewardsSplit.ExtraBlockRewards)
-			rewardsSplit.Delegators[i].GrossRewards = int(rewardsSplit.Delegators[i].Share * totalRewards)
+			rewardsSplit.Delegators[i].GrossRewards = int(rewardsSplit.Delegators[i].Share * float64(totalRewards))
 		} else {
-			totalRewards := float64(rewardsSplit.EndorsementRewards +
-				rewardsSplit.MissedEndorsementRewards +
-				rewardsSplit.RevelationRewards +
-				rewardsSplit.OwnBlockFees +
-				rewardsSplit.MissedOwnBlockFees +
-				rewardsSplit.OwnBlockRewards +
-				rewardsSplit.MissedOwnBlockRewards +
-				rewardsSplit.ExtraBlockFees +
-				rewardsSplit.ExtraBlockRewards)
-			rewardsSplit.Delegators[i].GrossRewards = int(rewardsSplit.Delegators[i].Share * totalRewards)
+			rewardsSplit.Delegators[i].GrossRewards = int(rewardsSplit.Delegators[i].Share * float64(totalRewards))
 		}
 		rewardsSplit.Delegators[i].Fee = int(float64(rewardsSplit.Delegators[i].GrossRewards) * p.bakerFee)
+		rewardsSplit.BakerCollectedFees += rewardsSplit.Delegators[i].Fee
 		rewardsSplit.Delegators[i].NetRewards = int(rewardsSplit.Delegators[i].GrossRewards - rewardsSplit.Delegators[i].Fee)
 
 		if rewardsSplit.Delegators[i], err = p.constructDexterContractPayout(rewardsSplit.Delegators[i]); err != nil {
@@ -114,6 +116,27 @@ func (p *Payout) constructPayout() (tzkt.RewardsSplit, error) {
 	return rewardsSplit, nil
 }
 
+func (p *Payout) calculateTotals(rewards tzkt.RewardsSplit) int {
+	if p.earningsOnly {
+		return rewards.EndorsementRewards +
+			rewards.RevelationRewards +
+			rewards.OwnBlockFees +
+			rewards.OwnBlockRewards +
+			rewards.ExtraBlockFees +
+			rewards.ExtraBlockRewards
+	}
+
+	return rewards.EndorsementRewards +
+		rewards.MissedEndorsementRewards +
+		rewards.RevelationRewards +
+		rewards.OwnBlockFees +
+		rewards.MissedOwnBlockFees +
+		rewards.OwnBlockRewards +
+		rewards.MissedOwnBlockRewards +
+		rewards.ExtraBlockFees +
+		rewards.ExtraBlockRewards
+}
+
 // Execute will execute a payout based off the Payout configuration
 func (p *Payout) Execute() (tzkt.RewardsSplit, error) {
 	payout, err := p.constructPayout()
@@ -121,12 +144,12 @@ func (p *Payout) Execute() (tzkt.RewardsSplit, error) {
 		return payout, errors.Wrapf(err, "failed to execute payout for cycle %d", p.cycle)
 	}
 
-	forgedOperations, err := p.forge(payout.Delegators)
-	if err != nil {
-		return payout, errors.Wrapf(err, "failed to execute payout for cycle %d", p.cycle)
-	}
-
 	if p.inject {
+		forgedOperations, err := p.forge(payout.Delegators)
+		if err != nil {
+			return payout, errors.Wrapf(err, "failed to execute payout for cycle %d", p.cycle)
+		}
+
 		operations, err := p.injectOperations(forgedOperations)
 		if err != nil {
 			err = errors.Wrap(err, "failed to get inject payout for delegate")

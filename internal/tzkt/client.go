@@ -24,6 +24,9 @@ type URLParameters struct {
 type IFace interface {
 	GetTransactions(options ...URLParameters) ([]Transaction, error)
 	GetRewardsSplit(delegate string, cycle int, options ...URLParameters) (RewardsSplit, error)
+	GetRights(options ...URLParameters) (Rights, error)
+	GetHead() (Head, error)
+	GetBlocks(options ...URLParameters) (Blocks, error)
 }
 
 type Tzkt struct {

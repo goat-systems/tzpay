@@ -7,6 +7,7 @@ import (
 	"github.com/goat-systems/tzpay/v2/internal/enviroment"
 	"github.com/goat-systems/tzpay/v2/internal/payout"
 	"github.com/goat-systems/tzpay/v2/internal/print"
+	"github.com/goat-systems/tzpay/v2/internal/tzkt"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -14,35 +15,41 @@ import (
 // DryRun configures and exposes functions to allow tzpay to simulate a payout without injecting it into the network.
 type DryRun struct {
 	gt             gotezos.IFace
+	tzkt           tzkt.IFace
 	bakersFee      float64
 	delegate       string
 	gasLimit       int
 	minimumPayment int
 	networkFee     int
 	blackList      []string
+	earningsOnly   bool
 }
 
 // DryRunInput is the input for NewDryRun
 type DryRunInput struct {
 	GoTezos        gotezos.IFace
+	Tzkt           tzkt.IFace
 	BakersFee      float64
 	Delegate       string
 	GasLimit       int
 	MinimumPayment int
 	NetworkFee     int
 	BlackList      []string
+	EarningsOnly   bool
 }
 
 // NewDryRun returns a pointer to a DryRun
 func NewDryRun(input DryRunInput) *DryRun {
 	return &DryRun{
 		gt:             input.GoTezos,
+		tzkt:           input.Tzkt,
 		bakersFee:      input.BakersFee,
 		delegate:       input.Delegate,
 		gasLimit:       input.GasLimit,
 		minimumPayment: input.MinimumPayment,
 		networkFee:     input.NetworkFee,
 		blackList:      input.BlackList,
+		earningsOnly:   input.EarningsOnly,
 	}
 }
 
@@ -67,12 +74,14 @@ func DryRunCommand() *cobra.Command {
 
 			NewDryRun(DryRunInput{
 				GoTezos:        env.GoTezos,
+				Tzkt:           env.Tzkt,
 				BakersFee:      env.BakersFee,
 				Delegate:       env.Delegate,
 				GasLimit:       env.GasLimit,
 				MinimumPayment: env.MinimumPayment,
 				NetworkFee:     env.NetworkFee,
 				BlackList:      env.BlackList,
+				EarningsOnly:   env.EarningsOnly,
 			}).execute(args[0], table)
 		},
 	}
@@ -89,19 +98,24 @@ func (d *DryRun) execute(arg string, table bool) {
 	}
 
 	report, err := payout.NewPayout(payout.NewPayoutInput{
-		GoTezos:    d.gt,
-		Cycle:      cycle,
-		Delegate:   d.delegate,
-		BakerFee:   d.bakersFee,
-		MinPayment: d.minimumPayment,
-		BlackList:  d.blackList,
-		BatchSize:  125,
-		NetworkFee: d.networkFee,
-		GasLimit:   d.gasLimit,
+		GoTezos:      d.gt,
+		Tzkt:         d.tzkt,
+		Cycle:        cycle,
+		Delegate:     d.delegate,
+		BakerFee:     d.bakersFee,
+		MinPayment:   d.minimumPayment,
+		BlackList:    d.blackList,
+		BatchSize:    125,
+		NetworkFee:   d.networkFee,
+		GasLimit:     d.gasLimit,
+		EarningsOnly: d.earningsOnly,
 	}).Execute()
+	if err != nil {
+		log.WithField("error", err.Error()).Fatal("Failed to execute dryrun.")
+	}
 
 	if table {
-		print.Table(d.delegate, "", report)
+		print.Table(cycle, d.delegate, report)
 	} else {
 		print.JSON(report)
 	}

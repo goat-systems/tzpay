@@ -62,6 +62,36 @@ type GoTezosMock struct {
 	ForgeOperationErr     bool
 	ContractStorageErr    bool
 	BigMapErr             bool
+	BakingRightsErr       bool
+	EndorsingRightsErr    bool
+}
+
+// EndorsingRights -
+func (g *GoTezosMock) EndorsingRights(input gotezos.EndorsingRightsInput) (*gotezos.EndorsingRights, error) {
+	if g.EndorsingRightsErr {
+		return &gotezos.EndorsingRights{}, errors.New("failed to get endorsing rights")
+	}
+
+	return &gotezos.EndorsingRights{
+		{
+			Level:    100,
+			Delegate: "some_delegate",
+		},
+	}, nil
+}
+
+// BakingRights -
+func (g *GoTezosMock) BakingRights(input gotezos.BakingRightsInput) (*gotezos.BakingRights, error) {
+	if g.BakingRightsErr {
+		return &gotezos.BakingRights{}, errors.New("failed to get baking rights")
+	}
+
+	return &gotezos.BakingRights{
+		{
+			Level:    100,
+			Delegate: "some_delegate",
+		},
+	}, nil
 }
 
 // Head -
@@ -85,7 +115,7 @@ func (g *GoTezosMock) Counter(blockhash, pkh string) (int, error) {
 }
 
 // Balance -
-func (g *GoTezosMock) Balance(blockhash, address string) (int, error) {
+func (g *GoTezosMock) Balance(input gotezos.BalanceInput) (int, error) {
 	if g.BalanceErr {
 		return 0, errors.New("failed to get balance")
 	}

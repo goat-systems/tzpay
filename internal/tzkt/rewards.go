@@ -66,8 +66,8 @@ type RewardsSplit struct {
 	StakingBalance              int        `json:"stakingBalance"`
 	DelegatedBalance            int        `json:"delegatedBalance"`
 	NumDelegators               int        `json:"numDelegators"`
-	ExpectedBlocks              int        `json:"expectedBlocks"`
-	ExpectedEndorsements        int        `json:"expectedEndorsements"`
+	ExpectedBlocks              float64    `json:"expectedBlocks"`
+	ExpectedEndorsements        float64    `json:"expectedEndorsements"`
 	FutureBlocks                int        `json:"futureBlocks"`
 	FutureBlockRewards          int        `json:"futureBlockRewards"`
 	FutureBlockDeposits         int        `json:"futureBlockDeposits"`
@@ -113,6 +113,9 @@ type RewardsSplit struct {
 	RevelationLostFees          int        `json:"revelationLostFees"`
 	Delegators                  Delegators `json:"delegators"`
 	OperationLink               []string   `json:"operation_links,omitempty"`
+	BakerRewards                int        `json:"baker_rewards,omitempty"`
+	BakerShare                  float64    `json:"baker_share,omitempty"`
+	BakerCollectedFees          int        `json:"collected_fees,omitempty"`
 }
 
 /*

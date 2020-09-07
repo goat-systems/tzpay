@@ -4,31 +4,28 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"sort"
 	"strconv"
 	"strings"
 
 	gotezos "github.com/goat-systems/go-tezos/v2"
-	"github.com/goat-systems/tzpay/v2/internal/payout"
+	"github.com/goat-systems/tzpay/v2/internal/tzkt"
 	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
 
 // Table prints a payout in table format
-func Table(delegate, walletAddress string, report payout.Report) {
-	if walletAddress == "" {
-		walletAddress = "N/A"
-	}
-
+func Table(cycle int, delegate string, rewards tzkt.RewardsSplit) {
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Cylce", "Baker", "Wallet", "Rewards", "Operation"})
+	table.SetHeader([]string{"Cylce", "Baker", "Share", "Rewards", "Fees", "Total", "Operations"})
 	table.Append([]string{
-		strconv.Itoa(report.Cycle),
+		strconv.Itoa(cycle),
 		delegate,
-		walletAddress,
-		fmt.Sprintf("%.6f", float64(report.DelegateEarnings.Rewards)/float64(gotezos.MUTEZ)),
-		groomOperations(report.OperationsLink...),
+		fmt.Sprintf("%.6f", rewards.BakerShare),
+		fmt.Sprintf("%.6f", float64(rewards.BakerRewards)/float64(gotezos.MUTEZ)),
+		fmt.Sprintf("%.6f", float64(rewards.BakerCollectedFees)/float64(gotezos.MUTEZ)),
+		fmt.Sprintf("%.6f", float64(rewards.BakerRewards+rewards.BakerCollectedFees)/float64(gotezos.MUTEZ)),
+		groomOperations(rewards.OperationLink...),
 	})
 
 	table.Render()
@@ -37,8 +34,7 @@ func Table(delegate, walletAddress string, report payout.Report) {
 	table.SetHeader([]string{"Delegation", "Share", "Gross", "Net", "Fee"})
 
 	var net, fee float64
-	sort.Sort(report.DelegationEarnings)
-	for _, delegation := range report.DelegationEarnings {
+	for _, delegation := range rewards.Delegators {
 		table.Append([]string{
 			delegation.Address,
 			fmt.Sprintf("%.6f", delegation.Share),
@@ -56,10 +52,10 @@ func Table(delegate, walletAddress string, report payout.Report) {
 }
 
 // JSON prints a payout to json
-func JSON(report payout.Report) error {
-	prettyJSON, err := json.Marshal(report)
+func JSON(rewards tzkt.RewardsSplit) error {
+	prettyJSON, err := json.Marshal(rewards)
 	if err != nil {
-		return errors.Wrap(err, "failed to parse report into json")
+		return errors.Wrap(err, "failed to parse reward split into json")
 	}
 
 	log.WithField("payout", string(prettyJSON)).Info("Payout for cycle complete.")

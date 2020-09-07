@@ -7,25 +7,15 @@ import (
 	"github.com/goat-systems/tzpay/v2/internal/enviroment"
 	"github.com/goat-systems/tzpay/v2/internal/payout"
 	"github.com/goat-systems/tzpay/v2/internal/print"
+	"github.com/goat-systems/tzpay/v2/internal/tzkt"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
 // Run configures and exposes functions to allow tzpay inject a payout into the tezos network.
 type Run struct {
-	gt             gotezos.IFace
-	bakersFee      float64
-	delegate       string
-	gasLimit       int
-	minimumPayment int
-	networkFee     int
-	blackList      []string
-	wallet         gotezos.Wallet
-}
-
-// RunInput is the input for NewDryRun
-type RunInput struct {
 	GoTezos        gotezos.IFace
+	Tzkt           tzkt.IFace
 	BakersFee      float64
 	Delegate       string
 	GasLimit       int
@@ -33,20 +23,7 @@ type RunInput struct {
 	NetworkFee     int
 	BlackList      []string
 	Wallet         gotezos.Wallet
-}
-
-// NewRun returns a pointer to a Run
-func NewRun(input RunInput) *Run {
-	return &Run{
-		gt:             input.GoTezos,
-		bakersFee:      input.BakersFee,
-		delegate:       input.Delegate,
-		gasLimit:       input.GasLimit,
-		minimumPayment: input.MinimumPayment,
-		networkFee:     input.NetworkFee,
-		blackList:      input.BlackList,
-		wallet:         input.Wallet,
-	}
+	EarningsOnly   bool
 }
 
 // RunCommand returns a new run cobra command
@@ -70,8 +47,9 @@ func RunCommand() *cobra.Command {
 				log.WithField("error", err.Error()).Fatal("Failed to load enviroment.")
 			}
 
-			NewRun(RunInput{
+			runner := Run{
 				GoTezos:        env.GoTezos,
+				Tzkt:           env.Tzkt,
 				BakersFee:      env.BakersFee,
 				Delegate:       env.Delegate,
 				GasLimit:       env.GasLimit,
@@ -79,7 +57,10 @@ func RunCommand() *cobra.Command {
 				NetworkFee:     env.NetworkFee,
 				BlackList:      env.BlackList,
 				Wallet:         env.Wallet,
-			}).execute(args[0], batchSize, verbose, table)
+				EarningsOnly:   env.EarningsOnly,
+			}
+
+			runner.execute(args[0], batchSize, verbose, table)
 		},
 	}
 
@@ -97,22 +78,27 @@ func (r *Run) execute(arg string, batchSize int, verbose, table bool) {
 	}
 
 	report, err := payout.NewPayout(payout.NewPayoutInput{
-		GoTezos:    r.gt,
-		Cycle:      cycle,
-		Delegate:   r.delegate,
-		BakerFee:   r.bakersFee,
-		MinPayment: r.minimumPayment,
-		BlackList:  r.blackList,
-		BatchSize:  batchSize,
-		NetworkFee: r.networkFee,
-		GasLimit:   r.gasLimit,
-		Inject:     true,
-		Verbose:    verbose,
-		Wallet:     r.wallet,
+		GoTezos:      r.GoTezos,
+		Tzkt:         r.Tzkt,
+		Cycle:        cycle,
+		Delegate:     r.Delegate,
+		BakerFee:     r.BakersFee,
+		MinPayment:   r.MinimumPayment,
+		BlackList:    r.BlackList,
+		BatchSize:    batchSize,
+		NetworkFee:   r.NetworkFee,
+		GasLimit:     r.GasLimit,
+		Inject:       true,
+		Verbose:      verbose,
+		Wallet:       r.Wallet,
+		EarningsOnly: r.EarningsOnly,
 	}).Execute()
+	if err != nil {
+		log.WithField("error", err.Error()).Fatal("Failed to execute run.")
+	}
 
 	if table {
-		print.Table(r.delegate, r.wallet.Address, report)
+		print.Table(cycle, r.Delegate, report)
 	} else {
 		print.JSON(report)
 	}
