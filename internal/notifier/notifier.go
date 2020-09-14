@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	gotezos "github.com/goat-systems/go-tezos/v3"
+	"github.com/goat-systems/go-tezos/v3/rpc"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -16,14 +16,14 @@ type Notifier interface {
 // MissedOpportunityNotifier -
 type MissedOpportunityNotifier struct {
 	notifiers []ClientIFace
-	gt        gotezos.IFace
+	gt        rpc.IFace
 	baker     string
 }
 
 // MissedOpportunityNotifierInput -
 type MissedOpportunityNotifierInput struct {
 	Notifiers []ClientIFace
-	Gt        gotezos.IFace
+	Gt        rpc.IFace
 	Baker     string
 }
 
@@ -102,7 +102,7 @@ func (m *MissedOpportunityNotifier) Start() {
 	}()
 }
 
-func (m *MissedOpportunityNotifier) monitorRights(endorsementRights gotezos.EndorsingRights, bakingRights gotezos.BakingRights) {
+func (m *MissedOpportunityNotifier) monitorRights(endorsementRights rpc.EndorsingRights, bakingRights rpc.BakingRights) {
 	ticker := time.NewTicker(time.Minute)
 	go func() {
 		for range ticker.C {
@@ -139,10 +139,10 @@ func (m *MissedOpportunityNotifier) monitorRights(endorsementRights gotezos.Endo
 	}()
 }
 
-func (m *MissedOpportunityNotifier) isEndorsementSuccessful(block *gotezos.Block) bool {
+func (m *MissedOpportunityNotifier) isEndorsementSuccessful(block *rpc.Block) bool {
 	for _, operations := range block.Operations {
 		for _, op := range operations {
-			for _, endorsement := range op.Contents.Endorsements {
+			for _, endorsement := range op.Contents.Organize().Endorsements {
 				if endorsement.Metadata.Delegate == m.baker {
 					return true
 				}
@@ -153,7 +153,7 @@ func (m *MissedOpportunityNotifier) isEndorsementSuccessful(block *gotezos.Block
 	return false
 }
 
-func (m *MissedOpportunityNotifier) isBakeSuccessful(block *gotezos.Block) bool {
+func (m *MissedOpportunityNotifier) isBakeSuccessful(block *rpc.Block) bool {
 	if block.Metadata.Baker == m.baker {
 		return true
 	}
@@ -161,22 +161,22 @@ func (m *MissedOpportunityNotifier) isBakeSuccessful(block *gotezos.Block) bool 
 	return false
 }
 
-func (m *MissedOpportunityNotifier) getRights(cycle int) (*gotezos.BakingRights, *gotezos.EndorsingRights, error) {
-	brights, err := m.gt.BakingRights(gotezos.BakingRightsInput{
+func (m *MissedOpportunityNotifier) getRights(cycle int) (*rpc.BakingRights, *rpc.EndorsingRights, error) {
+	brights, err := m.gt.BakingRights(rpc.BakingRightsInput{
 		Cycle:       cycle,
 		MaxPriority: 0,
 		Delegate:    m.baker,
 	})
 	if err != nil {
-		return &gotezos.BakingRights{}, &gotezos.EndorsingRights{}, err
+		return &rpc.BakingRights{}, &rpc.EndorsingRights{}, err
 	}
 
-	erights, err := m.gt.EndorsingRights(gotezos.EndorsingRightsInput{
+	erights, err := m.gt.EndorsingRights(rpc.EndorsingRightsInput{
 		Cycle:    cycle,
 		Delegate: m.baker,
 	})
 	if err != nil {
-		return &gotezos.BakingRights{}, &gotezos.EndorsingRights{}, err
+		return &rpc.BakingRights{}, &rpc.EndorsingRights{}, err
 	}
 
 	return brights, erights, nil

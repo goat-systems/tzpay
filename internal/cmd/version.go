@@ -7,8 +7,8 @@ import (
 )
 
 const (
-	version = "v2.6.0-alpha"
-	changed = "Fixed Blacklist."
+	version = "v2.7.0-alpha"
+	changed = "Support for dexter liquidity providers."
 )
 
 // NewVersionCommand returns a version cobra command

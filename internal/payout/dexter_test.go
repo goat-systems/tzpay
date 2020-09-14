@@ -4,7 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	gotezos "github.com/goat-systems/go-tezos/v3"
+	"github.com/goat-systems/go-tezos/v3/rpc"
+	"github.com/goat-systems/tzpay/v2/internal/config"
 	"github.com/goat-systems/tzpay/v2/internal/test"
 	"github.com/goat-systems/tzpay/v2/internal/tzkt"
 	"github.com/stretchr/testify/assert"
@@ -31,12 +32,16 @@ func Test_constructDexterContractPayout(t *testing.T) {
 			"handles failure to getLiquidityProvidersEarnings",
 			input{
 				payout: Payout{
-					gt: &test.GoTezosMock{
+					rpc: &test.RPCMock{
 						CycleErr: true,
 					},
-					bakerFee: 0.05,
-					dexterContracts: []string{
-						"tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+					config: config.Config{
+						Baker: config.Baker{
+							Fee: 0.05,
+							DexterLiquidityContracts: []string{
+								"tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+							},
+						},
 					},
 				},
 				contract: tzkt.Delegator{
@@ -57,7 +62,7 @@ func Test_constructDexterContractPayout(t *testing.T) {
 			"handles a non dexter contract",
 			input{
 				payout: Payout{
-					gt: &test.GoTezosMock{},
+					rpc: &test.RPCMock{},
 				},
 				contract: tzkt.Delegator{
 					Address:      "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
@@ -77,11 +82,15 @@ func Test_constructDexterContractPayout(t *testing.T) {
 			"is successful",
 			input{
 				payout: Payout{
-					gt:       &test.GoTezosMock{},
-					tzkt:     &test.TzktMock{},
-					bakerFee: 0.05,
-					dexterContracts: []string{
-						"tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+					rpc:  &test.RPCMock{},
+					tzkt: &test.TzktMock{},
+					config: config.Config{
+						Baker: config.Baker{
+							Fee: 0.05,
+							DexterLiquidityContracts: []string{
+								"tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+							},
+						},
 					},
 				},
 				contract: tzkt.Delegator{
@@ -123,7 +132,7 @@ func Test_constructDexterContractPayout(t *testing.T) {
 func Test_getLiquidityProvidersEarnings(t *testing.T) {
 	type input struct {
 		tzkt     tzkt.IFace
-		gt       gotezos.IFace
+		rpc      rpc.IFace
 		contract tzkt.Delegator
 	}
 
@@ -141,7 +150,7 @@ func Test_getLiquidityProvidersEarnings(t *testing.T) {
 		{
 			"handles failure to get cycle",
 			input{
-				gt: &test.GoTezosMock{
+				rpc: &test.RPCMock{
 					CycleErr: true,
 				},
 			},
@@ -154,7 +163,7 @@ func Test_getLiquidityProvidersEarnings(t *testing.T) {
 		{
 			"handles failure to get contract storage",
 			input{
-				gt: &test.GoTezosMock{
+				rpc: &test.RPCMock{
 					ContractStorageErr: true,
 				},
 			},
@@ -167,7 +176,7 @@ func Test_getLiquidityProvidersEarnings(t *testing.T) {
 		{
 			"handles failure to get liquidity provider list",
 			input{
-				gt: &test.GoTezosMock{},
+				rpc: &test.RPCMock{},
 				tzkt: &test.TzktMock{
 					TransactionsErr: true,
 				},
@@ -181,7 +190,7 @@ func Test_getLiquidityProvidersEarnings(t *testing.T) {
 		{
 			"handles failure to get get balance from big map",
 			input{
-				gt: &test.GoTezosMock{
+				rpc: &test.RPCMock{
 					BigMapErr: true,
 				},
 				tzkt: &test.TzktMock{},
@@ -195,7 +204,7 @@ func Test_getLiquidityProvidersEarnings(t *testing.T) {
 		{
 			"is successful",
 			input{
-				gt:   &test.GoTezosMock{},
+				rpc:  &test.RPCMock{},
 				tzkt: &test.TzktMock{},
 				contract: tzkt.Delegator{
 					GrossRewards: 149992399,
@@ -225,9 +234,13 @@ func Test_getLiquidityProvidersEarnings(t *testing.T) {
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
 			payout := Payout{
-				gt:       tt.input.gt,
-				tzkt:     tt.input.tzkt,
-				bakerFee: 0.05,
+				rpc:  tt.input.rpc,
+				tzkt: tt.input.tzkt,
+				config: config.Config{
+					Baker: config.Baker{
+						Fee: 0.05,
+					},
+				},
 			}
 			delegator, err := payout.getLiquidityProvidersEarnings(tt.input.contract)
 			test.CheckErr(t, tt.want.err, tt.want.errContains, err)
@@ -294,7 +307,7 @@ func Test_getLiquidityProvidersList(t *testing.T) {
 
 func Test_getBalanceFromBigMap(t *testing.T) {
 	type input struct {
-		gt  gotezos.IFace
+		rpc rpc.IFace
 		key string
 	}
 
@@ -312,7 +325,7 @@ func Test_getBalanceFromBigMap(t *testing.T) {
 		{
 			"is successful",
 			input{
-				gt: &test.GoTezosMock{
+				rpc: &test.RPCMock{
 					BigMapErr: false,
 				},
 				key: "tz1S82rGFZK8cVbNDpP1Hf9VhTUa4W8oc2WV",
@@ -326,7 +339,7 @@ func Test_getBalanceFromBigMap(t *testing.T) {
 		{
 			"handles failure to forge script expression",
 			input{
-				gt: &test.GoTezosMock{
+				rpc: &test.RPCMock{
 					BigMapErr: false,
 				},
 				key: "dfdsafjj",
@@ -340,7 +353,7 @@ func Test_getBalanceFromBigMap(t *testing.T) {
 		{
 			"handles gotezos failure",
 			input{
-				gt: &test.GoTezosMock{
+				rpc: &test.RPCMock{
 					BigMapErr: true,
 				},
 				key: "tz1S82rGFZK8cVbNDpP1Hf9VhTUa4W8oc2WV",
@@ -356,7 +369,7 @@ func Test_getBalanceFromBigMap(t *testing.T) {
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
 			payout := Payout{
-				gt: tt.input.gt,
+				rpc: tt.input.rpc,
 			}
 			balance, err := payout.getBalanceFromBigMap(tt.input.key, 20999, "address")
 			test.CheckErr(t, tt.want.err, tt.want.errContains, err)
@@ -372,7 +385,7 @@ func Test_getContractStorage(t *testing.T) {
 	test.CheckErr(t, false, "", err)
 
 	type input struct {
-		gt gotezos.IFace
+		rpc rpc.IFace
 	}
 
 	type want struct {
@@ -389,7 +402,7 @@ func Test_getContractStorage(t *testing.T) {
 		{
 			"is successful",
 			input{
-				gt: &test.GoTezosMock{
+				rpc: &test.RPCMock{
 					ContractStorageErr: false,
 				},
 			},
@@ -402,7 +415,7 @@ func Test_getContractStorage(t *testing.T) {
 		{
 			"handles gotezos failure",
 			input{
-				gt: &test.GoTezosMock{
+				rpc: &test.RPCMock{
 					ContractStorageErr: true,
 				},
 			},
@@ -417,7 +430,7 @@ func Test_getContractStorage(t *testing.T) {
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
 			payout := Payout{
-				gt: tt.input.gt,
+				rpc: tt.input.rpc,
 			}
 			exchangeContractV1, err := payout.getContractStorage("block_hash", "address")
 			test.CheckErr(t, tt.want.err, tt.want.errContains, err)

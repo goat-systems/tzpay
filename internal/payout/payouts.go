@@ -1,10 +1,14 @@
 package payout
 
 import (
+	"encoding/hex"
 	"fmt"
 	"time"
 
-	gotezos "github.com/goat-systems/go-tezos/v3"
+	"github.com/goat-systems/go-tezos/v3/forge"
+	"github.com/goat-systems/go-tezos/v3/keys"
+	"github.com/goat-systems/go-tezos/v3/rpc"
+	"github.com/goat-systems/tzpay/v2/internal/config"
 	"github.com/goat-systems/tzpay/v2/internal/tzkt"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -17,74 +21,59 @@ var (
 
 // Payout represents a payout and payout operations.
 type Payout struct {
-	gt              gotezos.IFace
-	tzkt            tzkt.IFace
-	cycle           int
-	delegate        string
-	bakerFee        float64
-	wallet          gotezos.Wallet
-	minPayment      int
-	blacklist       []string
-	dexterContracts []string
-	inject          bool
-	networkFee      int
-	gasLimit        int
-	batchSize       int
-	verbose         bool
-	earningsOnly    bool
+	config  config.Config
+	rpc     rpc.IFace
+	tzkt    tzkt.IFace
+	key     keys.Key
+	cycle   int
+	inject  bool
+	verbose bool
 }
 
-// NewPayoutInput is the input for NewPayout
-type NewPayoutInput struct {
-	GoTezos         gotezos.IFace
-	Tzkt            tzkt.IFace
-	Cycle           int
-	Delegate        string
-	BakerFee        float64
-	Wallet          gotezos.Wallet
-	MinPayment      int
-	BlackList       []string
-	DexterContracts []string
-	Inject          bool // If false, nothing will be injected.
-	NetworkFee      int
-	GasLimit        int
-	BatchSize       int
-	Verbose         bool
-	EarningsOnly    bool
-}
-
-// NewPayout returns a pointer to a new Baker
-func NewPayout(input NewPayoutInput) *Payout {
-	return &Payout{
-		gt:              input.GoTezos,
-		tzkt:            input.Tzkt,
-		cycle:           input.Cycle,
-		delegate:        input.Delegate,
-		bakerFee:        input.BakerFee,
-		wallet:          input.Wallet,
-		minPayment:      input.MinPayment,
-		inject:          input.Inject,
-		networkFee:      input.NetworkFee,
-		gasLimit:        input.GasLimit,
-		verbose:         input.Verbose,
-		batchSize:       input.BatchSize,
-		blacklist:       input.BlackList,
-		dexterContracts: input.DexterContracts,
-		earningsOnly:    input.EarningsOnly,
+// New returns a pointer to a new Baker
+func New(config config.Config, cycle int, inject, verbose bool) (*Payout, error) {
+	payout := &Payout{
+		config:  config,
+		tzkt:    tzkt.NewTZKT(config.API.TZKT),
+		cycle:   cycle,
+		inject:  inject,
+		verbose: verbose,
 	}
+
+	var err error
+	payout.rpc, err = rpc.New(config.API.Tezos)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to initialize tezos rpc client")
+	}
+
+	if inject {
+		payout.key, err = keys.NewKey(keys.NewKeyInput{
+			Kind:     keys.Ed25519,
+			Esk:      config.Key.Esk,
+			Password: config.Key.Password,
+		})
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to initialize import key")
+		}
+
+		config.Key.Esk = ""
+		config.Key.Password = ""
+	}
+
+	return payout, nil
 }
 
 func (p *Payout) constructPayout() (tzkt.RewardsSplit, error) {
-	rewardsSplit, err := p.tzkt.GetRewardsSplit(p.delegate, p.cycle)
+	rewardsSplit, err := p.tzkt.GetRewardsSplit(p.config.Baker.Address, p.cycle)
 	if err != nil {
 		return rewardsSplit, errors.Wrap(err, "failed to contruct payout")
 	}
 
 	totalRewards := p.calculateTotals(rewardsSplit)
 
-	bakerBalance, err := p.gt.Balance(gotezos.BalanceInput{
+	bakerBalance, err := p.rpc.Balance(rpc.BalanceInput{
 		Cycle:   p.cycle,
-		Address: p.delegate,
+		Address: p.config.Baker.Address,
 	})
 	if err != nil {
 		return rewardsSplit, errors.Wrap(err, "failed to contruct payout")
@@ -99,12 +88,12 @@ func (p *Payout) constructPayout() (tzkt.RewardsSplit, error) {
 		}
 
 		rewardsSplit.Delegators[i].Share = float64(rewardsSplit.Delegators[i].Balance) / float64(rewardsSplit.StakingBalance)
-		if p.earningsOnly {
+		if p.config.Baker.EarningsOnly {
 			rewardsSplit.Delegators[i].GrossRewards = int(rewardsSplit.Delegators[i].Share * float64(totalRewards))
 		} else {
 			rewardsSplit.Delegators[i].GrossRewards = int(rewardsSplit.Delegators[i].Share * float64(totalRewards))
 		}
-		rewardsSplit.Delegators[i].Fee = int(float64(rewardsSplit.Delegators[i].GrossRewards) * p.bakerFee)
+		rewardsSplit.Delegators[i].Fee = int(float64(rewardsSplit.Delegators[i].GrossRewards) * p.config.Baker.Fee)
 		rewardsSplit.BakerCollectedFees += rewardsSplit.Delegators[i].Fee
 		rewardsSplit.Delegators[i].NetRewards = int(rewardsSplit.Delegators[i].GrossRewards - rewardsSplit.Delegators[i].Fee)
 
@@ -117,7 +106,7 @@ func (p *Payout) constructPayout() (tzkt.RewardsSplit, error) {
 }
 
 func (p *Payout) calculateTotals(rewards tzkt.RewardsSplit) int {
-	if p.earningsOnly {
+	if p.config.Baker.EarningsOnly {
 		return rewards.EndorsementRewards +
 			rewards.RevelationRewards +
 			rewards.OwnBlockFees +
@@ -145,14 +134,9 @@ func (p *Payout) Execute() (tzkt.RewardsSplit, error) {
 	}
 
 	if p.inject {
-		forgedOperations, err := p.forge(payout.Delegators)
+		operations, err := p.apply(payout.Delegators)
 		if err != nil {
 			return payout, errors.Wrapf(err, "failed to execute payout for cycle %d", p.cycle)
-		}
-
-		operations, err := p.injectOperations(forgedOperations)
-		if err != nil {
-			err = errors.Wrap(err, "failed to get inject payout for delegate")
 		}
 
 		for _, op := range operations {
@@ -163,99 +147,88 @@ func (p *Payout) Execute() (tzkt.RewardsSplit, error) {
 	return payout, err
 }
 
-func (p *Payout) forge(delegators tzkt.Delegators) ([]string, error) {
-	head, err := p.gt.Head()
+func (p *Payout) apply(delegators tzkt.Delegators) ([]string, error) {
+	head, err := p.rpc.Head()
 	if err != nil {
-		return []string{}, errors.Wrap(err, "failed to get operation hex string")
+		return []string{}, errors.Wrap(err, "failed to apply payout")
 	}
 
-	counter, err := p.gt.Counter(head.Hash, p.wallet.Address)
-	if err != nil {
-		return []string{}, errors.Wrap(err, "failed to get operation hex string")
-	}
-
-	operations := []string{}
-	for _, batch := range p.batch(delegators) {
-		var op string
-		var err error
-		op, counter, err = p.forgeOperation(counter, batch)
-		if err != nil {
-			return []string{}, errors.Wrap(err, "failed to get operation hex string")
+	var operationStrings []string
+	for _, transactions := range p.constructTransactionBatches(head.Hash, delegators) {
+		if operation, err := forge.Encode(head.Hash, transactions...); err == nil {
+			operationStrings = append(operationStrings, operation)
+		} else {
+			return []string{}, errors.Wrap(err, "failed to forge operation")
 		}
-
-		operations = append(operations, op)
 	}
 
-	return operations, nil
+	operationHashes, err := p.injectOperations(operationStrings)
+	if err != nil {
+		return []string{}, errors.Wrap(err, "failed to forge operation")
+	}
+
+	return operationHashes, nil
 }
 
-func (p *Payout) forgeOperation(counter int, delegators tzkt.Delegators) (string, int, error) {
-	head, err := p.gt.Head()
+func (p *Payout) constructTransactionBatches(blockhash string, delegators tzkt.Delegators) []rpc.Contents {
+	var transactionBatches []rpc.Contents
+
+	counter, err := p.rpc.Counter(blockhash, p.key.PubKey.GetPublicKeyHash())
 	if err != nil {
-		return "", counter, errors.Wrap(err, "failed to forge payout")
+		return transactionBatches
 	}
 
-	transactions, lastCounter := p.constructPayoutContents(counter, delegators)
-
-	var contents []gotezos.OperationContents
-	for _, transaction := range transactions {
-		contents = append(contents, &transaction)
-	}
-
-	forge, err := gotezos.ForgeOperation(head.Hash, contents...)
-	if err != nil {
-		return "", lastCounter, errors.Wrap(err, "failed to forge payout")
-	}
-
-	return forge, lastCounter, nil
-}
-
-func (p *Payout) constructPayoutContents(counter int, delegators tzkt.Delegators) ([]gotezos.Transaction, int) {
-	var transactions []gotezos.Transaction
-	for _, delegation := range delegators {
-		if delegation.LiquidityProviders != nil {
-			for _, liquidityProvider := range delegation.LiquidityProviders {
-				if delegation.NetRewards >= p.minPayment && !delegation.BlackListed { // don't payout to rewards smaller than minimal payment or that are blacklisted
+	for _, batch := range p.batch(delegators) {
+		var transactions rpc.Contents
+		for _, delegation := range batch {
+			if delegation.LiquidityProviders != nil {
+				for _, liquidityProvider := range delegation.LiquidityProviders {
+					if delegation.NetRewards >= p.config.Baker.MinimumPayment && !delegation.BlackListed { // don't payout to rewards smaller than minimal payment or that are blacklisted
+						counter++
+						transactions = append(transactions, rpc.Content{
+							Kind:         rpc.TRANSACTION,
+							Source:       p.key.PubKey.GetPublicKeyHash(),
+							Destination:  liquidityProvider.Address,
+							Amount:       int64(liquidityProvider.NetRewards),
+							Fee:          int64(p.config.Operations.NetworkFee),
+							GasLimit:     int64(p.config.Operations.GasLimit),
+							Counter:      counter,
+							StorageLimit: int64(0),
+						})
+					}
+				}
+			} else {
+				if delegation.NetRewards >= p.config.Baker.MinimumPayment && !delegation.BlackListed { // don't payout to rewards smaller than minimal payment or that are blacklisted
 					counter++
-					transactions = append(transactions, gotezos.Transaction{
-						Source:       p.wallet.Address,
-						Destination:  liquidityProvider.Address,
-						Amount:       int64(liquidityProvider.NetRewards),
-						Fee:          int64(p.networkFee),
-						GasLimit:     int64(p.gasLimit),
+					transactions = append(transactions, rpc.Content{
+						Kind:         rpc.TRANSACTION,
+						Source:       p.key.PubKey.GetPublicKeyHash(),
+						Destination:  delegation.Address,
+						Amount:       int64(delegation.NetRewards),
+						Fee:          int64(p.config.Operations.NetworkFee),
+						GasLimit:     int64(p.config.Operations.GasLimit),
 						Counter:      counter,
-						StorageLimit: 0,
+						StorageLimit: int64(0),
 					})
 				}
 			}
-		} else {
-			if delegation.NetRewards >= p.minPayment && !delegation.BlackListed { // don't payout to rewards smaller than minimal payment or that are blacklisted
-				counter++
-				transactions = append(transactions, gotezos.Transaction{
-					Source:       p.wallet.Address,
-					Destination:  delegation.Address,
-					Amount:       int64(delegation.NetRewards),
-					Fee:          int64(p.networkFee),
-					GasLimit:     int64(p.gasLimit),
-					Counter:      counter,
-					StorageLimit: 0,
-				})
-			}
 		}
+
+		transactionBatches = append(transactionBatches, transactions)
 	}
 
-	return transactions, counter
+	return transactionBatches
 }
 
 func (p *Payout) batch(delegators tzkt.Delegators) []tzkt.Delegators {
 	var batch []tzkt.Delegators
-	if len(delegators) <= p.batchSize {
+	if len(delegators) <= p.config.Operations.BatchSize {
 		return append(batch, delegators)
 	}
 
-	for len(delegators) >= p.batchSize {
-		batch = append(batch, delegators[:p.batchSize])
-		delegators = delegators[p.batchSize:]
+	for len(delegators) >= p.config.Operations.BatchSize {
+		batch = append(batch, delegators[:p.config.Operations.BatchSize])
+		delegators = delegators[p.config.Operations.BatchSize:]
 	}
 
 	if len(delegators) != 0 {
@@ -268,13 +241,15 @@ func (p *Payout) batch(delegators tzkt.Delegators) []tzkt.Delegators {
 func (p *Payout) injectOperations(operations []string) ([]string, error) {
 	ophashes := []string{}
 	for i, op := range operations {
-		signedop, err := p.wallet.SignOperation(op)
+		signedop, err := p.key.Sign(keys.SignInput{
+			Message: op,
+		})
 		if err != nil {
 			return ophashes, errors.Wrap(err, "failed to inject operation")
 		}
 
-		ophash, err := p.gt.InjectionOperation(gotezos.InjectionOperationInput{
-			Operation: signedop.SignedOperation,
+		ophash, err := p.rpc.InjectionOperation(rpc.InjectionOperationInput{
+			Operation: fmt.Sprintf("%s%s", op, hex.EncodeToString(signedop.Bytes)),
 		})
 		if err != nil {
 			return ophashes, errors.Wrap(err, "failed to inject operation")
@@ -310,8 +285,8 @@ func (p *Payout) confirmOperation(operation string) bool {
 	for {
 		select {
 		case <-ticker:
-			if head, err := p.gt.Head(); err == nil {
-				if ophashes, err := p.gt.OperationHashes(head.Hash); err == nil {
+			if head, err := p.rpc.Head(); err == nil {
+				if ophashes, err := p.rpc.OperationHashes(head.Hash); err == nil {
 					for _, out := range ophashes {
 						for _, in := range out {
 							if in == operation {
@@ -328,7 +303,7 @@ func (p *Payout) confirmOperation(operation string) bool {
 }
 
 func (p *Payout) isInBlacklist(delegation string) bool {
-	for _, b := range p.blacklist {
+	for _, b := range p.config.Baker.Blacklist {
 		if b == delegation {
 			return true
 		}
@@ -338,7 +313,7 @@ func (p *Payout) isInBlacklist(delegation string) bool {
 }
 
 func (p *Payout) isDexterContract(address string) bool {
-	for _, contract := range p.dexterContracts {
+	for _, contract := range p.config.Baker.DexterLiquidityContracts {
 		if contract == address {
 			return true
 		}

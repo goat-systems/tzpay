@@ -1,6 +1,6 @@
 # Tzpay
 
-Tzpay is a golang driven payout tool for delegation services on the tezos network. Tzpay is built with [go-tezos](https://github.com/goat-systems/go-tezos).
+Tzpay is a golang driven payout tool for delegation services on the tezos network. It is built with [go-tezos](https://github.com/goat-systems/go-tezos), and has support for [Dexter](http://camlcase.io/) liquidity providers. 
 
 ## Installation
 
@@ -28,24 +28,39 @@ docker run --rm -ti goatsystems/tzpay:latest tzpay [command] \
 -e TZPAY_WALLET_PASSWORD=<TODO (e.g. password)>
 ```
 
-## Usage
+## Configuration
 
-### Required Enviroment Variables 
-```
-TZPAY_HOST_NODE=<TODO (e.g. http://127.0.0.1:8732)>
-TZPAY_BAKERS_FEE=<TODO (e.g. 0.05 for 5%)>
-TZPAY_DELEGATE=<TODO (e.g. tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc)>
-TZPAY_WALLET_SECRET=<TODO (e.g. edesk...)>
-TZPAY_WALLET_PASSWORD=<TODO (e.g. password)>
-```
+| ENV                                  | Description                                          | Default                       | Required |
+|--------------------------------------|------------------------------------------------------|:-----------------------------:|:--------:|
+| TZPAY_BAKER                          | Pkh/Address of Baker                                 | N/A                           | True     |
+| TZPAY_BAKER_FEE                      | Baker's Fee as a decimal (e.g. 5% would be 0.05)     | N/A                           | True     |
+| TZPAY_WALLET_ESK                     | The tezos encrypted secret key (ed25519)             | N/A                           | True     |
+| TZPAY_WALLET_PASSWORD                | The password to the encrypted secret key (ed25519)   | N/A                           | True     |
+| TZPAY_BAKER_MINIMUM_PAYMENT          | Amounts below this amount will not be paid (MUTEZ)   | N/A                           | False    |
+| TZPAY_BAKER_EARNINGS_ONLY            | Baker will not pay for missed endorsements or blocks | False                         | False    |
+| TZPAY_BAKER_BLACK_LIST               | Baker will not pay addresses in blacklist            | N/A                           | False    |
+| TZPAY_BAKER_LIQUIDITY_CONTRACTS      | Pays liquidity providers in listed dexter contracts  | N/A                           | False    |
+| TZPAY_API_TZKT                       | URL to a [tzkt api](api.tzkt.io)                     | https://api.tzkt.io           | False    |
+| TZPAY_API_TEZOS                      | URL to a tezos RPC                                   | https://tezos.giganode.io/    | False    |
+| TZPAY_OPERATIONS_NETWORK_FEE         | The network fee used in each transfer operation      | 2941                          | False    |
+| TZPAY_OPERATIONS_GAS_LIMIT           | The gas limit used in each transfer operation        | 26283                         | False    |
+| TZPAY_OPERATIONS_BATCH_SIZE          | The amount of transfers to include in an operation   | 125                           | False    |
+| TZPAY_TWITTER_CONSUMER_KEY           | Twitter credentials for notifications                | N/A                           | False    |
+| TZPAY_TWITTER_CONSUMER_SECRET        | Twitter credentials for notifications                | N/A                           | False    |
+| TZPAY_TWITTER_ACCESS_TOKEN           | Twitter credentials for notifications                | N/A                           | False    |
+| TZPAY_TWITTER_ACCESS_SECRET          | Twitter credentials for notifications                | N/A                           | False    |
+| TZPAY_TWILIO_ACCOUNT_SID             | Twilio credentials for notifications                 | N/A                           | False    |
+| TZPAY_TWILIO_AUTH_TOKEN              | Twilio credentials for notifications                 | N/A                           | False    |
+| TZPAY_TWILIO_FROM                    | Twilio credentials for notifications                 | N/A                           | False    |
+| TZPAY_TWILIO_TO                      | Twilio credentials for notifications                 | N/A                           | False    |
 
-### Optional Enviroment Variables
-```
-TZPAY_BLACKLIST=<TODO (e.g. some_blacklist_file.json)>
-TZPAY_NETWORK_GAS_LIMIT=<TODO (e.g. 30000)>
-TZPAY_NETWORK_FEE=<TODO (e.g. 3000)>
-TZPAY_MINIMUM_PAYMENT=<TODO (e.g. 3000)>
-```
+### Keys
+As of now only ed25519 is supported.
+
+### Notifications
+If twilio or twitter credentials are provided, a notification will be sent after ever payout. 
+
+
 
 ### Help
 ```

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	gotezos "github.com/goat-systems/go-tezos/v3"
+	"github.com/goat-systems/go-tezos/v3/rpc"
 	"github.com/goat-systems/tzpay/v2/internal/tzkt"
 	"github.com/stretchr/testify/assert"
 )
@@ -47,9 +47,9 @@ func (t *TzktMock) GetRewardsSplit(delegate string, cycle int, options ...tzkt.U
 	return rewardsSplit, nil
 }
 
-// GoTezosMock is a test helper mocking the GoTezos lib
-type GoTezosMock struct {
-	gotezos.IFace
+// RPCMock is a test helper mocking the go-tezos/rpc lib
+type RPCMock struct {
+	rpc.IFace
 	HeadErr               bool
 	CounterErr            bool
 	BalanceErr            bool
@@ -67,12 +67,12 @@ type GoTezosMock struct {
 }
 
 // EndorsingRights -
-func (g *GoTezosMock) EndorsingRights(input gotezos.EndorsingRightsInput) (*gotezos.EndorsingRights, error) {
-	if g.EndorsingRightsErr {
-		return &gotezos.EndorsingRights{}, errors.New("failed to get endorsing rights")
+func (r *RPCMock) EndorsingRights(input rpc.EndorsingRightsInput) (*rpc.EndorsingRights, error) {
+	if r.EndorsingRightsErr {
+		return &rpc.EndorsingRights{}, errors.New("failed to get endorsing rights")
 	}
 
-	return &gotezos.EndorsingRights{
+	return &rpc.EndorsingRights{
 		{
 			Level:    100,
 			Delegate: "some_delegate",
@@ -81,12 +81,12 @@ func (g *GoTezosMock) EndorsingRights(input gotezos.EndorsingRightsInput) (*gote
 }
 
 // BakingRights -
-func (g *GoTezosMock) BakingRights(input gotezos.BakingRightsInput) (*gotezos.BakingRights, error) {
-	if g.BakingRightsErr {
-		return &gotezos.BakingRights{}, errors.New("failed to get baking rights")
+func (r *RPCMock) BakingRights(input rpc.BakingRightsInput) (*rpc.BakingRights, error) {
+	if r.BakingRightsErr {
+		return &rpc.BakingRights{}, errors.New("failed to get baking rights")
 	}
 
-	return &gotezos.BakingRights{
+	return &rpc.BakingRights{
 		{
 			Level:    100,
 			Delegate: "some_delegate",
@@ -95,19 +95,19 @@ func (g *GoTezosMock) BakingRights(input gotezos.BakingRightsInput) (*gotezos.Ba
 }
 
 // Head -
-func (g *GoTezosMock) Head() (*gotezos.Block, error) {
-	if g.HeadErr {
-		return &gotezos.Block{}, errors.New("failed to get block")
+func (r *RPCMock) Head() (*rpc.Block, error) {
+	if r.HeadErr {
+		return &rpc.Block{}, errors.New("failed to get block")
 	}
-	return &gotezos.Block{
+	return &rpc.Block{
 		Hash: "BLfEWKVudXH15N8nwHZehyLNjRuNLoJavJDjSZ7nq8ggfzbZ18p",
 	}, nil
 }
 
 // Counter -
-func (g *GoTezosMock) Counter(blockhash, pkh string) (int, error) {
+func (r *RPCMock) Counter(blockhash, pkh string) (int, error) {
 	counter := 0
-	if g.CounterErr {
+	if r.CounterErr {
 		return counter, errors.New("failed to get counter")
 	}
 	counter = 100
@@ -115,19 +115,19 @@ func (g *GoTezosMock) Counter(blockhash, pkh string) (int, error) {
 }
 
 // Balance -
-func (g *GoTezosMock) Balance(input gotezos.BalanceInput) (int, error) {
-	if g.BalanceErr {
+func (r *RPCMock) Balance(input rpc.BalanceInput) (int, error) {
+	if r.BalanceErr {
 		return 0, errors.New("failed to get balance")
 	}
 	return 5000000, nil
 }
 
 // FrozenBalance -
-func (g *GoTezosMock) FrozenBalance(cycle int, delegate string) (gotezos.FrozenBalance, error) {
-	if g.FrozenBalanceErr {
-		return gotezos.FrozenBalance{}, errors.New("failed to get frozen balance")
+func (r *RPCMock) FrozenBalance(cycle int, delegate string) (rpc.FrozenBalance, error) {
+	if r.FrozenBalanceErr {
+		return rpc.FrozenBalance{}, errors.New("failed to get frozen balance")
 	}
-	return gotezos.FrozenBalance{
+	return rpc.FrozenBalance{
 		Deposits: 10000000000,
 		Fees:     3000,
 		Rewards:  70000000,
@@ -135,8 +135,8 @@ func (g *GoTezosMock) FrozenBalance(cycle int, delegate string) (gotezos.FrozenB
 }
 
 // DelegatedContracts -
-func (g *GoTezosMock) DelegatedContracts(input gotezos.DelegatedContractsInput) ([]string, error) {
-	if g.DelegatedContractsErr {
+func (r *RPCMock) DelegatedContracts(input rpc.DelegatedContractsInput) ([]string, error) {
+	if r.DelegatedContractsErr {
 		return []string{}, errors.New("failed to get delegated contracts at cycle")
 	}
 
@@ -148,11 +148,11 @@ func (g *GoTezosMock) DelegatedContracts(input gotezos.DelegatedContractsInput) 
 }
 
 // Cycle -
-func (g *GoTezosMock) Cycle(cycle int) (gotezos.Cycle, error) {
-	if g.CycleErr {
-		return gotezos.Cycle{}, errors.New("failed to get cycle")
+func (r *RPCMock) Cycle(cycle int) (rpc.Cycle, error) {
+	if r.CycleErr {
+		return rpc.Cycle{}, errors.New("failed to get cycle")
 	}
-	return gotezos.Cycle{
+	return rpc.Cycle{
 		RandomSeed:   "some_seed",
 		RollSnapshot: 10,
 		BlockHash:    "some_hash",
@@ -160,24 +160,24 @@ func (g *GoTezosMock) Cycle(cycle int) (gotezos.Cycle, error) {
 }
 
 // StakingBalance -
-func (g *GoTezosMock) StakingBalance(input gotezos.StakingBalanceInput) (int, error) {
-	if g.StakingBalanceErr {
+func (r *RPCMock) StakingBalance(input rpc.StakingBalanceInput) (int, error) {
+	if r.StakingBalanceErr {
 		return 0, errors.New("failed to get staking balance")
 	}
 	return 10000000000, nil
 }
 
 // InjectionOperation -
-func (g *GoTezosMock) InjectionOperation(input gotezos.InjectionOperationInput) (string, error) {
-	if g.InjectionOperationErr {
+func (r *RPCMock) InjectionOperation(input rpc.InjectionOperationInput) (string, error) {
+	if r.InjectionOperationErr {
 		return "", errors.New("failed to inject operation")
 	}
 	return "ooYympR9wfV98X4MUHtE78NjXYRDeMTAD4ei7zEZDqoHv2rfb1M", nil
 }
 
 // OperationHashes -
-func (g *GoTezosMock) OperationHashes(blockhash string) ([][]string, error) {
-	if g.OperationHashesErr {
+func (r *RPCMock) OperationHashes(blockhash string) ([][]string, error) {
+	if r.OperationHashesErr {
 		return nil, errors.New("failed to get operation hashes")
 	}
 
@@ -189,16 +189,16 @@ func (g *GoTezosMock) OperationHashes(blockhash string) ([][]string, error) {
 	}, nil
 }
 
-func (g *GoTezosMock) ContractStorage(blockhash string, KT1 string) ([]byte, error) {
-	if g.ContractStorageErr {
+func (r *RPCMock) ContractStorage(blockhash string, KT1 string) ([]byte, error) {
+	if r.ContractStorageErr {
 		return nil, errors.New("failed to get contract storage")
 	}
 
 	return []byte(`{"prim":"Pair","args":[{"int":"16033"},{"prim":"Pair","args":[{"prim":"Pair","args":[{"prim":"False"},{"prim":"Pair","args":[{"prim":"False"},{"int":"23567891"}]}]},{"prim":"Pair","args":[{"prim":"Pair","args":[{"string":"tz1S82rGFZK8cVbNDpP1Hf9VhTUa4W8oc2WV"},{"string":"KT1GQcLae1ve1ZEPNfD9z1dyv5ev9ki39SNW"}]},{"prim":"Pair","args":[{"int":"123456"},{"int":"23567891"}]}]}]}]}`), nil
 }
 
-func (g *GoTezosMock) BigMap(input gotezos.BigMapInput) ([]byte, error) {
-	if g.BigMapErr {
+func (r *RPCMock) BigMap(input rpc.BigMapInput) ([]byte, error) {
+	if r.BigMapErr {
 		return nil, errors.New("failed to get contract storage")
 	}
 

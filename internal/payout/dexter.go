@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	gotezos "github.com/goat-systems/go-tezos/v3"
+	"github.com/goat-systems/go-tezos/v3/rpc"
 	"github.com/goat-systems/tzpay/v2/internal/tzkt"
 	"github.com/pkg/errors"
 	"github.com/valyala/fastjson"
@@ -63,7 +63,7 @@ func (p *Payout) constructDexterContractPayout(delegator tzkt.Delegator) (tzkt.D
 }
 
 func (p *Payout) getLiquidityProvidersEarnings(contract tzkt.Delegator) (tzkt.Delegator, error) {
-	cycle, err := p.gt.Cycle(p.cycle)
+	cycle, err := p.rpc.Cycle(p.cycle)
 	if err != nil {
 		return contract, errors.Wrapf(err, "failed to get earnings for dexter liquidity providers")
 	}
@@ -96,7 +96,7 @@ func (p *Payout) getLiquidityProvidersEarnings(contract tzkt.Delegator) (tzkt.De
 		}
 
 		lp.GrossRewards = int(lp.Share * float64(contract.GrossRewards))
-		lp.Fee = int(float64(lp.GrossRewards) * p.bakerFee)
+		lp.Fee = int(float64(lp.GrossRewards) * p.config.Baker.Fee)
 		lp.NetRewards = lp.GrossRewards - lp.Fee
 
 		if p.isInBlacklist(lp.Address) {
@@ -139,12 +139,12 @@ func (p *Payout) getLiquidityProvidersList(target string) ([]string, error) {
 }
 
 func (p *Payout) getBalanceFromBigMap(key string, bigMapID int, blockhash string) (int, error) {
-	scriptExp, err := gotezos.ForgeScriptExpressionForAddress(key)
+	scriptExp, err := rpc.ForgeScriptExpressionForAddress(key)
 	if err != nil {
 		return 0, errors.Wrapf(err, "failed to get balance from big_map for '%s'", key)
 	}
 
-	bigMapResp, err := p.gt.BigMap(gotezos.BigMapInput{
+	bigMapResp, err := p.rpc.BigMap(rpc.BigMapInput{
 		Blockhash:        blockhash,
 		BigMapID:         bigMapID,
 		ScriptExpression: scriptExp,
@@ -164,7 +164,7 @@ func (p *Payout) getBalanceFromBigMap(key string, bigMapID int, blockhash string
 }
 
 func (p *Payout) getContractStorage(blockhash string, address string) (ExchangeContractV1, error) {
-	storage, err := p.gt.ContractStorage(blockhash, address) //CHANGE TO cycle.Blockhash later
+	storage, err := p.rpc.ContractStorage(blockhash, address) //CHANGE TO cycle.Blockhash later
 	if err != nil {
 		return ExchangeContractV1{}, errors.Wrapf(err, "failed to get storage for contract '%s'", address)
 	}

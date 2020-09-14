@@ -1,64 +1,22 @@
 package cmd
 
 import (
+	"fmt"
 	"time"
 
-	gotezos "github.com/goat-systems/go-tezos/v3"
-	"github.com/goat-systems/tzpay/v2/internal/enviroment"
+	"github.com/goat-systems/go-tezos/v3/rpc"
+	"github.com/goat-systems/tzpay/v2/internal/config"
+	"github.com/goat-systems/tzpay/v2/internal/notifier"
+	"github.com/goat-systems/tzpay/v2/internal/notifier/twilio"
+	"github.com/goat-systems/tzpay/v2/internal/notifier/twitter"
 	"github.com/goat-systems/tzpay/v2/internal/payout"
 	"github.com/goat-systems/tzpay/v2/internal/print"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
-// Serv configures and exposes functions to allow tzpay inject a payout into the tezos network on a cycle by cycle basis.
-type Serv struct {
-	gt             gotezos.IFace
-	bakersFee      float64
-	delegate       string
-	gasLimit       int
-	minimumPayment int
-	networkFee     int
-	blackList      []string
-	wallet         gotezos.Wallet
-	batchSize      int
-	verbose        bool
-	table          bool
-}
-
-// ServInput is the input for NewServ
-type ServInput struct {
-	GoTezos        gotezos.IFace
-	BakersFee      float64
-	Delegate       string
-	GasLimit       int
-	MinimumPayment int
-	NetworkFee     int
-	BlackList      []string
-	Wallet         gotezos.Wallet
-	BatchSize      int
-	Verbose        bool
-	Table          bool
-}
-
-// NewServ returns a pointer to a Serv
-func NewServ(input ServInput) *Serv {
-	return &Serv{
-		gt:             input.GoTezos,
-		bakersFee:      input.BakersFee,
-		delegate:       input.Delegate,
-		gasLimit:       input.GasLimit,
-		minimumPayment: input.MinimumPayment,
-		networkFee:     input.NetworkFee,
-		blackList:      input.BlackList,
-		wallet:         input.Wallet,
-	}
-}
-
 // ServCommand returns a new run cobra command
 func ServCommand() *cobra.Command {
-	var table bool
-	var batchSize int
 	var verbose bool
 
 	var serv = &cobra.Command{
@@ -66,55 +24,44 @@ func ServCommand() *cobra.Command {
 		Short:   "serv runs a service that will continously payout cycle by cycle",
 		Example: `tzpay serv`,
 		Run: func(cmd *cobra.Command, args []string) {
-			env, err := enviroment.NewRunEnviroment()
-			if err != nil {
-				log.WithField("error", err.Error()).Fatal("Failed to load enviroment.")
-			}
-
-			NewServ(ServInput{
-				GoTezos:        env.GoTezos,
-				BakersFee:      env.BakersFee,
-				Delegate:       env.Delegate,
-				GasLimit:       env.GasLimit,
-				MinimumPayment: env.MinimumPayment,
-				NetworkFee:     env.NetworkFee,
-				BlackList:      env.BlackList,
-				Wallet:         env.Wallet,
-				BatchSize:      batchSize,
-				Verbose:        verbose,
-				Table:          table,
-			}).Start()
+			start(verbose)
 		},
 	}
 
-	serv.PersistentFlags().BoolVarP(&table, "table", "t", false, "formats result into a table (Default: json)")
-	serv.PersistentFlags().IntVarP(&batchSize, "batch-size", "b", 125, "changes the size of the payout batches (too large may result in failure).")
 	serv.PersistentFlags().BoolVarP(&verbose, "verbose", "v", true, "will print confirmations in between injections.")
 	return serv
 }
 
-// Start will start a payout server where all future cycles will be paid out automatically assuming the payout wallet is funded.
-func (s *Serv) Start() {
-	var cycle int
+func start(verbose bool) {
+	log.Info("Starting tzpay payout server.")
 
+	config, err := config.New()
+	if err != nil {
+		log.WithField("error", err.Error()).Fatal("Failed to load config.")
+	}
+
+	rpc, err := rpc.New(config.API.Tezos)
+	if err != nil {
+		log.WithField("error", err.Error()).Fatal("Failed to connect to tezos RPC.")
+	}
+
+	var cycle int
 	ticker := time.NewTicker(time.Minute)
-	block, err := s.gt.Head()
+	block, err := rpc.Head()
 	if err != nil {
 		log.WithField("error", err.Error()).Error("Failed to parse get current cycle.")
 	}
 	cycle = block.Metadata.Level.Cycle
 
-	log.WithField("cycle", cycle).Info("Starting tzpay payout server.")
-
 	for range ticker.C {
-		block, err := s.gt.Head()
+		block, err := rpc.Head()
 		if err != nil {
 			log.WithField("error", err.Error()).Error("Failed to parse get current cycle.")
 		}
 
 		if block.Metadata.Level.Cycle > cycle {
-			s.execute(cycle, s.batchSize, s.verbose, s.table)
-			log.WithField("cycle", cycle).Info("tzpay executed a payout.")
+			executeServ(config, cycle, verbose)
+			log.WithField("cycle", cycle).Infof("Executed payout for cycle '%s'", cycle)
 
 			cycle = block.Metadata.Level.Cycle
 			log.WithField("cycle", cycle).Info("Update to current cycle.")
@@ -123,29 +70,44 @@ func (s *Serv) Start() {
 
 }
 
-func (s *Serv) execute(cycle int, batchSize int, verbose, table bool) {
-	report, err := payout.NewPayout(payout.NewPayoutInput{
-		GoTezos:    s.gt,
-		Cycle:      cycle,
-		Delegate:   s.delegate,
-		BakerFee:   s.bakersFee,
-		MinPayment: s.minimumPayment,
-		BlackList:  s.blackList,
-		BatchSize:  batchSize,
-		NetworkFee: s.networkFee,
-		GasLimit:   s.gasLimit,
-		Inject:     true,
-		Verbose:    verbose,
-		Wallet:     s.wallet,
-	}).Execute()
-
+func executeServ(config config.Config, cycle int, verbose bool) {
+	payout, err := payout.New(config, cycle, true, verbose)
 	if err != nil {
-		log.WithField("error", err.Error()).Errorf("Failed to execute payout for cycle: %d", cycle)
+		log.WithField("error", err.Error()).Fatal("Failed to initialize payout.")
 	}
 
-	if table {
-		print.Table(cycle, s.delegate, report)
-	} else {
-		print.JSON(report)
+	rewardsSplit, err := payout.Execute()
+	if err != nil {
+		log.WithField("error", err.Error()).Fatal("Failed to execute payout.")
 	}
+
+	var messengers []notifier.ClientIFace
+	if config.Twilio != nil {
+		messengers = append(messengers, twilio.NewTwilioClient(twilio.Client{
+			AccountSID: config.Twilio.AccountSID,
+			AuthToken:  config.Twilio.AuthToken,
+			From:       config.Twilio.From,
+			To:         config.Twilio.To,
+		}))
+	}
+
+	if config.Twitter != nil {
+		messengers = append(messengers, twitter.NewClient(
+			config.Twitter.ConsumerKey,
+			config.Twitter.ConsumerSecret,
+			config.Twitter.AccessToken,
+			config.Twitter.AccessSecret,
+		))
+	}
+
+	payoutNotifier := notifier.NewPayoutNotifier(notifier.PayoutNotifierInput{
+		Notifiers: messengers,
+	})
+
+	err = payoutNotifier.Notify(fmt.Sprintf("[TZPAY] payout for cycle %d: \n%s\n #tezos #pos", cycle, rewardsSplit.OperationLink))
+	if err != nil {
+		log.WithField("error", err.Error()).Error("Failed to notify.")
+	}
+
+	print.JSON(rewardsSplit)
 }

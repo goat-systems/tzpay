@@ -31,7 +31,7 @@ type IFace interface {
 
 type Tzkt struct {
 	client client
-	host   string
+	Host   string
 }
 
 func NewTZKT(host string) *Tzkt {
@@ -45,12 +45,12 @@ func NewTZKT(host string) *Tzkt {
 				TLSHandshakeTimeout: 10 * time.Second,
 			},
 		},
-		host: cleanseHost(host),
+		Host: cleanseHost(host),
 	}
 }
 
 func (t *Tzkt) get(path string, opts ...URLParameters) ([]byte, error) {
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s%s", t.host, path), nil)
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s%s", t.Host, path), nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to construct request")
 	}

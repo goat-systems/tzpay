@@ -11,12 +11,12 @@ type Client struct {
 }
 
 // NewClient -
-func NewClient(consumerKey, consumerSecret, accessToken, accessSecret string) Client {
+func NewClient(consumerKey, consumerSecret, accessToken, accessSecret string) *Client {
 	config := oauth1.NewConfig(consumerKey, consumerSecret)
 	token := oauth1.NewToken(accessToken, accessSecret)
 	httpClient := config.Client(oauth1.NoContext, token)
 
-	return Client{
+	return &Client{
 		twitter.NewClient(httpClient),
 	}
 }

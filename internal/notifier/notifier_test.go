@@ -3,7 +3,7 @@ package notifier
 import (
 	"testing"
 
-	gotezos "github.com/goat-systems/go-tezos/v3"
+	"github.com/goat-systems/go-tezos/v3/rpc"
 	"github.com/goat-systems/tzpay/v2/internal/test"
 	"github.com/stretchr/testify/assert"
 )
@@ -12,16 +12,14 @@ func Test_isEndorsementSuccessful(t *testing.T) {
 	m := MissedOpportunityNotifier{
 		baker: "some_baker",
 	}
-	ok := m.isEndorsementSuccessful(&gotezos.Block{
-		Operations: [][]gotezos.Operations{
+	ok := m.isEndorsementSuccessful(&rpc.Block{
+		Operations: [][]rpc.Operations{
 			{
 				{
-					Contents: gotezos.Contents{
-						Endorsements: []gotezos.Endorsement{
-							{
-								Metadata: &gotezos.EndorsementMetadata{
-									Delegate: "some_baker",
-								},
+					Contents: rpc.Contents{
+						{
+							Metadata: &rpc.ContentsHelperMetadata{
+								Delegate: "some_baker",
 							},
 						},
 					},
@@ -31,16 +29,14 @@ func Test_isEndorsementSuccessful(t *testing.T) {
 	})
 	assert.Equal(t, true, ok)
 
-	ok = m.isEndorsementSuccessful(&gotezos.Block{
-		Operations: [][]gotezos.Operations{
+	ok = m.isEndorsementSuccessful(&rpc.Block{
+		Operations: [][]rpc.Operations{
 			{
 				{
-					Contents: gotezos.Contents{
-						Endorsements: []gotezos.Endorsement{
-							{
-								Metadata: &gotezos.EndorsementMetadata{
-									Delegate: "some_other_baker",
-								},
+					Contents: rpc.Contents{
+						{
+							Metadata: &rpc.ContentsHelperMetadata{
+								Delegate: "some_other_baker",
 							},
 						},
 					},
@@ -55,15 +51,15 @@ func Test_isBakeSuccessful(t *testing.T) {
 	m := MissedOpportunityNotifier{
 		baker: "some_baker",
 	}
-	ok := m.isBakeSuccessful(&gotezos.Block{
-		Metadata: gotezos.Metadata{
+	ok := m.isBakeSuccessful(&rpc.Block{
+		Metadata: rpc.Metadata{
 			Baker: "some_baker",
 		},
 	})
 	assert.Equal(t, true, ok)
 
-	ok = m.isBakeSuccessful(&gotezos.Block{
-		Metadata: gotezos.Metadata{
+	ok = m.isBakeSuccessful(&rpc.Block{
+		Metadata: rpc.Metadata{
 			Baker: "some_other_baker",
 		},
 	})
@@ -78,8 +74,8 @@ func Test_getRights(t *testing.T) {
 	type want struct {
 		err         bool
 		errContains string
-		erights     *gotezos.EndorsingRights
-		brights     *gotezos.BakingRights
+		erights     *rpc.EndorsingRights
+		brights     *rpc.BakingRights
 	}
 
 	cases := []struct {
@@ -91,19 +87,19 @@ func Test_getRights(t *testing.T) {
 			"is successful",
 			input{
 				MissedOpportunityNotifier{
-					gt: &test.GoTezosMock{},
+					gt: &test.RPCMock{},
 				},
 			},
 			want{
 				false,
 				"",
-				&gotezos.EndorsingRights{
+				&rpc.EndorsingRights{
 					{
 						Level:    100,
 						Delegate: "some_delegate",
 					},
 				},
-				&gotezos.BakingRights{
+				&rpc.BakingRights{
 					{
 						Level:    100,
 						Delegate: "some_delegate",
@@ -115,7 +111,7 @@ func Test_getRights(t *testing.T) {
 			"handles failure to get endorsing rights",
 			input{
 				MissedOpportunityNotifier{
-					gt: &test.GoTezosMock{
+					gt: &test.RPCMock{
 						EndorsingRightsErr: true,
 					},
 				},
@@ -123,15 +119,15 @@ func Test_getRights(t *testing.T) {
 			want{
 				true,
 				"failed to get endorsing rights",
-				&gotezos.EndorsingRights{},
-				&gotezos.BakingRights{},
+				&rpc.EndorsingRights{},
+				&rpc.BakingRights{},
 			},
 		},
 		{
 			"handles failure to get baking rights",
 			input{
 				MissedOpportunityNotifier{
-					gt: &test.GoTezosMock{
+					gt: &test.RPCMock{
 						BakingRightsErr: true,
 					},
 				},
@@ -139,8 +135,8 @@ func Test_getRights(t *testing.T) {
 			want{
 				true,
 				"failed to get baking rights",
-				&gotezos.EndorsingRights{},
-				&gotezos.BakingRights{},
+				&rpc.EndorsingRights{},
+				&rpc.BakingRights{},
 			},
 		},
 	}
