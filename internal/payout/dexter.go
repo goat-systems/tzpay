@@ -51,12 +51,9 @@ type BigMapV1 struct {
 }
 
 func (p *Payout) constructDexterContractPayout(delegator tzkt.Delegator) (tzkt.Delegator, error) {
-	if isDex := p.isDexterContract(delegator.Address); isDex {
-		var err error
-		delegator, err = p.getLiquidityProvidersEarnings(delegator)
-		if err != nil {
-			return delegator, errors.Wrap(err, "failed to contruct dexter contract payout")
-		}
+	delegator, err := p.getLiquidityProvidersEarnings(delegator)
+	if err != nil {
+		return delegator, errors.Wrap(err, "failed to contruct dexter contract payout")
 	}
 
 	return delegator, nil

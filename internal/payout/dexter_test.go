@@ -59,26 +59,6 @@ func Test_constructDexterContractPayout(t *testing.T) {
 			},
 		},
 		{
-			"handles a non dexter contract",
-			input{
-				payout: Payout{
-					rpc: &test.RPCMock{},
-				},
-				contract: tzkt.Delegator{
-					Address:      "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
-					GrossRewards: 149992399,
-				},
-			},
-			want{
-				false,
-				"",
-				tzkt.Delegator{
-					Address:      "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
-					GrossRewards: 149992399,
-				},
-			},
-		},
-		{
 			"is successful",
 			input{
 				payout: Payout{

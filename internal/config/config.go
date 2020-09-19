@@ -10,22 +10,22 @@ import (
 
 // Config encapsulates all configuration possibilities into a single structure
 type Config struct {
-	API        API
-	Baker      Baker
-	Key        Key
-	Operations Operations
-	Twitter    *Twitter
-	Twilio     *Twilio
+	API           API
+	Baker         Baker
+	Key           Key
+	Operations    Operations
+	Notifications *Notifications
 }
 
 // Baker contains configurations related to the how a baker might run their baking operation
 type Baker struct {
-	Address                  string   `env:"TZPAY_BAKER" validate:"required"`
-	Fee                      float64  `env:"TZPAY_BAKER_FEE" validate:"required"`
-	MinimumPayment           int      `env:"TZPAY_BAKER_MINIMUM_PAYMENT"`
-	EarningsOnly             bool     `env:"TZPAY_BAKER_EARNINGS_ONLY"`
-	Blacklist                []string `env:"TZPAY_BAKER_BLACK_LIST" envSeparator:","`
-	DexterLiquidityContracts []string `env:"TZPAY_BAKER_LIQUIDITY_CONTRACTS" envSeparator:","`
+	Address                      string   `env:"TZPAY_BAKER" validate:"required"`
+	Fee                          float64  `env:"TZPAY_BAKER_FEE" validate:"required"`
+	MinimumPayment               int      `env:"TZPAY_BAKER_MINIMUM_PAYMENT"`
+	EarningsOnly                 bool     `env:"TZPAY_BAKER_EARNINGS_ONLY"`
+	DexterLiquidityContractsOnly bool     `env:"TZPAY_BAKER_LIQUIDITY_CONTRACTS_ONLY"`
+	Blacklist                    []string `env:"TZPAY_BAKER_BLACK_LIST" envSeparator:","`
+	DexterLiquidityContracts     []string `env:"TZPAY_BAKER_LIQUIDITY_CONTRACTS" envSeparator:","`
 }
 
 // API contains configurations for the tzkt API and a tezos node
@@ -45,6 +45,13 @@ type Operations struct {
 type Key struct {
 	Esk      string `env:"TZPAY_WALLET_ESK" validate:"required"`
 	Password string `env:"TZPAY_WALLET_PASSWORD" validate:"required"`
+}
+
+// Notifications contains the configurations for notification features
+type Notifications struct {
+	SignMessage bool `env:"TZPAY_NOTIFICATIONS_SIGN" validate:"required"`
+	Twitter     *Twitter
+	Twilio      *Twilio
 }
 
 // Twitter contains twitter API information for automatic notifications
@@ -73,8 +80,10 @@ func New() (Config, error) {
 	config.Baker.Blacklist = cleanList(config.Baker.Blacklist)
 	config.Baker.DexterLiquidityContracts = cleanList(config.Baker.DexterLiquidityContracts)
 
-	if config.Twilio != nil {
-		config.Twilio.To = cleanList(config.Twilio.To)
+	if config.Notifications != nil {
+		if config.Notifications.Twilio != nil {
+			config.Notifications.Twilio.To = cleanList(config.Notifications.Twilio.To)
+		}
 	}
 
 	err := validator.New().Struct(&config)

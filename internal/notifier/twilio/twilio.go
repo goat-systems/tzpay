@@ -19,8 +19,8 @@ type Client struct {
 	twilio     *gotwilio.Twilio
 }
 
-// NewTwilioClient returns a new twilio IFace
-func NewTwilioClient(twilio Client) IFace {
+// New returns a new twilio IFace
+func New(twilio Client) IFace {
 	twilio.twilio = gotwilio.NewTwilioClient(twilio.AccountSID, twilio.AuthToken)
 	return &twilio
 }

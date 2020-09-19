@@ -17,6 +17,8 @@ type TzktMock struct {
 	RewardsSplitErr bool
 }
 
+var _ rpc.IFace = &RPCMock{}
+
 func (t *TzktMock) GetTransactions(options ...tzkt.URLParameters) ([]tzkt.Transaction, error) {
 	if t.TransactionsErr {
 		return []tzkt.Transaction{}, errors.New("failed to get transaction")

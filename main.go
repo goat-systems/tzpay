@@ -12,6 +12,7 @@ func main() {
 	}
 	rootCommand.AddCommand(
 		cmd.DryRunCommand(),
+		cmd.ServCommand(),
 		cmd.RunCommand(),
 		cmd.NewVersionCommand(),
 		cmd.NewSetupCommand(),

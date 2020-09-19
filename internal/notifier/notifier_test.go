@@ -87,7 +87,7 @@ func Test_getRights(t *testing.T) {
 			"is successful",
 			input{
 				MissedOpportunityNotifier{
-					gt: &test.RPCMock{},
+					rpcClient: &test.RPCMock{},
 				},
 			},
 			want{
@@ -111,7 +111,7 @@ func Test_getRights(t *testing.T) {
 			"handles failure to get endorsing rights",
 			input{
 				MissedOpportunityNotifier{
-					gt: &test.RPCMock{
+					rpcClient: &test.RPCMock{
 						EndorsingRightsErr: true,
 					},
 				},
@@ -127,7 +127,7 @@ func Test_getRights(t *testing.T) {
 			"handles failure to get baking rights",
 			input{
 				MissedOpportunityNotifier{
-					gt: &test.RPCMock{
+					rpcClient: &test.RPCMock{
 						BakingRightsErr: true,
 					},
 				},

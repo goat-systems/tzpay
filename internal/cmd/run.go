@@ -61,22 +61,24 @@ func executeRun(arg string, verbose, table bool) {
 	}
 
 	var messengers []notifier.ClientIFace
-	if config.Twilio != nil {
-		messengers = append(messengers, twilio.NewTwilioClient(twilio.Client{
-			AccountSID: config.Twilio.AccountSID,
-			AuthToken:  config.Twilio.AuthToken,
-			From:       config.Twilio.From,
-			To:         config.Twilio.To,
-		}))
-	}
+	if config.Notifications != nil {
+		if config.Notifications.Twilio != nil {
+			messengers = append(messengers, twilio.New(twilio.Client{
+				AccountSID: config.Notifications.Twilio.AccountSID,
+				AuthToken:  config.Notifications.Twilio.AuthToken,
+				From:       config.Notifications.Twilio.From,
+				To:         config.Notifications.Twilio.To,
+			}))
+		}
 
-	if config.Twitter != nil {
-		messengers = append(messengers, twitter.NewClient(
-			config.Twitter.ConsumerKey,
-			config.Twitter.ConsumerSecret,
-			config.Twitter.AccessToken,
-			config.Twitter.AccessSecret,
-		))
+		if config.Notifications.Twitter != nil {
+			messengers = append(messengers, twitter.NewClient(
+				config.Notifications.Twitter.ConsumerKey,
+				config.Notifications.Twitter.ConsumerSecret,
+				config.Notifications.Twitter.AccessToken,
+				config.Notifications.Twitter.AccessSecret,
+			))
+		}
 	}
 
 	payoutNotifier := notifier.NewPayoutNotifier(notifier.PayoutNotifierInput{

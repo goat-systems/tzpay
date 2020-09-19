@@ -21,13 +21,16 @@ var (
 
 // Payout represents a payout and payout operations.
 type Payout struct {
-	config  config.Config
-	rpc     rpc.IFace
-	tzkt    tzkt.IFace
-	key     keys.Key
-	cycle   int
-	inject  bool
-	verbose bool
+	config                            config.Config
+	rpc                               rpc.IFace
+	tzkt                              tzkt.IFace
+	key                               keys.Key
+	cycle                             int
+	inject                            bool
+	verbose                           bool
+	constructDexterContractPayoutFunc func(delegator tzkt.Delegator) (tzkt.Delegator, error)
+	applyFunc                         func(delegators tzkt.Delegators) ([]string, error)
+	constructPayoutFunc               func() (tzkt.RewardsSplit, error)
 }
 
 // New returns a pointer to a new Baker
@@ -39,6 +42,8 @@ func New(config config.Config, cycle int, inject, verbose bool) (*Payout, error)
 		inject:  inject,
 		verbose: verbose,
 	}
+	payout.constructDexterContractPayoutFunc = payout.constructDexterContractPayout
+	payout.applyFunc = payout.apply
 
 	var err error
 	payout.rpc, err = rpc.New(config.API.Tezos)
@@ -63,6 +68,27 @@ func New(config config.Config, cycle int, inject, verbose bool) (*Payout, error)
 	return payout, nil
 }
 
+// Execute will execute a payout based off the Payout configuration
+func (p *Payout) Execute() (tzkt.RewardsSplit, error) {
+	payout, err := p.constructPayoutFunc()
+	if err != nil {
+		return payout, errors.Wrapf(err, "failed to execute payout for cycle %d", p.cycle)
+	}
+
+	if p.inject {
+		operations, err := p.applyFunc(payout.Delegators)
+		if err != nil {
+			return payout, errors.Wrapf(err, "failed to execute payout for cycle %d", p.cycle)
+		}
+
+		for _, op := range operations {
+			payout.OperationLink = append(payout.OperationLink, fmt.Sprintf("https://tzkt.io/%s", op))
+		}
+	}
+
+	return payout, err
+}
+
 func (p *Payout) constructPayout() (tzkt.RewardsSplit, error) {
 	rewardsSplit, err := p.tzkt.GetRewardsSplit(p.config.Baker.Address, p.cycle)
 	if err != nil {
@@ -82,27 +108,60 @@ func (p *Payout) constructPayout() (tzkt.RewardsSplit, error) {
 	rewardsSplit.BakerShare = float64(bakerBalance) / float64(rewardsSplit.StakingBalance)
 	rewardsSplit.BakerRewards = int(rewardsSplit.BakerShare * float64(totalRewards))
 
-	for i := range rewardsSplit.Delegators {
-		if p.isInBlacklist(rewardsSplit.Delegators[i].Address) {
-			rewardsSplit.Delegators[i].BlackListed = true
-		}
+	delegations, dexterContracts := p.splitDelegationsAndDexterContracts(rewardsSplit)
+	rewardsSplit.Delegators = tzkt.Delegators{}
 
-		rewardsSplit.Delegators[i].Share = float64(rewardsSplit.Delegators[i].Balance) / float64(rewardsSplit.StakingBalance)
-		if p.config.Baker.EarningsOnly {
-			rewardsSplit.Delegators[i].GrossRewards = int(rewardsSplit.Delegators[i].Share * float64(totalRewards))
-		} else {
-			rewardsSplit.Delegators[i].GrossRewards = int(rewardsSplit.Delegators[i].Share * float64(totalRewards))
-		}
-		rewardsSplit.Delegators[i].Fee = int(float64(rewardsSplit.Delegators[i].GrossRewards) * p.config.Baker.Fee)
-		rewardsSplit.BakerCollectedFees += rewardsSplit.Delegators[i].Fee
-		rewardsSplit.Delegators[i].NetRewards = int(rewardsSplit.Delegators[i].GrossRewards - rewardsSplit.Delegators[i].Fee)
-
-		if rewardsSplit.Delegators[i], err = p.constructDexterContractPayout(rewardsSplit.Delegators[i]); err != nil {
-			return rewardsSplit, errors.Wrap(err, "failed to contruct payout")
+	if !p.config.Baker.DexterLiquidityContractsOnly {
+		for _, delegation := range delegations {
+			delegation = p.constructDelegation(delegation, totalRewards, rewardsSplit.StakingBalance)
+			rewardsSplit.BakerCollectedFees += delegation.Fee
+			rewardsSplit.Delegators = append(rewardsSplit.Delegators, delegation)
 		}
 	}
 
+	for _, contract := range dexterContracts {
+		contract = p.constructDelegation(contract, totalRewards, rewardsSplit.StakingBalance)
+		rewardsSplit.BakerCollectedFees += contract.Fee
+
+		var err error
+		if contract, err = p.constructDexterContractPayoutFunc(contract); err != nil {
+			return tzkt.RewardsSplit{}, errors.Wrap(err, "failed to contrcut payout for dexter contract")
+		}
+
+		rewardsSplit.Delegators = append(rewardsSplit.Delegators, contract)
+	}
+
 	return rewardsSplit, nil
+}
+
+func (p *Payout) splitDelegationsAndDexterContracts(rewardsSplit tzkt.RewardsSplit) (tzkt.Delegators, tzkt.Delegators) {
+	var delegations tzkt.Delegators
+	var dexterContracts tzkt.Delegators
+	for _, delegation := range rewardsSplit.Delegators {
+		if p.isDexterContract(delegation.Address) {
+			dexterContracts = append(dexterContracts, delegation)
+		} else {
+			delegations = append(delegations, delegation)
+		}
+	}
+
+	return delegations, dexterContracts
+}
+
+func (p *Payout) constructDelegation(delegator tzkt.Delegator, totalRewards, stakingBalance int) tzkt.Delegator {
+	if p.isInBlacklist(delegator.Address) {
+		delegator.BlackListed = true
+	}
+
+	delegator.Share = float64(delegator.Balance) / float64(stakingBalance)
+	if p.config.Baker.EarningsOnly {
+		delegator.GrossRewards = int(delegator.Share * float64(totalRewards))
+	} else {
+		delegator.GrossRewards = int(delegator.Share * float64(totalRewards))
+	}
+	delegator.Fee = int(float64(delegator.GrossRewards) * p.config.Baker.Fee)
+	delegator.NetRewards = int(delegator.GrossRewards - delegator.Fee)
+	return delegator
 }
 
 func (p *Payout) calculateTotals(rewards tzkt.RewardsSplit) int {
@@ -126,27 +185,6 @@ func (p *Payout) calculateTotals(rewards tzkt.RewardsSplit) int {
 		rewards.ExtraBlockRewards
 }
 
-// Execute will execute a payout based off the Payout configuration
-func (p *Payout) Execute() (tzkt.RewardsSplit, error) {
-	payout, err := p.constructPayout()
-	if err != nil {
-		return payout, errors.Wrapf(err, "failed to execute payout for cycle %d", p.cycle)
-	}
-
-	if p.inject {
-		operations, err := p.apply(payout.Delegators)
-		if err != nil {
-			return payout, errors.Wrapf(err, "failed to execute payout for cycle %d", p.cycle)
-		}
-
-		for _, op := range operations {
-			payout.OperationLink = append(payout.OperationLink, fmt.Sprintf("https://tzkt.io/%s", op))
-		}
-	}
-
-	return payout, err
-}
-
 func (p *Payout) apply(delegators tzkt.Delegators) ([]string, error) {
 	head, err := p.rpc.Head()
 	if err != nil {
@@ -154,7 +192,11 @@ func (p *Payout) apply(delegators tzkt.Delegators) ([]string, error) {
 	}
 
 	var operationStrings []string
-	for _, transactions := range p.constructTransactionBatches(head.Hash, delegators) {
+	transactionBatches, err := p.constructTransactionBatches(head.Hash, delegators)
+	if err != nil {
+		return []string{}, errors.Wrap(err, "failed to contruct batch transactions")
+	}
+	for _, transactions := range transactionBatches {
 		if operation, err := forge.Encode(head.Hash, transactions...); err == nil {
 			operationStrings = append(operationStrings, operation)
 		} else {
@@ -170,12 +212,12 @@ func (p *Payout) apply(delegators tzkt.Delegators) ([]string, error) {
 	return operationHashes, nil
 }
 
-func (p *Payout) constructTransactionBatches(blockhash string, delegators tzkt.Delegators) []rpc.Contents {
+func (p *Payout) constructTransactionBatches(blockhash string, delegators tzkt.Delegators) ([]rpc.Contents, error) {
 	var transactionBatches []rpc.Contents
 
 	counter, err := p.rpc.Counter(blockhash, p.key.PubKey.GetPublicKeyHash())
 	if err != nil {
-		return transactionBatches
+		return nil, err
 	}
 
 	for _, batch := range p.batch(delegators) {
@@ -217,7 +259,7 @@ func (p *Payout) constructTransactionBatches(blockhash string, delegators tzkt.D
 		transactionBatches = append(transactionBatches, transactions)
 	}
 
-	return transactionBatches
+	return transactionBatches, nil
 }
 
 func (p *Payout) batch(delegators tzkt.Delegators) []tzkt.Delegators {
