@@ -14,6 +14,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// IFace for testing things that consume Payout
+type IFace interface {
+	Execute() (tzkt.RewardsSplit, error)
+}
+
 var (
 	confirmationDurationInterval = time.Second * 1
 	confirmationTimoutInterval   = time.Minute * 2
@@ -43,6 +48,7 @@ func New(config config.Config, cycle int, inject, verbose bool) (*Payout, error)
 		verbose: verbose,
 	}
 	payout.constructDexterContractPayoutFunc = payout.constructDexterContractPayout
+	payout.constructPayoutFunc = payout.constructPayout
 	payout.applyFunc = payout.apply
 
 	var err error

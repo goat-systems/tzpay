@@ -31,7 +31,7 @@ type Baker struct {
 // API contains configurations for the tzkt API and a tezos node
 type API struct {
 	TZKT  string `env:"TZPAY_API_TZKT" envDefault:"https://api.tzkt.io" validate:"required"`
-	Tezos string `env:"TZPAY_API_TEZOS" envDefault:"https://tezos.giganode.io/" validate:"required"`
+	Tezos string `env:"TZPAY_API_TEZOS" envDefault:"https://mainnet-tezos.giganode.io" validate:"required"`
 }
 
 // Operations contains configurations for modifying the actual operation to be injected into a node

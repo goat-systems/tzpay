@@ -4,27 +4,14 @@ Tzpay is a golang driven payout tool for delegation services on the tezos networ
 
 ## Installation
 
-### Source 
-```
-go get -u github.com/goat-systems/tzpay/v2
-```
-
-### Linux
-```
-wget https://github.com/goat-systems/tzpay/releases/download/v2.6.0-alpha/tzpay_linux_amd64
-sudo mv tzpay_linux_amd64 /usr/local/bin/tzpay
-sudo chmod a+x /usr/local/bin/tzpay
-```
-
 ### Docker
 ```
 docker pull goatsystems/tzpay:latest
 
 docker run --rm -ti goatsystems/tzpay:latest tzpay [command] \
--e TZPAY_HOST_NODE=<TODO (e.g. http://127.0.0.1:8732)> \
--e TZPAY_BAKERS_FEE=<TODO (e.g. 0.05 for 5%)> \
--e TZPAY_DELEGATE=<TODO (e.g. tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc)> \
--e TZPAY_WALLET_SECRET=<TODO (e.g. edesk...)> \
+-e TZPAY_BAKER=<TODO (e.g. tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc)> \
+-e TZPAY_BAKER_FEE=<TODO (e.g. 0.05 for 5%)> \
+-e TZPAY_WALLET_ESK=<TODO (e.g. edesk...)> \
 -e TZPAY_WALLET_PASSWORD=<TODO (e.g. password)>
 ```
 
@@ -39,6 +26,7 @@ docker run --rm -ti goatsystems/tzpay:latest tzpay [command] \
 | TZPAY_BAKER_MINIMUM_PAYMENT          | Amounts below this amount will not be paid (MUTEZ)   | N/A                           | False    |
 | TZPAY_BAKER_EARNINGS_ONLY            | Baker will not pay for missed endorsements or blocks | False                         | False    |
 | TZPAY_BAKER_BLACK_LIST               | Baker will not pay addresses in blacklist            | N/A                           | False    |
+| TZPAY_BAKER_LIQUIDITY_CONTRACTS_ONLY | Pays only liquidity providers                        | N/A                           | False    |
 | TZPAY_BAKER_LIQUIDITY_CONTRACTS      | Pays liquidity providers in listed dexter contracts  | N/A                           | False    |
 | TZPAY_API_TZKT                       | URL to a [tzkt api](api.tzkt.io)                     | https://api.tzkt.io           | False    |
 | TZPAY_API_TEZOS                      | URL to a tezos RPC                                   | https://tezos.giganode.io/    | False    |
@@ -60,11 +48,9 @@ As of now only ed25519 is supported.
 ### Notifications
 If twilio or twitter credentials are provided, a notification will be sent after ever payout. 
 
-
-
 ### Help
 ```
-➜  tzpay git:(v2) ✗ ./tzpay --help
+➜  tzpay git:(dexter) ✗ ./tzpay help
 A bulk payout tool for bakers in the Tezos Ecosystem
 
 Usage:
@@ -74,6 +60,7 @@ Available Commands:
   dryrun      dryrun simulates a payout
   help        Help about any command
   run         run executes a batch payout
+  serv        serv runs a service that will continously payout cycle by cycle
   setup       setup prints a list of enviroment variables needed to get started.
   version     version prints tzpay's version
 
@@ -85,222 +72,234 @@ Use "tzpay [command] --help" for more information about a command.
 
 ### Dryrun
 ```
-➜  tzpay git:(v2) ✗ ./tzpay dryrun 206 --table
-+--------------------------------------+--------------------------------------+------------+-----------+
-|                BAKER                 |                WALLET                |  REWARDS   | OPERATION |
-+--------------------------------------+--------------------------------------+------------+-----------+
-| tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc | tz1W3HW533csCBLor4NPtU79R2TT2sbKfJDH | 787.800000 | N/A       |
-+--------------------------------------+--------------------------------------+------------+-----------+
-+--------------------------------------+----------+------------+------------+-----------+
-|              DELEGATION              |  SHARE   |   GROSS    |    NET     |    FEE    |
-+--------------------------------------+----------+------------+------------+-----------+
-| KT18kTf8UujihcF46Zn3rsFdEYFL1ZNFnGY4 | 0.001337 |   1.053357 |   1.000690 |  0.052667 |
-| KT18ni9Yar4UzwZozFbRF7SFUKg2EqyyUPPT | 0.000040 |   0.031549 |   0.029972 |  0.001577 |
-| KT18uqwoNyPRHpHCrg7xBFd7CiAZMbS1Ffne | 0.000460 |   0.362624 |   0.344493 |  0.018131 |
-| KT193c72q6eP1VpaY7hiheE7k1eDZiXeQUUw | 0.000036 |   0.028706 |   0.027271 |  0.001435 |
-| KT19ABG9KxbEz2GrdN6uhGfxLmMY7REikBN8 | 0.004862 |   3.830464 |   3.638941 |  0.191523 |
-| KT19Aro5JcjKH7J7RA6sCRihPiBQzQED3oQC | 0.001330 |   1.048020 |   0.995619 |  0.052401 |
-| KT19Q8GiYqGpuuUjf9xfXXVu1WY889N8oxRe | 0.000000 |   0.000053 |   0.000051 |  0.000002 |
-| KT1A1sZmBQS9oZnPePRwP3Jyzv41xEppxfbF | 0.002591 |   2.041285 |   1.939221 |  0.102064 |
-| KT1A5seo53aLSSyHgJKZFYnh7jTZBtFnNnjz | 0.000000 |   0.000002 |   0.000002 |  0.000000 |
-| KT1Aeg9D8kvkbAb6yikUdFcroReXvHtMBaZz | 0.000060 |   0.046964 |   0.044616 |  0.002348 |
-| KT1AT7N9bGhViSorUrpivuYT6Wxs37hR2p9d | 0.000002 |   0.001336 |   0.001270 |  0.000066 |
-| KT1AThmRzcn51NwMf25NFYTqawjVo62hWiCv | 0.005695 |   4.486706 |   4.262371 |  0.224335 |
-| KT1BjtEUxd25wwdwGH432LoP6PskvUc2bEYV | 0.003537 |   2.786213 |   2.646903 |  0.139310 |
-| KT1BXmBgMSViAViNyhvkb441e2RBFMiKdnj7 | 0.001270 |   1.000411 |   0.950391 |  0.050020 |
-| KT1C28u6DWsBfXk3UMyGrd8zTUVMpsyvjxmp | 0.002488 |   1.959845 |   1.861853 |  0.097992 |
-| KT1C8S2vLYbzgQHhdC8MBehunhcp1Q9hj6MC | 0.029346 |  23.118649 |  21.962717 |  1.155932 |
-| KT1CeUNtCrXFNbLmvdGPNnxpcJw2sW5Hcpmc | 0.000000 |   0.000095 |   0.000091 |  0.000004 |
-| KT1CQiyDJ3mMVDoEqLY8Fz1onFXo5ycp5BDN | 0.001330 |   1.047706 |   0.995321 |  0.052385 |
-| KT1CySPLDUSYyJ9vqNCF2dGgit4Rw2yUNEcj | 0.000159 |   0.125470 |   0.119197 |  0.006273 |
-| KT1Cz1jPLuaPR99XamKQDr9PKZY1PTXzTAHH | 0.000000 |   0.000033 |   0.000032 |  0.000001 |
-| KT1Dgma8bbDtAbtMbYYS5VmziyCANAZn8M7W | 0.000000 |   0.000083 |   0.000079 |  0.000004 |
-| KT1E1MnvNgCDLqnGneStVY9CvmjnyZgcaPaD | 0.000000 |   0.000009 |   0.000009 |  0.000000 |
-| KT1EbMbqTUS8XnqGVRsdLZVKLhcT7Zc33jR1 | 0.010737 |   8.458494 |   8.035570 |  0.422924 |
-| KT1EidADxWfYeBgK8L1ZTbf7a9zyjKwCFjfH | 0.000000 |   0.000151 |   0.000144 |  0.000007 |
-| KT1FPyY6mAhnzyVGP8ApGvuRyF7SKcT9TDWy | 0.037406 |  29.468174 |  27.994766 |  1.473408 |
-| KT1GBWviYFdRiNkhwM7LfrKDgHWnpdxpURtx | 0.018462 |  14.544046 |  13.816844 |  0.727202 |
-| KT1GcSsQaTtMB2HvUKU9b6WRFUnGpGx9JwGk | 0.000000 |   0.000000 |   0.000000 |  0.000000 |
-| KT1HccFB3cn4BR2za9XMuU7Wht64omed2UW8 | 0.010748 |   8.467393 |   8.044024 |  0.423369 |
-| KT1J2uk1fYSnZjxkJcUhFDkaRDhjCTRBspqv | 0.000000 |   0.000000 |   0.000000 |  0.000000 |
-| KT1J4WFQRV3942phzRrh87WDFWKrNVcDJTP9 | 0.007032 |   5.539827 |   5.262836 |  0.276991 |
-| KT1JJcydTkinquNqh6kE5HYgFpD2124qHbZp | 0.042888 |  33.787274 |  32.097911 |  1.689363 |
-| KT1JoAP7MfiigepR332u6xJqza9CG52ycYZ9 | 0.000000 |   0.000157 |   0.000150 |  0.000007 |
-| KT1JPeGNVarLsPZnSb3hG5xMVmJJmmBnrnpT | 0.003366 |   2.652015 |   2.519415 |  0.132600 |
-| KT1JsHBFpoGRVXpcfC763YwvonKtNvaFotpG | 0.000003 |   0.002021 |   0.001920 |  0.000101 |
-| KT1Jw925NVi4FzTVohZk5iLqagnhJGDEQoTS | 0.000479 |   0.376989 |   0.358140 |  0.018849 |
-| KT1K4xei3yozp7UP5rHV5wuoDzWwBXqCGRBt | 0.001236 |   0.974078 |   0.925375 |  0.048703 |
-| KT1KeNNxEM4NyfrmF1CG6TLn3nRSmEGhP7Z2 | 0.001643 |   1.294659 |   1.229927 |  0.064732 |
-| KT1KJ5Qt18yU9DrqN36tgyLtaSvFSZ5r6YL6 | 0.002900 |   2.284941 |   2.170694 |  0.114247 |
-| KT1LfoE9EbpczdzUzowRckGUfikGcd5PyVKg | 0.000000 |   0.000031 |   0.000030 |  0.000001 |
-| KT1LgkGigaMrnim3TonQWfwDHnM3fHkF1jMv | 0.035778 |  28.185759 |  26.776472 |  1.409287 |
-| KT1LinsZAnyxajEv4eNFWtwHMdyhbJsGfvp3 | 0.000023 |   0.017797 |   0.016908 |  0.000889 |
-| KT1Lm4ZSyXSHod7U6znR7z9SGVmexntNQwAp | 0.000013 |   0.010614 |   0.010084 |  0.000530 |
-| KT1Lnh39om2iqr4qb9AarF9T38ayNBLnfAVn | 0.000000 |   0.000034 |   0.000033 |  0.000001 |
-| KT1MfT8XvQp9ZeGUx4cmCNF3wui55WLNYhq9 | 0.000000 |   0.000002 |   0.000002 |  0.000000 |
-| KT1MJZWHKZU7ViybRLsphP3ppiiTc7myP2aj | 0.024467 |  19.274821 |  18.311080 |  0.963741 |
-| KT1MSFeAGaWk8w7F1gmgUMaarU7mH385ueYC | 0.005919 |   4.662630 |   4.429499 |  0.233131 |
-| KT1MX2TwjSBzPaSsBUeW2k9DKehpiuMGfFcL | 0.001302 |   1.025690 |   0.974406 |  0.051284 |
-| KT1Na4maJ99GE6CGA1vEocWXrKRmxmsVUaTi | 0.001329 |   1.047182 |   0.994823 |  0.052359 |
-| KT1NfMCxyzwev243rKk3Y6SN8GfmdLKwASFQ | 0.000039 |   0.030682 |   0.029148 |  0.001534 |
-| KT1NGd6RaRtmvwexYXGibtdvKBnNjjpBNknn | 0.000009 |   0.007249 |   0.006887 |  0.000362 |
-| KT1NmVtU3CNqzhNWwLhE5BqAopjkcmHpWzT2 | 0.000028 |   0.022144 |   0.021037 |  0.001107 |
-| KT1NxnFWHW7bUxzks1oHVU2jn4heu48KC3eD | 0.000000 |   0.000004 |   0.000004 |  0.000000 |
-| KT1PDBuQmFLVHfiWZjV248QdTrdcmAuSS7Tx | 0.000000 |   0.000028 |   0.000027 |  0.000001 |
-| KT1PY2MMiTUkZQv7CPekXy186N1qmu7GikcT | 0.000000 |   0.000010 |   0.000010 |  0.000000 |
-| KT1QB9UAT1okYfcPQLi4jBmZkYg7LHcepERV | 0.001330 |   1.047444 |   0.995072 |  0.052372 |
-| KT1QLo7DzPZnYK2EhmWpejVUnFjQUuWFKHnc | 0.001329 |   1.047287 |   0.994923 |  0.052364 |
-| KT1RbwPHzDwU9oPjnTWZrbCrMGjaFyj8dEtC | 0.000001 |   0.000711 |   0.000676 |  0.000035 |
-| KT1REp3D8dkiVVi37TCSMJNgGeX6UigBtfaL | 0.000001 |   0.001174 |   0.001116 |  0.000058 |
-| KT1Re5utTU2hrujXgZ3Ux5BgjN8rbru4sns2 | 0.000574 |   0.452440 |   0.429818 |  0.022622 |
-| KT1RuTPgQ6kdpnE3Adnw7Hr2KFN45uC3BdBy | 0.003767 |   2.967317 |   2.818952 |  0.148365 |
-| KT1S9VbEnU8nj33ufxrGBYGxBCnqmeoAnKt4 | 0.000000 |   0.000048 |   0.000046 |  0.000002 |
-| KT1T3dPMBm7D3kKqALKYnW2mViFqMMVCYtmo | 0.000028 |   0.022193 |   0.021084 |  0.001109 |
-| KT1TDrRrdz6SLYLBw8ZDxLWwJpx7FVpC52bt | 0.001734 |   1.365962 |   1.297664 |  0.068298 |
-| KT1TS49jiXxrnwhoJzAvCzGZCXLJs3XV1k6C | 0.001340 |   1.055731 |   1.002945 |  0.052786 |
-| KT1Uh1G9tdq45N63ZBrreDKy7eZF8QVoydm1 | 0.000000 |   0.000024 |   0.000023 |  0.000001 |
-| KT1UVUasDXH6mg8NCzRRgqvcjMoDUpETYEzH | 0.001329 |   1.047182 |   0.994823 |  0.052359 |
-| KT1VUbpty8fER7npuvsfYDZXf2wVPhAHVqSx | 0.000004 |   0.002879 |   0.002736 |  0.000143 |
-| KT1VzTs5piA7kYQkkfA9QNApVqGq1h6eMuV4 | 0.008260 |   6.507279 |   6.181916 |  0.325363 |
-| KT1W3oiS6s9NgSxhZY1nCsazW2QbwkmjkET1 | 0.000000 |   0.000004 |   0.000004 |  0.000000 |
-| KT1WBDsJhoRvsvsRCmJirz9AFhSySSvzTWVd | 0.008540 |   6.727756 |   6.391369 |  0.336387 |
-| KT1Wp4tXL6GUtABkikB68fT7SaPQY2UuFkuE | 0.004274 |   3.367080 |   3.198726 |  0.168354 |
-| KT1WQWXvRcMjJB1y6mYZytoS5QsFJyFNDCk5 | 0.000009 |   0.006824 |   0.006483 |  0.000341 |
-| KT1XiGwpmguFEnZDtBDDGisGxXw6qKJHPjdB | 0.000000 |   0.000006 |   0.000006 |  0.000000 |
-| KT1XPMJx2wuCbbzKZx5jJyKqLpPJMHv58wni | 0.000000 |   0.000000 |   0.000000 |  0.000000 |
-| KT1XrBAocuiE3C2vvtgt7PFoazrC1KRi9ZF4 | 0.132739 | 104.571581 |  99.343002 |  5.228579 |
-| tz1aX2DF3ioDjqDcTVmrxVuqkxhZh1pLtfHU | 0.000017 |   0.013635 |   0.012954 |  0.000681 |
-| tz1dfUssfLfTBoYqsWxMu86ycmLUvfF2abng | 0.000003 |   0.002023 |   0.001922 |  0.000101 |
-| tz1gxmCTN8BSwuPLghDydtDKTqnAKyD8QTv7 | 0.002620 |   2.064190 |   1.960981 |  0.103209 |
-| tz1hbXhPVUX1fC8hN7fALyaUpdoC6EMgqM2h | 0.004060 |   3.198804 |   3.038864 |  0.159940 |
-| tz1Lfs9xYtCvj1xe5UCPG8Gv78d3mFAJn4Dx | 0.321793 | 253.508708 | 240.833273 | 12.675435 |
-| tz1LRir5SfRcC4LNfagetqzKRMRjGNBTiHNH | 0.088429 |  69.664269 |  66.181056 |  3.483213 |
-| tz1Lv6nFvAWMvNRbQF7UcX4jobGLrAhKQLNN | 0.017043 |  13.426673 |  12.755340 |  0.671333 |
-| tz1MWAyijbHHqwxA2zD8bjr75wpJJhwViqzW | 0.003123 |   2.460268 |   2.337255 |  0.123013 |
-| tz1MXhttCeSJYpF3QRmPkMLCfNZaVufEuJmJ | 0.007493 |   5.902638 |   5.607507 |  0.295131 |
-| tz1PB27kbPL64MWYoNZAfQAEmzCZFi9EvgBw | 0.000022 |   0.017191 |   0.016332 |  0.000859 |
-| tz1R9vogbJQ4QpEnhFjut6SfyoopP17KkdMc | 0.005425 |   4.273754 |   4.060067 |  0.213687 |
-| tz1RoDhaKjJjqcVy9MCN85bVCvbXHEnAFC7j | 0.000748 |   0.589201 |   0.559741 |  0.029460 |
-| tz1RomjUZ1j9F2vqE24h2Am8UeGUpcrf6vvJ | 0.000043 |   0.033532 |   0.031856 |  0.001676 |
-| tz1SnvfwMUYfD2uJrHBiaj4XPstW3eUE9RJU | 0.007168 |   5.646608 |   5.364278 |  0.282330 |
-| tz1Vcu87ZuUK2e8BcoCBUWUhu2s2hPAabStm | 0.000066 |   0.051776 |   0.049188 |  0.002588 |
-| tz1VESLfEAEwDEKhyLZJYXVoervFk5ABPUUD | 0.003192 |   2.514661 |   2.388928 |  0.125733 |
-| tz1VeiAS5wvYgNdri6vwDUrctQ5XhhaXY3K9 | 0.000086 |   0.067751 |   0.064364 |  0.003387 |
-| tz1W3HW533csCBLor4NPtU79R2TT2sbKfJDH | 0.000366 |   0.287945 |   0.273548 |  0.014397 |
-| tz1Z48RMPT1vjqNyUASCexnCEvEEE93J1pwL | 0.000515 |   0.405388 |   0.385119 |  0.020269 |
-+--------------------------------------+----------+------------+------------+-----------+
-|                                                     TOTAL    | 664.453233 | 34.971180 |
-+--------------------------------------+----------+------------+------------+-----------+
+➜  tzpay git:(dexter) ✗ ./tzpay dryrun 276 --table
++-------+--------------------------------------+----------+-----------+-----------+-----------+------------+
+| CYLCE |                BAKER                 |  SHARE   |  REWARDS  |   FEES    |   TOTAL   | OPERATIONS |
++-------+--------------------------------------+----------+-----------+-----------+-----------+------------+
+|   276 | tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc | 0.188334 | 73.550696 | 14.207660 | 87.758356 | N/A        |
++-------+--------------------------------------+----------+-----------+-----------+-----------+------------+
++--------------------------------------+----------+-----------+------------+-----------+
+|              DELEGATION              |  SHARE   |   GROSS   |    NET     |    FEE    |
++--------------------------------------+----------+-----------+------------+-----------+
+| tz1icdoLr8vof5oXiEKCFSyrVoouGiKDQ3Gd | 0.089355 | 34.895929 |  33.151133 |  1.744796 |
+| KT1FPyY6mAhnzyVGP8ApGvuRyF7SKcT9TDWy | 0.088661 | 34.624892 |  32.893648 |  1.731244 |
+| KT1LgkGigaMrnim3TonQWfwDHnM3fHkF1jMv | 0.084802 | 33.118063 |  31.462160 |  1.655903 |
+| KT1MJZWHKZU7ViybRLsphP3ppiiTc7myP2aj | 0.057932 | 22.624225 |  21.493014 |  1.131211 |
+| KT1GBWviYFdRiNkhwM7LfrKDgHWnpdxpURtx | 0.043759 | 17.089149 |  16.234692 |  0.854457 |
+| tz1Ykmc29JfQvWnjWRPYTPUZBLW4gwa9YKUD | 0.040391 | 15.773809 |  14.985119 |  0.788690 |
+| tz1Zuav4ZBoiYhn4btW4HSr7G7J4txGZjvbu | 0.040379 | 15.769315 |  14.980850 |  0.788465 |
+| KT1HccFB3cn4BR2za9XMuU7Wht64omed2UW8 | 0.025476 |  9.949126 |   9.451670 |  0.497456 |
+| KT1WBDsJhoRvsvsRCmJirz9AFhSySSvzTWVd | 0.020242 |  7.905065 |   7.509812 |  0.395253 |
+| KT1VzTs5piA7kYQkkfA9QNApVqGq1h6eMuV4 | 0.019578 |  7.646006 |   7.263706 |  0.382300 |
+| tz1MXhttCeSJYpF3QRmPkMLCfNZaVufEuJmJ | 0.017759 |  6.935557 |   6.588780 |  0.346777 |
+| KT1J4WFQRV3942phzRrh87WDFWKrNVcDJTP9 | 0.016668 |  6.509257 |   6.183795 |  0.325462 |
+| tz1isExUQANnFb9YPmuwYmMmpeGHZ6T3CUT6 | 0.015796 |  6.168820 |   5.860379 |  0.308441 |
+| KT1AThmRzcn51NwMf25NFYTqawjVo62hWiCv | 0.013499 |  5.271847 |   5.008255 |  0.263592 |
+| KT19ABG9KxbEz2GrdN6uhGfxLmMY7REikBN8 | 0.011525 |  4.500767 |   4.275729 |  0.225038 |
+| KT1Wp4tXL6GUtABkikB68fT7SaPQY2UuFkuE | 0.010131 |  3.956295 |   3.758481 |  0.197814 |
+| tz1hbXhPVUX1fC8hN7fALyaUpdoC6EMgqM2h | 0.009624 |  3.758571 |   3.570643 |  0.187928 |
+| KT1RuTPgQ6kdpnE3Adnw7Hr2KFN45uC3BdBy | 0.008928 |  3.486576 |   3.312248 |  0.174328 |
+| KT1BjtEUxd25wwdwGH432LoP6PskvUc2bEYV | 0.008383 |  3.273781 |   3.110092 |  0.163689 |
+| KT1JPeGNVarLsPZnSb3hG5xMVmJJmmBnrnpT | 0.007865 |  3.071596 |   2.918017 |  0.153579 |
+| tz1gxmCTN8BSwuPLghDydtDKTqnAKyD8QTv7 | 0.006211 |  2.425409 |   2.304139 |  0.121270 |
+| KT1A1sZmBQS9oZnPePRwP3Jyzv41xEppxfbF | 0.006142 |  2.398495 |   2.278571 |  0.119924 |
+| tz1hSWBt6DD7SRH2Tq1kGbsKXZLrE7XGSMeF | 0.005812 |  2.269701 |   2.156216 |  0.113485 |
+| tz1Nc2Zux98dEKqUW9Q9pL5rfUeLALBJTWGR | 0.005655 |  2.208601 |   2.098171 |  0.110430 |
+| KT1C28u6DWsBfXk3UMyGrd8zTUVMpsyvjxmp | 0.004116 |  1.607420 |   1.527049 |  0.080371 |
+| KT1TDrRrdz6SLYLBw8ZDxLWwJpx7FVpC52bt | 0.004110 |  1.604921 |   1.524675 |  0.080246 |
+| KT1JcnHjWpkFxaLYMQD2URL8XEeAFqshz2uf | 0.003617 |  1.412444 |   1.341822 |  0.070622 |
+| tz1VJa3ZkVwMzLFkGKhjvvrtzjRrnCJzMSKK | 0.003364 |  1.313906 |   1.248211 |  0.065695 |
+| KT1TS49jiXxrnwhoJzAvCzGZCXLJs3XV1k6C | 0.003176 |  1.240476 |   1.178453 |  0.062023 |
+| KT18kTf8UujihcF46Zn3rsFdEYFL1ZNFnGY4 | 0.003169 |  1.237687 |   1.175803 |  0.061884 |
+| tz1VESLfEAEwDEKhyLZJYXVoervFk5ABPUUD | 0.003161 |  1.234597 |   1.172868 |  0.061729 |
+| KT19Aro5JcjKH7J7RA6sCRihPiBQzQED3oQC | 0.003153 |  1.231416 |   1.169846 |  0.061570 |
+| KT1CQiyDJ3mMVDoEqLY8Fz1onFXo5ycp5BDN | 0.003152 |  1.231047 |   1.169495 |  0.061552 |
+| KT1QB9UAT1okYfcPQLi4jBmZkYg7LHcepERV | 0.003151 |  1.230739 |   1.169203 |  0.061536 |
+| KT1QLo7DzPZnYK2EhmWpejVUnFjQUuWFKHnc | 0.003151 |  1.230554 |   1.169027 |  0.061527 |
+| KT1UVUasDXH6mg8NCzRRgqvcjMoDUpETYEzH | 0.003151 |  1.230431 |   1.168910 |  0.061521 |
+| KT1Na4maJ99GE6CGA1vEocWXrKRmxmsVUaTi | 0.003151 |  1.230431 |   1.168910 |  0.061521 |
+| KT1MX2TwjSBzPaSsBUeW2k9DKehpiuMGfFcL | 0.003086 |  1.205179 |   1.144921 |  0.060258 |
+| KT1BXmBgMSViAViNyhvkb441e2RBFMiKdnj7 | 0.003009 |  1.174983 |   1.116234 |  0.058749 |
+| tz1iuFXyNN7nPHyHkfsj2tfZdnkK9MMJfFf1 | 0.002989 |  1.167275 |   1.108912 |  0.058363 |
+| tz1Wq6LVwpofZ6zqjMBuLyEU53hRMepqkXEr | 0.002985 |  1.165852 |   1.107560 |  0.058292 |
+| KT1K4xei3yozp7UP5rHV5wuoDzWwBXqCGRBt | 0.002929 |  1.144055 |   1.086853 |  0.057202 |
+| tz1hZZn4rsHLXdgQ9d8Rne9CLo6VFo29uQ3m | 0.002893 |  1.129820 |   1.073329 |  0.056491 |
+| tz1Tjpy1ibFhioZ3Y1R6N9zoW4EL54AFYph1 | 0.002887 |  1.127494 |   1.071120 |  0.056374 |
+| tz1Qadi21BxpHAjtfSrF6p4t3qMC5K8Ucjsw | 0.002872 |  1.121439 |   1.065368 |  0.056071 |
+| tz1W3HW533csCBLor4NPtU79R2TT2sbKfJDH | 0.001326 |  0.517868 |   0.491975 |  0.025893 |
+| KT1Jw925NVi4FzTVohZk5iLqagnhJGDEQoTS | 0.001134 |  0.442960 |   0.420812 |  0.022148 |
+| KT1AUmLjJnmHmiieXnWWTPqHA98s65EeN7Mx | 0.000614 |  0.239825 |   0.227834 |  0.011991 |
+| KT1PpVsfyVhWYTpyUaYigdmq1Aiv7zArTFYp | 0.000544 |  0.212280 |   0.201666 |  0.010614 |
+| KT1CySPLDUSYyJ9vqNCF2dGgit4Rw2yUNEcj | 0.000377 |  0.147345 |   0.139978 |  0.007367 |
+| tz1bHq6bUmTrvdepLVgYawcgEiLeeCMh2QJA | 0.000310 |  0.121075 |   0.115022 |  0.006053 |
+| tz1Un6mfQ4Xie6U1nqmnedhnjNPAhfWx9jii | 0.000219 |  0.085511 |   0.081236 |  0.004275 |
+| tz1VeiAS5wvYgNdri6vwDUrctQ5XhhaXY3K9 | 0.000204 |  0.079776 |   0.075788 |  0.003988 |
+| KT1C8S2vLYbzgQHhdC8MBehunhcp1Q9hj6MC | 0.000189 |  0.073745 |   0.070058 |  0.003687 |
+| tz1Vcu87ZuUK2e8BcoCBUWUhu2s2hPAabStm | 0.000156 |  0.060836 |   0.057795 |  0.003041 |
+| KT1Aeg9D8kvkbAb6yikUdFcroReXvHtMBaZz | 0.000141 |  0.055183 |   0.052424 |  0.002759 |
+| tz1aX2DF3ioDjqDcTVmrxVuqkxhZh1pLtfHU | 0.000095 |  0.037188 |   0.035329 |  0.001859 |
+| KT18ni9Yar4UzwZozFbRF7SFUKg2EqyyUPPT | 0.000095 |  0.037070 |   0.035217 |  0.001853 |
+| KT193c72q6eP1VpaY7hiheE7k1eDZiXeQUUw | 0.000086 |  0.033729 |   0.032043 |  0.001686 |
+| tz1SnvfwMUYfD2uJrHBiaj4XPstW3eUE9RJU | 0.000079 |  0.031012 |   0.029462 |  0.001550 |
+| KT1MSFeAGaWk8w7F1gmgUMaarU7mH385ueYC | 0.000041 |  0.015841 |   0.015049 |  0.000792 |
+| KT1VUbpty8fER7npuvsfYDZXf2wVPhAHVqSx | 0.000036 |  0.014229 |   0.013518 |  0.000711 |
+| KT1Lm4ZSyXSHod7U6znR7z9SGVmexntNQwAp | 0.000032 |  0.012472 |   0.011849 |  0.000623 |
+| KT1NGd6RaRtmvwexYXGibtdvKBnNjjpBNknn | 0.000022 |  0.008518 |   0.008093 |  0.000425 |
+| KT1WQWXvRcMjJB1y6mYZytoS5QsFJyFNDCk5 | 0.000021 |  0.008019 |   0.007619 |  0.000400 |
+| tz1dfUssfLfTBoYqsWxMu86ycmLUvfF2abng | 0.000006 |  0.002377 |   0.002259 |  0.000118 |
+| KT1JsHBFpoGRVXpcfC763YwvonKtNvaFotpG | 0.000006 |  0.002375 |   0.002257 |  0.000118 |
+| tz1RomjUZ1j9F2vqE24h2Am8UeGUpcrf6vvJ | 0.000005 |  0.001982 |   0.001883 |  0.000099 |
+| KT1Re5utTU2hrujXgZ3Ux5BgjN8rbru4sns2 | 0.000005 |  0.001949 |   0.001852 |  0.000097 |
+| KT1AT7N9bGhViSorUrpivuYT6Wxs37hR2p9d | 0.000004 |  0.001569 |   0.001491 |  0.000078 |
+| tz1a7ZrvfMm8reWSBQHcnAdjh9T5cXiu6EUT | 0.000004 |  0.001438 |   0.001367 |  0.000071 |
+| KT1REp3D8dkiVVi37TCSMJNgGeX6UigBtfaL | 0.000004 |  0.001379 |   0.001311 |  0.000068 |
+| KT18uqwoNyPRHpHCrg7xBFd7CiAZMbS1Ffne | 0.000002 |  0.000898 |   0.000854 |  0.000044 |
+| KT1RbwPHzDwU9oPjnTWZrbCrMGjaFyj8dEtC | 0.000002 |  0.000836 |   0.000795 |  0.000041 |
+| KT1JJcydTkinquNqh6kE5HYgFpD2124qHbZp | 0.000001 |  0.000315 |   0.000300 |  0.000015 |
+| KT1JoAP7MfiigepR332u6xJqza9CG52ycYZ9 | 0.000000 |  0.000185 |   0.000176 |  0.000009 |
+| KT1NfMCxyzwev243rKk3Y6SN8GfmdLKwASFQ | 0.000000 |  0.000184 |   0.000175 |  0.000009 |
+| KT1EidADxWfYeBgK8L1ZTbf7a9zyjKwCFjfH | 0.000000 |  0.000178 |   0.000170 |  0.000008 |
+| KT1XrBAocuiE3C2vvtgt7PFoazrC1KRi9ZF4 | 0.000000 |  0.000149 |   0.000142 |  0.000007 |
+| KT1CeUNtCrXFNbLmvdGPNnxpcJw2sW5Hcpmc | 0.000000 |  0.000111 |   0.000106 |  0.000005 |
+| tz1PB27kbPL64MWYoNZAfQAEmzCZFi9EvgBw | 0.000000 |  0.000103 |   0.000098 |  0.000005 |
+| KT1T3dPMBm7D3kKqALKYnW2mViFqMMVCYtmo | 0.000000 |  0.000099 |   0.000095 |  0.000004 |
+| KT1Dgma8bbDtAbtMbYYS5VmziyCANAZn8M7W | 0.000000 |  0.000096 |   0.000092 |  0.000004 |
+| KT1NmVtU3CNqzhNWwLhE5BqAopjkcmHpWzT2 | 0.000000 |  0.000093 |   0.000089 |  0.000004 |
+| KT1LinsZAnyxajEv4eNFWtwHMdyhbJsGfvp3 | 0.000000 |  0.000077 |   0.000074 |  0.000003 |
+| KT19Q8GiYqGpuuUjf9xfXXVu1WY889N8oxRe | 0.000000 |  0.000062 |   0.000059 |  0.000003 |
+| KT1S9VbEnU8nj33ufxrGBYGxBCnqmeoAnKt4 | 0.000000 |  0.000055 |   0.000053 |  0.000002 |
+| KT1Lnh39om2iqr4qb9AarF9T38ayNBLnfAVn | 0.000000 |  0.000039 |   0.000038 |  0.000001 |
+| KT1Cz1jPLuaPR99XamKQDr9PKZY1PTXzTAHH | 0.000000 |  0.000038 |   0.000037 |  0.000001 |
+| KT1PDBuQmFLVHfiWZjV248QdTrdcmAuSS7Tx | 0.000000 |  0.000032 |   0.000031 |  0.000001 |
+| KT1EbMbqTUS8XnqGVRsdLZVKLhcT7Zc33jR1 | 0.000000 |  0.000020 |   0.000019 |  0.000001 |
+| KT1KJ5Qt18yU9DrqN36tgyLtaSvFSZ5r6YL6 | 0.000000 |  0.000014 |   0.000014 |  0.000000 |
+| KT1PY2MMiTUkZQv7CPekXy186N1qmu7GikcT | 0.000000 |  0.000012 |   0.000012 |  0.000000 |
+| KT1E1MnvNgCDLqnGneStVY9CvmjnyZgcaPaD | 0.000000 |  0.000010 |   0.000010 |  0.000000 |
+| tz1f7mbrPU2cMHhjqhYzw9SfmZYKUtZkG52A | 0.000000 |  0.000009 |   0.000009 |  0.000000 |
+| KT1KeNNxEM4NyfrmF1CG6TLn3nRSmEGhP7Z2 | 0.000000 |  0.000008 |   0.000008 |  0.000000 |
+| KT1W3oiS6s9NgSxhZY1nCsazW2QbwkmjkET1 | 0.000000 |  0.000005 |   0.000005 |  0.000000 |
+| KT1NxnFWHW7bUxzks1oHVU2jn4heu48KC3eD | 0.000000 |  0.000004 |   0.000004 |  0.000000 |
+| KT1MfT8XvQp9ZeGUx4cmCNF3wui55WLNYhq9 | 0.000000 |  0.000002 |   0.000002 |  0.000000 |
+| KT1XPMJx2wuCbbzKZx5jJyKqLpPJMHv58wni | 0.000000 |  0.000000 |   0.000000 |  0.000000 |
++--------------------------------------+----------+-----------+------------+-----------+
+|                                                     TOTAL   | 269.946543 | 14.207660 |
++--------------------------------------+----------+-----------+------------+-----------+
 ```
 
 ### Run
 ```
-➜  tzpay git:(v2) ✗ ./tzpay dryrun 206 --table
-+--------------------------------------+--------------------------------------+------------+-------------------------------------------------------+
-|                BAKER                 |                WALLET                |  REWARDS   |                     OPERATION                         |
-+--------------------------------------+--------------------------------------+------------+-------------------------------------------------------+
-| tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc | tz1W3HW533csCBLor4NPtU79R2TT2sbKfJDH | 787.800000 | "oofFEAqiRLEXZzGyWj3hW14WemnKqLgsbAT3YH7GnoBUUfQNgs4" |
-+--------------------------------------+--------------------------------------+------------+-------------------------------------------------------+
-+--------------------------------------+----------+------------+------------+-----------+
-|              DELEGATION              |  SHARE   |   GROSS    |    NET     |    FEE    |
-+--------------------------------------+----------+------------+------------+-----------+
-| KT18kTf8UujihcF46Zn3rsFdEYFL1ZNFnGY4 | 0.001337 |   1.053357 |   1.000690 |  0.052667 |
-| KT18ni9Yar4UzwZozFbRF7SFUKg2EqyyUPPT | 0.000040 |   0.031549 |   0.029972 |  0.001577 |
-| KT18uqwoNyPRHpHCrg7xBFd7CiAZMbS1Ffne | 0.000460 |   0.362624 |   0.344493 |  0.018131 |
-| KT193c72q6eP1VpaY7hiheE7k1eDZiXeQUUw | 0.000036 |   0.028706 |   0.027271 |  0.001435 |
-| KT19ABG9KxbEz2GrdN6uhGfxLmMY7REikBN8 | 0.004862 |   3.830464 |   3.638941 |  0.191523 |
-| KT19Aro5JcjKH7J7RA6sCRihPiBQzQED3oQC | 0.001330 |   1.048020 |   0.995619 |  0.052401 |
-| KT19Q8GiYqGpuuUjf9xfXXVu1WY889N8oxRe | 0.000000 |   0.000053 |   0.000051 |  0.000002 |
-| KT1A1sZmBQS9oZnPePRwP3Jyzv41xEppxfbF | 0.002591 |   2.041285 |   1.939221 |  0.102064 |
-| KT1A5seo53aLSSyHgJKZFYnh7jTZBtFnNnjz | 0.000000 |   0.000002 |   0.000002 |  0.000000 |
-| KT1Aeg9D8kvkbAb6yikUdFcroReXvHtMBaZz | 0.000060 |   0.046964 |   0.044616 |  0.002348 |
-| KT1AT7N9bGhViSorUrpivuYT6Wxs37hR2p9d | 0.000002 |   0.001336 |   0.001270 |  0.000066 |
-| KT1AThmRzcn51NwMf25NFYTqawjVo62hWiCv | 0.005695 |   4.486706 |   4.262371 |  0.224335 |
-| KT1BjtEUxd25wwdwGH432LoP6PskvUc2bEYV | 0.003537 |   2.786213 |   2.646903 |  0.139310 |
-| KT1BXmBgMSViAViNyhvkb441e2RBFMiKdnj7 | 0.001270 |   1.000411 |   0.950391 |  0.050020 |
-| KT1C28u6DWsBfXk3UMyGrd8zTUVMpsyvjxmp | 0.002488 |   1.959845 |   1.861853 |  0.097992 |
-| KT1C8S2vLYbzgQHhdC8MBehunhcp1Q9hj6MC | 0.029346 |  23.118649 |  21.962717 |  1.155932 |
-| KT1CeUNtCrXFNbLmvdGPNnxpcJw2sW5Hcpmc | 0.000000 |   0.000095 |   0.000091 |  0.000004 |
-| KT1CQiyDJ3mMVDoEqLY8Fz1onFXo5ycp5BDN | 0.001330 |   1.047706 |   0.995321 |  0.052385 |
-| KT1CySPLDUSYyJ9vqNCF2dGgit4Rw2yUNEcj | 0.000159 |   0.125470 |   0.119197 |  0.006273 |
-| KT1Cz1jPLuaPR99XamKQDr9PKZY1PTXzTAHH | 0.000000 |   0.000033 |   0.000032 |  0.000001 |
-| KT1Dgma8bbDtAbtMbYYS5VmziyCANAZn8M7W | 0.000000 |   0.000083 |   0.000079 |  0.000004 |
-| KT1E1MnvNgCDLqnGneStVY9CvmjnyZgcaPaD | 0.000000 |   0.000009 |   0.000009 |  0.000000 |
-| KT1EbMbqTUS8XnqGVRsdLZVKLhcT7Zc33jR1 | 0.010737 |   8.458494 |   8.035570 |  0.422924 |
-| KT1EidADxWfYeBgK8L1ZTbf7a9zyjKwCFjfH | 0.000000 |   0.000151 |   0.000144 |  0.000007 |
-| KT1FPyY6mAhnzyVGP8ApGvuRyF7SKcT9TDWy | 0.037406 |  29.468174 |  27.994766 |  1.473408 |
-| KT1GBWviYFdRiNkhwM7LfrKDgHWnpdxpURtx | 0.018462 |  14.544046 |  13.816844 |  0.727202 |
-| KT1GcSsQaTtMB2HvUKU9b6WRFUnGpGx9JwGk | 0.000000 |   0.000000 |   0.000000 |  0.000000 |
-| KT1HccFB3cn4BR2za9XMuU7Wht64omed2UW8 | 0.010748 |   8.467393 |   8.044024 |  0.423369 |
-| KT1J2uk1fYSnZjxkJcUhFDkaRDhjCTRBspqv | 0.000000 |   0.000000 |   0.000000 |  0.000000 |
-| KT1J4WFQRV3942phzRrh87WDFWKrNVcDJTP9 | 0.007032 |   5.539827 |   5.262836 |  0.276991 |
-| KT1JJcydTkinquNqh6kE5HYgFpD2124qHbZp | 0.042888 |  33.787274 |  32.097911 |  1.689363 |
-| KT1JoAP7MfiigepR332u6xJqza9CG52ycYZ9 | 0.000000 |   0.000157 |   0.000150 |  0.000007 |
-| KT1JPeGNVarLsPZnSb3hG5xMVmJJmmBnrnpT | 0.003366 |   2.652015 |   2.519415 |  0.132600 |
-| KT1JsHBFpoGRVXpcfC763YwvonKtNvaFotpG | 0.000003 |   0.002021 |   0.001920 |  0.000101 |
-| KT1Jw925NVi4FzTVohZk5iLqagnhJGDEQoTS | 0.000479 |   0.376989 |   0.358140 |  0.018849 |
-| KT1K4xei3yozp7UP5rHV5wuoDzWwBXqCGRBt | 0.001236 |   0.974078 |   0.925375 |  0.048703 |
-| KT1KeNNxEM4NyfrmF1CG6TLn3nRSmEGhP7Z2 | 0.001643 |   1.294659 |   1.229927 |  0.064732 |
-| KT1KJ5Qt18yU9DrqN36tgyLtaSvFSZ5r6YL6 | 0.002900 |   2.284941 |   2.170694 |  0.114247 |
-| KT1LfoE9EbpczdzUzowRckGUfikGcd5PyVKg | 0.000000 |   0.000031 |   0.000030 |  0.000001 |
-| KT1LgkGigaMrnim3TonQWfwDHnM3fHkF1jMv | 0.035778 |  28.185759 |  26.776472 |  1.409287 |
-| KT1LinsZAnyxajEv4eNFWtwHMdyhbJsGfvp3 | 0.000023 |   0.017797 |   0.016908 |  0.000889 |
-| KT1Lm4ZSyXSHod7U6znR7z9SGVmexntNQwAp | 0.000013 |   0.010614 |   0.010084 |  0.000530 |
-| KT1Lnh39om2iqr4qb9AarF9T38ayNBLnfAVn | 0.000000 |   0.000034 |   0.000033 |  0.000001 |
-| KT1MfT8XvQp9ZeGUx4cmCNF3wui55WLNYhq9 | 0.000000 |   0.000002 |   0.000002 |  0.000000 |
-| KT1MJZWHKZU7ViybRLsphP3ppiiTc7myP2aj | 0.024467 |  19.274821 |  18.311080 |  0.963741 |
-| KT1MSFeAGaWk8w7F1gmgUMaarU7mH385ueYC | 0.005919 |   4.662630 |   4.429499 |  0.233131 |
-| KT1MX2TwjSBzPaSsBUeW2k9DKehpiuMGfFcL | 0.001302 |   1.025690 |   0.974406 |  0.051284 |
-| KT1Na4maJ99GE6CGA1vEocWXrKRmxmsVUaTi | 0.001329 |   1.047182 |   0.994823 |  0.052359 |
-| KT1NfMCxyzwev243rKk3Y6SN8GfmdLKwASFQ | 0.000039 |   0.030682 |   0.029148 |  0.001534 |
-| KT1NGd6RaRtmvwexYXGibtdvKBnNjjpBNknn | 0.000009 |   0.007249 |   0.006887 |  0.000362 |
-| KT1NmVtU3CNqzhNWwLhE5BqAopjkcmHpWzT2 | 0.000028 |   0.022144 |   0.021037 |  0.001107 |
-| KT1NxnFWHW7bUxzks1oHVU2jn4heu48KC3eD | 0.000000 |   0.000004 |   0.000004 |  0.000000 |
-| KT1PDBuQmFLVHfiWZjV248QdTrdcmAuSS7Tx | 0.000000 |   0.000028 |   0.000027 |  0.000001 |
-| KT1PY2MMiTUkZQv7CPekXy186N1qmu7GikcT | 0.000000 |   0.000010 |   0.000010 |  0.000000 |
-| KT1QB9UAT1okYfcPQLi4jBmZkYg7LHcepERV | 0.001330 |   1.047444 |   0.995072 |  0.052372 |
-| KT1QLo7DzPZnYK2EhmWpejVUnFjQUuWFKHnc | 0.001329 |   1.047287 |   0.994923 |  0.052364 |
-| KT1RbwPHzDwU9oPjnTWZrbCrMGjaFyj8dEtC | 0.000001 |   0.000711 |   0.000676 |  0.000035 |
-| KT1REp3D8dkiVVi37TCSMJNgGeX6UigBtfaL | 0.000001 |   0.001174 |   0.001116 |  0.000058 |
-| KT1Re5utTU2hrujXgZ3Ux5BgjN8rbru4sns2 | 0.000574 |   0.452440 |   0.429818 |  0.022622 |
-| KT1RuTPgQ6kdpnE3Adnw7Hr2KFN45uC3BdBy | 0.003767 |   2.967317 |   2.818952 |  0.148365 |
-| KT1S9VbEnU8nj33ufxrGBYGxBCnqmeoAnKt4 | 0.000000 |   0.000048 |   0.000046 |  0.000002 |
-| KT1T3dPMBm7D3kKqALKYnW2mViFqMMVCYtmo | 0.000028 |   0.022193 |   0.021084 |  0.001109 |
-| KT1TDrRrdz6SLYLBw8ZDxLWwJpx7FVpC52bt | 0.001734 |   1.365962 |   1.297664 |  0.068298 |
-| KT1TS49jiXxrnwhoJzAvCzGZCXLJs3XV1k6C | 0.001340 |   1.055731 |   1.002945 |  0.052786 |
-| KT1Uh1G9tdq45N63ZBrreDKy7eZF8QVoydm1 | 0.000000 |   0.000024 |   0.000023 |  0.000001 |
-| KT1UVUasDXH6mg8NCzRRgqvcjMoDUpETYEzH | 0.001329 |   1.047182 |   0.994823 |  0.052359 |
-| KT1VUbpty8fER7npuvsfYDZXf2wVPhAHVqSx | 0.000004 |   0.002879 |   0.002736 |  0.000143 |
-| KT1VzTs5piA7kYQkkfA9QNApVqGq1h6eMuV4 | 0.008260 |   6.507279 |   6.181916 |  0.325363 |
-| KT1W3oiS6s9NgSxhZY1nCsazW2QbwkmjkET1 | 0.000000 |   0.000004 |   0.000004 |  0.000000 |
-| KT1WBDsJhoRvsvsRCmJirz9AFhSySSvzTWVd | 0.008540 |   6.727756 |   6.391369 |  0.336387 |
-| KT1Wp4tXL6GUtABkikB68fT7SaPQY2UuFkuE | 0.004274 |   3.367080 |   3.198726 |  0.168354 |
-| KT1WQWXvRcMjJB1y6mYZytoS5QsFJyFNDCk5 | 0.000009 |   0.006824 |   0.006483 |  0.000341 |
-| KT1XiGwpmguFEnZDtBDDGisGxXw6qKJHPjdB | 0.000000 |   0.000006 |   0.000006 |  0.000000 |
-| KT1XPMJx2wuCbbzKZx5jJyKqLpPJMHv58wni | 0.000000 |   0.000000 |   0.000000 |  0.000000 |
-| KT1XrBAocuiE3C2vvtgt7PFoazrC1KRi9ZF4 | 0.132739 | 104.571581 |  99.343002 |  5.228579 |
-| tz1aX2DF3ioDjqDcTVmrxVuqkxhZh1pLtfHU | 0.000017 |   0.013635 |   0.012954 |  0.000681 |
-| tz1dfUssfLfTBoYqsWxMu86ycmLUvfF2abng | 0.000003 |   0.002023 |   0.001922 |  0.000101 |
-| tz1gxmCTN8BSwuPLghDydtDKTqnAKyD8QTv7 | 0.002620 |   2.064190 |   1.960981 |  0.103209 |
-| tz1hbXhPVUX1fC8hN7fALyaUpdoC6EMgqM2h | 0.004060 |   3.198804 |   3.038864 |  0.159940 |
-| tz1Lfs9xYtCvj1xe5UCPG8Gv78d3mFAJn4Dx | 0.321793 | 253.508708 | 240.833273 | 12.675435 |
-| tz1LRir5SfRcC4LNfagetqzKRMRjGNBTiHNH | 0.088429 |  69.664269 |  66.181056 |  3.483213 |
-| tz1Lv6nFvAWMvNRbQF7UcX4jobGLrAhKQLNN | 0.017043 |  13.426673 |  12.755340 |  0.671333 |
-| tz1MWAyijbHHqwxA2zD8bjr75wpJJhwViqzW | 0.003123 |   2.460268 |   2.337255 |  0.123013 |
-| tz1MXhttCeSJYpF3QRmPkMLCfNZaVufEuJmJ | 0.007493 |   5.902638 |   5.607507 |  0.295131 |
-| tz1PB27kbPL64MWYoNZAfQAEmzCZFi9EvgBw | 0.000022 |   0.017191 |   0.016332 |  0.000859 |
-| tz1R9vogbJQ4QpEnhFjut6SfyoopP17KkdMc | 0.005425 |   4.273754 |   4.060067 |  0.213687 |
-| tz1RoDhaKjJjqcVy9MCN85bVCvbXHEnAFC7j | 0.000748 |   0.589201 |   0.559741 |  0.029460 |
-| tz1RomjUZ1j9F2vqE24h2Am8UeGUpcrf6vvJ | 0.000043 |   0.033532 |   0.031856 |  0.001676 |
-| tz1SnvfwMUYfD2uJrHBiaj4XPstW3eUE9RJU | 0.007168 |   5.646608 |   5.364278 |  0.282330 |
-| tz1Vcu87ZuUK2e8BcoCBUWUhu2s2hPAabStm | 0.000066 |   0.051776 |   0.049188 |  0.002588 |
-| tz1VESLfEAEwDEKhyLZJYXVoervFk5ABPUUD | 0.003192 |   2.514661 |   2.388928 |  0.125733 |
-| tz1VeiAS5wvYgNdri6vwDUrctQ5XhhaXY3K9 | 0.000086 |   0.067751 |   0.064364 |  0.003387 |
-| tz1W3HW533csCBLor4NPtU79R2TT2sbKfJDH | 0.000366 |   0.287945 |   0.273548 |  0.014397 |
-| tz1Z48RMPT1vjqNyUASCexnCEvEEE93J1pwL | 0.000515 |   0.405388 |   0.385119 |  0.020269 |
-+--------------------------------------+----------+------------+------------+-----------+
-|                                                     TOTAL    | 664.453233 | 34.971180 |
-+--------------------------------------+----------+------------+------------+-----------+
+➜  tzpay git:(dexter) ✗ ./tzpay dryrun 276 --table
++-------+--------------------------------------+----------+-----------+-----------+-----------+------------+
+| CYLCE |                BAKER                 |  SHARE   |  REWARDS  |   FEES    |   TOTAL   | OPERATIONS |
++-------+--------------------------------------+----------+-----------+-----------+-----------+------------+
+|   276 | tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc | 0.188334 | 73.550696 | 14.207660 | 87.758356 | N/A        |
++-------+--------------------------------------+----------+-----------+-----------+-----------+------------+
++--------------------------------------+----------+-----------+------------+-----------+
+|              DELEGATION              |  SHARE   |   GROSS   |    NET     |    FEE    |
++--------------------------------------+----------+-----------+------------+-----------+
+| tz1icdoLr8vof5oXiEKCFSyrVoouGiKDQ3Gd | 0.089355 | 34.895929 |  33.151133 |  1.744796 |
+| KT1FPyY6mAhnzyVGP8ApGvuRyF7SKcT9TDWy | 0.088661 | 34.624892 |  32.893648 |  1.731244 |
+| KT1LgkGigaMrnim3TonQWfwDHnM3fHkF1jMv | 0.084802 | 33.118063 |  31.462160 |  1.655903 |
+| KT1MJZWHKZU7ViybRLsphP3ppiiTc7myP2aj | 0.057932 | 22.624225 |  21.493014 |  1.131211 |
+| KT1GBWviYFdRiNkhwM7LfrKDgHWnpdxpURtx | 0.043759 | 17.089149 |  16.234692 |  0.854457 |
+| tz1Ykmc29JfQvWnjWRPYTPUZBLW4gwa9YKUD | 0.040391 | 15.773809 |  14.985119 |  0.788690 |
+| tz1Zuav4ZBoiYhn4btW4HSr7G7J4txGZjvbu | 0.040379 | 15.769315 |  14.980850 |  0.788465 |
+| KT1HccFB3cn4BR2za9XMuU7Wht64omed2UW8 | 0.025476 |  9.949126 |   9.451670 |  0.497456 |
+| KT1WBDsJhoRvsvsRCmJirz9AFhSySSvzTWVd | 0.020242 |  7.905065 |   7.509812 |  0.395253 |
+| KT1VzTs5piA7kYQkkfA9QNApVqGq1h6eMuV4 | 0.019578 |  7.646006 |   7.263706 |  0.382300 |
+| tz1MXhttCeSJYpF3QRmPkMLCfNZaVufEuJmJ | 0.017759 |  6.935557 |   6.588780 |  0.346777 |
+| KT1J4WFQRV3942phzRrh87WDFWKrNVcDJTP9 | 0.016668 |  6.509257 |   6.183795 |  0.325462 |
+| tz1isExUQANnFb9YPmuwYmMmpeGHZ6T3CUT6 | 0.015796 |  6.168820 |   5.860379 |  0.308441 |
+| KT1AThmRzcn51NwMf25NFYTqawjVo62hWiCv | 0.013499 |  5.271847 |   5.008255 |  0.263592 |
+| KT19ABG9KxbEz2GrdN6uhGfxLmMY7REikBN8 | 0.011525 |  4.500767 |   4.275729 |  0.225038 |
+| KT1Wp4tXL6GUtABkikB68fT7SaPQY2UuFkuE | 0.010131 |  3.956295 |   3.758481 |  0.197814 |
+| tz1hbXhPVUX1fC8hN7fALyaUpdoC6EMgqM2h | 0.009624 |  3.758571 |   3.570643 |  0.187928 |
+| KT1RuTPgQ6kdpnE3Adnw7Hr2KFN45uC3BdBy | 0.008928 |  3.486576 |   3.312248 |  0.174328 |
+| KT1BjtEUxd25wwdwGH432LoP6PskvUc2bEYV | 0.008383 |  3.273781 |   3.110092 |  0.163689 |
+| KT1JPeGNVarLsPZnSb3hG5xMVmJJmmBnrnpT | 0.007865 |  3.071596 |   2.918017 |  0.153579 |
+| tz1gxmCTN8BSwuPLghDydtDKTqnAKyD8QTv7 | 0.006211 |  2.425409 |   2.304139 |  0.121270 |
+| KT1A1sZmBQS9oZnPePRwP3Jyzv41xEppxfbF | 0.006142 |  2.398495 |   2.278571 |  0.119924 |
+| tz1hSWBt6DD7SRH2Tq1kGbsKXZLrE7XGSMeF | 0.005812 |  2.269701 |   2.156216 |  0.113485 |
+| tz1Nc2Zux98dEKqUW9Q9pL5rfUeLALBJTWGR | 0.005655 |  2.208601 |   2.098171 |  0.110430 |
+| KT1C28u6DWsBfXk3UMyGrd8zTUVMpsyvjxmp | 0.004116 |  1.607420 |   1.527049 |  0.080371 |
+| KT1TDrRrdz6SLYLBw8ZDxLWwJpx7FVpC52bt | 0.004110 |  1.604921 |   1.524675 |  0.080246 |
+| KT1JcnHjWpkFxaLYMQD2URL8XEeAFqshz2uf | 0.003617 |  1.412444 |   1.341822 |  0.070622 |
+| tz1VJa3ZkVwMzLFkGKhjvvrtzjRrnCJzMSKK | 0.003364 |  1.313906 |   1.248211 |  0.065695 |
+| KT1TS49jiXxrnwhoJzAvCzGZCXLJs3XV1k6C | 0.003176 |  1.240476 |   1.178453 |  0.062023 |
+| KT18kTf8UujihcF46Zn3rsFdEYFL1ZNFnGY4 | 0.003169 |  1.237687 |   1.175803 |  0.061884 |
+| tz1VESLfEAEwDEKhyLZJYXVoervFk5ABPUUD | 0.003161 |  1.234597 |   1.172868 |  0.061729 |
+| KT19Aro5JcjKH7J7RA6sCRihPiBQzQED3oQC | 0.003153 |  1.231416 |   1.169846 |  0.061570 |
+| KT1CQiyDJ3mMVDoEqLY8Fz1onFXo5ycp5BDN | 0.003152 |  1.231047 |   1.169495 |  0.061552 |
+| KT1QB9UAT1okYfcPQLi4jBmZkYg7LHcepERV | 0.003151 |  1.230739 |   1.169203 |  0.061536 |
+| KT1QLo7DzPZnYK2EhmWpejVUnFjQUuWFKHnc | 0.003151 |  1.230554 |   1.169027 |  0.061527 |
+| KT1UVUasDXH6mg8NCzRRgqvcjMoDUpETYEzH | 0.003151 |  1.230431 |   1.168910 |  0.061521 |
+| KT1Na4maJ99GE6CGA1vEocWXrKRmxmsVUaTi | 0.003151 |  1.230431 |   1.168910 |  0.061521 |
+| KT1MX2TwjSBzPaSsBUeW2k9DKehpiuMGfFcL | 0.003086 |  1.205179 |   1.144921 |  0.060258 |
+| KT1BXmBgMSViAViNyhvkb441e2RBFMiKdnj7 | 0.003009 |  1.174983 |   1.116234 |  0.058749 |
+| tz1iuFXyNN7nPHyHkfsj2tfZdnkK9MMJfFf1 | 0.002989 |  1.167275 |   1.108912 |  0.058363 |
+| tz1Wq6LVwpofZ6zqjMBuLyEU53hRMepqkXEr | 0.002985 |  1.165852 |   1.107560 |  0.058292 |
+| KT1K4xei3yozp7UP5rHV5wuoDzWwBXqCGRBt | 0.002929 |  1.144055 |   1.086853 |  0.057202 |
+| tz1hZZn4rsHLXdgQ9d8Rne9CLo6VFo29uQ3m | 0.002893 |  1.129820 |   1.073329 |  0.056491 |
+| tz1Tjpy1ibFhioZ3Y1R6N9zoW4EL54AFYph1 | 0.002887 |  1.127494 |   1.071120 |  0.056374 |
+| tz1Qadi21BxpHAjtfSrF6p4t3qMC5K8Ucjsw | 0.002872 |  1.121439 |   1.065368 |  0.056071 |
+| tz1W3HW533csCBLor4NPtU79R2TT2sbKfJDH | 0.001326 |  0.517868 |   0.491975 |  0.025893 |
+| KT1Jw925NVi4FzTVohZk5iLqagnhJGDEQoTS | 0.001134 |  0.442960 |   0.420812 |  0.022148 |
+| KT1AUmLjJnmHmiieXnWWTPqHA98s65EeN7Mx | 0.000614 |  0.239825 |   0.227834 |  0.011991 |
+| KT1PpVsfyVhWYTpyUaYigdmq1Aiv7zArTFYp | 0.000544 |  0.212280 |   0.201666 |  0.010614 |
+| KT1CySPLDUSYyJ9vqNCF2dGgit4Rw2yUNEcj | 0.000377 |  0.147345 |   0.139978 |  0.007367 |
+| tz1bHq6bUmTrvdepLVgYawcgEiLeeCMh2QJA | 0.000310 |  0.121075 |   0.115022 |  0.006053 |
+| tz1Un6mfQ4Xie6U1nqmnedhnjNPAhfWx9jii | 0.000219 |  0.085511 |   0.081236 |  0.004275 |
+| tz1VeiAS5wvYgNdri6vwDUrctQ5XhhaXY3K9 | 0.000204 |  0.079776 |   0.075788 |  0.003988 |
+| KT1C8S2vLYbzgQHhdC8MBehunhcp1Q9hj6MC | 0.000189 |  0.073745 |   0.070058 |  0.003687 |
+| tz1Vcu87ZuUK2e8BcoCBUWUhu2s2hPAabStm | 0.000156 |  0.060836 |   0.057795 |  0.003041 |
+| KT1Aeg9D8kvkbAb6yikUdFcroReXvHtMBaZz | 0.000141 |  0.055183 |   0.052424 |  0.002759 |
+| tz1aX2DF3ioDjqDcTVmrxVuqkxhZh1pLtfHU | 0.000095 |  0.037188 |   0.035329 |  0.001859 |
+| KT18ni9Yar4UzwZozFbRF7SFUKg2EqyyUPPT | 0.000095 |  0.037070 |   0.035217 |  0.001853 |
+| KT193c72q6eP1VpaY7hiheE7k1eDZiXeQUUw | 0.000086 |  0.033729 |   0.032043 |  0.001686 |
+| tz1SnvfwMUYfD2uJrHBiaj4XPstW3eUE9RJU | 0.000079 |  0.031012 |   0.029462 |  0.001550 |
+| KT1MSFeAGaWk8w7F1gmgUMaarU7mH385ueYC | 0.000041 |  0.015841 |   0.015049 |  0.000792 |
+| KT1VUbpty8fER7npuvsfYDZXf2wVPhAHVqSx | 0.000036 |  0.014229 |   0.013518 |  0.000711 |
+| KT1Lm4ZSyXSHod7U6znR7z9SGVmexntNQwAp | 0.000032 |  0.012472 |   0.011849 |  0.000623 |
+| KT1NGd6RaRtmvwexYXGibtdvKBnNjjpBNknn | 0.000022 |  0.008518 |   0.008093 |  0.000425 |
+| KT1WQWXvRcMjJB1y6mYZytoS5QsFJyFNDCk5 | 0.000021 |  0.008019 |   0.007619 |  0.000400 |
+| tz1dfUssfLfTBoYqsWxMu86ycmLUvfF2abng | 0.000006 |  0.002377 |   0.002259 |  0.000118 |
+| KT1JsHBFpoGRVXpcfC763YwvonKtNvaFotpG | 0.000006 |  0.002375 |   0.002257 |  0.000118 |
+| tz1RomjUZ1j9F2vqE24h2Am8UeGUpcrf6vvJ | 0.000005 |  0.001982 |   0.001883 |  0.000099 |
+| KT1Re5utTU2hrujXgZ3Ux5BgjN8rbru4sns2 | 0.000005 |  0.001949 |   0.001852 |  0.000097 |
+| KT1AT7N9bGhViSorUrpivuYT6Wxs37hR2p9d | 0.000004 |  0.001569 |   0.001491 |  0.000078 |
+| tz1a7ZrvfMm8reWSBQHcnAdjh9T5cXiu6EUT | 0.000004 |  0.001438 |   0.001367 |  0.000071 |
+| KT1REp3D8dkiVVi37TCSMJNgGeX6UigBtfaL | 0.000004 |  0.001379 |   0.001311 |  0.000068 |
+| KT18uqwoNyPRHpHCrg7xBFd7CiAZMbS1Ffne | 0.000002 |  0.000898 |   0.000854 |  0.000044 |
+| KT1RbwPHzDwU9oPjnTWZrbCrMGjaFyj8dEtC | 0.000002 |  0.000836 |   0.000795 |  0.000041 |
+| KT1JJcydTkinquNqh6kE5HYgFpD2124qHbZp | 0.000001 |  0.000315 |   0.000300 |  0.000015 |
+| KT1JoAP7MfiigepR332u6xJqza9CG52ycYZ9 | 0.000000 |  0.000185 |   0.000176 |  0.000009 |
+| KT1NfMCxyzwev243rKk3Y6SN8GfmdLKwASFQ | 0.000000 |  0.000184 |   0.000175 |  0.000009 |
+| KT1EidADxWfYeBgK8L1ZTbf7a9zyjKwCFjfH | 0.000000 |  0.000178 |   0.000170 |  0.000008 |
+| KT1XrBAocuiE3C2vvtgt7PFoazrC1KRi9ZF4 | 0.000000 |  0.000149 |   0.000142 |  0.000007 |
+| KT1CeUNtCrXFNbLmvdGPNnxpcJw2sW5Hcpmc | 0.000000 |  0.000111 |   0.000106 |  0.000005 |
+| tz1PB27kbPL64MWYoNZAfQAEmzCZFi9EvgBw | 0.000000 |  0.000103 |   0.000098 |  0.000005 |
+| KT1T3dPMBm7D3kKqALKYnW2mViFqMMVCYtmo | 0.000000 |  0.000099 |   0.000095 |  0.000004 |
+| KT1Dgma8bbDtAbtMbYYS5VmziyCANAZn8M7W | 0.000000 |  0.000096 |   0.000092 |  0.000004 |
+| KT1NmVtU3CNqzhNWwLhE5BqAopjkcmHpWzT2 | 0.000000 |  0.000093 |   0.000089 |  0.000004 |
+| KT1LinsZAnyxajEv4eNFWtwHMdyhbJsGfvp3 | 0.000000 |  0.000077 |   0.000074 |  0.000003 |
+| KT19Q8GiYqGpuuUjf9xfXXVu1WY889N8oxRe | 0.000000 |  0.000062 |   0.000059 |  0.000003 |
+| KT1S9VbEnU8nj33ufxrGBYGxBCnqmeoAnKt4 | 0.000000 |  0.000055 |   0.000053 |  0.000002 |
+| KT1Lnh39om2iqr4qb9AarF9T38ayNBLnfAVn | 0.000000 |  0.000039 |   0.000038 |  0.000001 |
+| KT1Cz1jPLuaPR99XamKQDr9PKZY1PTXzTAHH | 0.000000 |  0.000038 |   0.000037 |  0.000001 |
+| KT1PDBuQmFLVHfiWZjV248QdTrdcmAuSS7Tx | 0.000000 |  0.000032 |   0.000031 |  0.000001 |
+| KT1EbMbqTUS8XnqGVRsdLZVKLhcT7Zc33jR1 | 0.000000 |  0.000020 |   0.000019 |  0.000001 |
+| KT1KJ5Qt18yU9DrqN36tgyLtaSvFSZ5r6YL6 | 0.000000 |  0.000014 |   0.000014 |  0.000000 |
+| KT1PY2MMiTUkZQv7CPekXy186N1qmu7GikcT | 0.000000 |  0.000012 |   0.000012 |  0.000000 |
+| KT1E1MnvNgCDLqnGneStVY9CvmjnyZgcaPaD | 0.000000 |  0.000010 |   0.000010 |  0.000000 |
+| tz1f7mbrPU2cMHhjqhYzw9SfmZYKUtZkG52A | 0.000000 |  0.000009 |   0.000009 |  0.000000 |
+| KT1KeNNxEM4NyfrmF1CG6TLn3nRSmEGhP7Z2 | 0.000000 |  0.000008 |   0.000008 |  0.000000 |
+| KT1W3oiS6s9NgSxhZY1nCsazW2QbwkmjkET1 | 0.000000 |  0.000005 |   0.000005 |  0.000000 |
+| KT1NxnFWHW7bUxzks1oHVU2jn4heu48KC3eD | 0.000000 |  0.000004 |   0.000004 |  0.000000 |
+| KT1MfT8XvQp9ZeGUx4cmCNF3wui55WLNYhq9 | 0.000000 |  0.000002 |   0.000002 |  0.000000 |
+| KT1XPMJx2wuCbbzKZx5jJyKqLpPJMHv58wni | 0.000000 |  0.000000 |   0.000000 |  0.000000 |
++--------------------------------------+----------+-----------+------------+-----------+
+|                                                     TOTAL   | 269.946543 | 14.207660 |
++--------------------------------------+----------+-----------+------------+-----------+
 ```
 
 ## Roadmap:

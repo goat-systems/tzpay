@@ -10,6 +10,43 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// DryRun -
+type DryRun struct {
+	payout payout.IFace
+	config config.Config
+	cycle  int
+	table  bool
+}
+
+// NewDryRun returns a new dryrun
+func NewDryRun(cycle string, table bool) DryRun {
+	config, err := config.New()
+	if err != nil {
+		log.WithField("error", err.Error()).Fatal("Failed to load config.")
+	}
+
+	// Clear sensitive data if loaded
+	config.Key.Password = ""
+	config.Key.Esk = ""
+
+	c, err := strconv.Atoi(cycle)
+	if err != nil {
+		log.WithField("error", err.Error()).Fatal("Failed to parse cycle argument into integer.")
+	}
+
+	payout, err := payout.New(config, c, false, false)
+	if err != nil {
+		log.WithField("error", err.Error()).Fatal("Failed to intialize payout.")
+	}
+
+	return DryRun{
+		payout: payout,
+		config: config,
+		cycle:  c,
+		table:  table,
+	}
+}
+
 // DryRunCommand returns the cobra command for dryrun
 func DryRunCommand() *cobra.Command {
 	var table bool
@@ -23,7 +60,9 @@ func DryRunCommand() *cobra.Command {
 			if len(args) == 0 {
 				log.Fatal("Missing cycle as argument.")
 			}
-			executeDryRun(args[0], table)
+
+			dryrun := NewDryRun(args[0], table)
+			dryrun.execute()
 		},
 	}
 	dryrun.PersistentFlags().BoolVarP(&table, "table", "t", false, "formats result into a table (Default: json)")
@@ -31,34 +70,18 @@ func DryRunCommand() *cobra.Command {
 	return dryrun
 }
 
-func executeDryRun(arg string, table bool) {
-	config, err := config.New()
-	if err != nil {
-		log.WithField("error", err.Error()).Fatal("Failed to load config.")
-	}
-
-	// Clear sensitive data if loaded
-	config.Key.Password = ""
-	config.Key.Esk = ""
-
-	cycle, err := strconv.Atoi(arg)
-	if err != nil {
-		log.WithField("error", err.Error()).Fatal("Failed to parse cycle argument into integer.")
-	}
-
-	payout, err := payout.New(config, cycle, false, false)
-	if err != nil {
-		log.WithField("error", err.Error()).Fatal("Failed to initialize payout.")
-	}
-
-	rewardsSplit, err := payout.Execute()
+func (d *DryRun) execute() {
+	rewardsSplit, err := d.payout.Execute()
 	if err != nil {
 		log.WithField("error", err.Error()).Fatal("Failed to execute payout.")
 	}
 
-	if table {
-		print.Table(cycle, config.Baker.Address, rewardsSplit)
+	if d.table {
+		print.Table(d.cycle, d.config.Baker.Address, rewardsSplit)
 	} else {
-		print.JSON(rewardsSplit)
+		err := print.JSON(rewardsSplit)
+		if err != nil {
+			log.WithField("error", err.Error()).Fatal("Failed to print JSON report.")
+		}
 	}
 }
