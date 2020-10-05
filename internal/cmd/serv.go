@@ -5,12 +5,14 @@ import (
 
 	"github.com/goat-systems/go-tezos/v3/rpc"
 	"github.com/goat-systems/tzpay/v2/internal/config"
+	"github.com/goat-systems/tzpay/v2/internal/payout"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
 type server struct {
+	queue     payout.Queue
 	rpcClient rpc.IFace
 	cfg       config.Config
 	runner    Run
@@ -27,10 +29,15 @@ func newServer(verbose bool) (server, error) {
 		return server{}, errors.Wrap(err, "failed to connect to tezos rpc")
 	}
 
+	runner := NewRun(false, verbose)
+	queue := payout.NewQueue(runner.notifier)
+	queue.Start()
+
 	return server{
+		queue:     queue,
 		rpcClient: rpc,
 		cfg:       config,
-		runner:    NewRun(false, verbose),
+		runner:    runner,
 	}, nil
 }
 
@@ -75,8 +82,13 @@ func (s *server) start() {
 			}
 
 			if currentCycle < block.Metadata.Level.Cycle {
-				log.Infof("Current cycle: %d.", block.Metadata.Level.Cycle)
-				s.runner.execute(block.Metadata.Level.Cycle)
+				payout, err := payout.New(s.runner.config, currentCycle, true, s.runner.verbose)
+				if err != nil {
+					log.WithField("error", err.Error()).Fatal("Failed to intialize payout.")
+				}
+				log.Infof("Adding payout for for cycle to queue: %d.", currentCycle)
+				s.queue.Enqueue(*payout)
+				log.Infof("New current cycle: %d.", block.Metadata.Level.Cycle)
 				currentCycle = block.Metadata.Level.Cycle
 			}
 		}
