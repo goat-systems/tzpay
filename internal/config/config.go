@@ -14,7 +14,7 @@ type Config struct {
 	Baker         Baker
 	Key           Key
 	Operations    Operations
-	Notifications *Notifications
+	Notifications Notifications
 }
 
 // Baker contains configurations related to the how a baker might run their baking operation
@@ -49,25 +49,24 @@ type Key struct {
 
 // Notifications contains the configurations for notification features
 type Notifications struct {
-	SignMessage bool `env:"TZPAY_NOTIFICATIONS_SIGN" validate:"required"`
-	Twitter     *Twitter
-	Twilio      *Twilio
+	Twitter Twitter
+	Twilio  Twilio
 }
 
 // Twitter contains twitter API information for automatic notifications
 type Twitter struct {
-	ConsumerKey    string `env:"TZPAY_TWITTER_CONSUMER_KEY" validate:"required"`
-	ConsumerSecret string `env:"TZPAY_TWITTER_CONSUMER_SECRET" validate:"required"`
-	AccessToken    string `env:"TZPAY_TWITTER_ACCESS_TOKEN" validate:"required"`
-	AccessSecret   string `env:"TZPAY_TWITTER_ACCESS_SECRET" validate:"required"`
+	ConsumerKey    string `env:"TZPAY_TWITTER_CONSUMER_KEY"`
+	ConsumerSecret string `env:"TZPAY_TWITTER_CONSUMER_SECRET"`
+	AccessToken    string `env:"TZPAY_TWITTER_ACCESS_TOKEN"`
+	AccessSecret   string `env:"TZPAY_TWITTER_ACCESS_SECRET"`
 }
 
 // Twilio contains twilio API information for automatic notifications
 type Twilio struct {
-	AccountSID string   `env:"TZPAY_TWILIO_ACCOUNT_SID" validate:"required"`
-	AuthToken  string   `env:"TZPAY_TWILIO_AUTH_TOKEN" validate:"required"`
-	From       string   `env:"TZPAY_TWILIO_FROM" validate:"required"`
-	To         []string `env:"TZPAY_TWILIO_TO" envSeparator:"," validate:"required"`
+	AccountSID string   `env:"TZPAY_TWILIO_ACCOUNT_SID"`
+	AuthToken  string   `env:"TZPAY_TWILIO_AUTH_TOKEN"`
+	From       string   `env:"TZPAY_TWILIO_FROM"`
+	To         []string `env:"TZPAY_TWILIO_TO" envSeparator:","`
 }
 
 // New loads enviroment variables into a Config struct
@@ -80,10 +79,8 @@ func New() (Config, error) {
 	config.Baker.Blacklist = cleanList(config.Baker.Blacklist)
 	config.Baker.DexterLiquidityContracts = cleanList(config.Baker.DexterLiquidityContracts)
 
-	if config.Notifications != nil {
-		if config.Notifications.Twilio != nil {
-			config.Notifications.Twilio.To = cleanList(config.Notifications.Twilio.To)
-		}
+	if config.Notifications.Twilio.To != nil {
+		config.Notifications.Twilio.To = cleanList(config.Notifications.Twilio.To)
 	}
 
 	err := validator.New().Struct(&config)

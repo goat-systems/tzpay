@@ -81,26 +81,32 @@ func (p *Payout) getLiquidityProvidersEarnings(contract tzkt.Delegator) (tzkt.De
 
 	var liquidityProviders []tzkt.LiquidityProvider
 	for _, key := range liquidityProvidersAddresses {
+		found := true
 		balance, err := p.getBalanceFromBigMap(key, bigMap, cycle.BlockHash)
 		if err != nil {
-			return contract, errors.Wrapf(err, "failed to get earnings for liquidity providers for contract '%s'", contract.Address)
+			if !strings.Contains(err.Error(), "not found in big map") {
+				return contract, errors.Wrapf(err, "failed to get earnings for liquidity providers for contract '%s'", contract.Address)
+			}
+			found = false
 		}
 
-		lp := tzkt.LiquidityProvider{
-			Address: key,
-			Balance: balance,
-			Share:   float64(balance) / float64(totalLiquidity),
+		if found {
+			lp := tzkt.LiquidityProvider{
+				Address: key,
+				Balance: balance,
+				Share:   float64(balance) / float64(totalLiquidity),
+			}
+
+			lp.GrossRewards = int(lp.Share * float64(contract.GrossRewards))
+			lp.Fee = int(float64(lp.GrossRewards) * p.config.Baker.Fee)
+			lp.NetRewards = lp.GrossRewards - lp.Fee
+
+			if p.isInBlacklist(lp.Address) {
+				lp.BlackListed = true
+			}
+
+			liquidityProviders = append(liquidityProviders, lp)
 		}
-
-		lp.GrossRewards = int(lp.Share * float64(contract.GrossRewards))
-		lp.Fee = int(float64(lp.GrossRewards) * p.config.Baker.Fee)
-		lp.NetRewards = lp.GrossRewards - lp.Fee
-
-		if p.isInBlacklist(lp.Address) {
-			lp.BlackListed = true
-		}
-
-		liquidityProviders = append(liquidityProviders, lp)
 	}
 	contract.LiquidityProviders = liquidityProviders
 
@@ -146,6 +152,12 @@ func (p *Payout) getBalanceFromBigMap(key string, bigMapID int, blockhash string
 		BigMapID:         bigMapID,
 		ScriptExpression: scriptExp,
 	})
+	if err != nil {
+		return 0, errors.Wrapf(err, "failed to get balance from big_map for '%s'", key)
+	}
+	if len(bigMapResp) == 0 {
+		return 0, errors.Wrapf(err, "key '%s' not found in big map", key)
+	}
 
 	var bigmap BigMapV1
 	if err := json.Unmarshal(bigMapResp, &bigmap); err != nil {

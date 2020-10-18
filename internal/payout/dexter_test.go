@@ -11,6 +11,60 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// func Test_constructPayoutX(t *testing.T) {
+// 	tz := tzkt.NewTZKT("https://api.tzkt.io/")
+// 	r, err := rpc.New("https://mainnet-tezos.giganode.io")
+// 	assert.Nil(t, err)
+
+// 	payout := Payout{
+// 		rpc:   r,
+// 		tzkt:  tz,
+// 		cycle: 289,
+// 		config: config.Config{
+// 			Baker: config.Baker{
+// 				Fee: 0.05,
+// 				DexterLiquidityContracts: []string{
+// 					"KT1DrJV8vhkdLEj76h1H9Q4irZDqAkMPo1Qf",
+// 					"KT1Puc9St8wdNoGtLiD2WXaHbWU7styaxYhD",
+// 				},
+// 				Address: "tz1WCd2jm4uSt4vntk4vSuUWoZQGhLcDuR9q",
+// 			},
+// 		},
+// 	}
+// 	payout.constructDexterContractPayoutFunc = payout.constructDexterContractPayout
+
+// 	rewardsSplit, err := tz.GetRewardsSplit(payout.config.Baker.Address, payout.cycle)
+// 	assert.Nil(t, err)
+
+// 	totalRewards := payout.calculateTotals(rewardsSplit)
+
+// 	bakerBalance, err := payout.rpc.Balance(rpc.BalanceInput{
+// 		Cycle:   payout.cycle,
+// 		Address: payout.config.Baker.Address,
+// 	})
+// 	assert.Nil(t, err)
+
+// 	rewardsSplit.BakerShare = float64(bakerBalance) / float64(rewardsSplit.StakingBalance)
+// 	rewardsSplit.BakerRewards = int(rewardsSplit.BakerShare * float64(totalRewards))
+
+// 	_, dexterContracts := payout.splitDelegationsAndDexterContracts(rewardsSplit)
+// 	rewardsSplit.Delegators = tzkt.Delegators{}
+
+// 	for _, contract := range dexterContracts {
+// 		contract = payout.constructDelegation(contract, totalRewards, rewardsSplit.StakingBalance)
+// 		rewardsSplit.BakerCollectedFees += contract.Fee
+
+// 		var err error
+// 		contract, err = payout.constructDexterContractPayoutFunc(contract)
+// 		assert.Nil(t, err)
+// 		fmt.Println(contract)
+
+// 		rewardsSplit.Delegators = append(rewardsSplit.Delegators, contract)
+// 	}
+
+// 	t.Fail()
+// }
+
 func Test_constructDexterContractPayout(t *testing.T) {
 	type input struct {
 		payout   Payout
@@ -177,7 +231,7 @@ func Test_getLiquidityProvidersEarnings(t *testing.T) {
 			},
 			want{
 				true,
-				"failed to get balance from big_map",
+				"failed to get earnings for liquidity providers for contract",
 				tzkt.Delegator{},
 			},
 		},

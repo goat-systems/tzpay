@@ -30,24 +30,23 @@ func NewRun(table bool, verbose bool) Run {
 	}
 
 	var messengers []notifier.ClientIFace
-	if config.Notifications != nil {
-		if config.Notifications.Twilio != nil {
-			messengers = append(messengers, twilio.New(twilio.Client{
-				AccountSID: config.Notifications.Twilio.AccountSID,
-				AuthToken:  config.Notifications.Twilio.AuthToken,
-				From:       config.Notifications.Twilio.From,
-				To:         config.Notifications.Twilio.To,
-			}))
-		}
+	if config.Notifications.Twilio.AccountSID != "" && config.Notifications.Twilio.AuthToken != "" &&
+		config.Notifications.Twilio.From != "" && config.Notifications.Twilio.To != nil {
+		messengers = append(messengers, twilio.New(twilio.Client{
+			AccountSID: config.Notifications.Twilio.AccountSID,
+			AuthToken:  config.Notifications.Twilio.AuthToken,
+			From:       config.Notifications.Twilio.From,
+			To:         config.Notifications.Twilio.To,
+		}))
+	}
 
-		if config.Notifications.Twitter != nil {
-			messengers = append(messengers, twitter.NewClient(
-				config.Notifications.Twitter.ConsumerKey,
-				config.Notifications.Twitter.ConsumerSecret,
-				config.Notifications.Twitter.AccessToken,
-				config.Notifications.Twitter.AccessSecret,
-			))
-		}
+	if config.Notifications.Twitter.ConsumerKey != "" && config.Notifications.Twitter.ConsumerSecret != "" && config.Notifications.Twitter.AccessToken != "" && config.Notifications.Twitter.AccessSecret != "" {
+		messengers = append(messengers, twitter.NewClient(
+			config.Notifications.Twitter.ConsumerKey,
+			config.Notifications.Twitter.ConsumerSecret,
+			config.Notifications.Twitter.AccessToken,
+			config.Notifications.Twitter.AccessSecret,
+		))
 	}
 
 	return Run{
@@ -102,7 +101,7 @@ func (r *Run) execute(cycle int) {
 		log.WithField("error", err.Error()).Fatal("Failed to execute payout.")
 	}
 
-	err = r.notifier.Notify(fmt.Sprintf("[TZPAY] payout for cycle %d: \n%s\n #tezos #pos", cycle, rewardsSplit.OperationLink))
+	err = r.notifier.Notify(fmt.Sprintf("[TZPAY] payout for cycle %d: \n%s\n #tezos #blockchain", cycle, rewardsSplit.OperationLink))
 	if err != nil {
 		log.WithField("error", err.Error()).Error("Failed to notify.")
 	}

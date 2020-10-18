@@ -76,19 +76,19 @@ func (s *server) start() {
 		log.Infof("Current cycle: %d.", currentCycle)
 		ticker := time.NewTicker(time.Minute)
 		for range ticker.C {
-			block, err := s.rpcClient.Head()
+			b, err := s.rpcClient.Head()
 			if err != nil {
 				log.WithField("error", err.Error()).Error("Server failed to get current cycle.")
 			}
 
-			if currentCycle < block.Metadata.Level.Cycle {
+			if currentCycle < b.Metadata.Level.Cycle {
 				payout, err := payout.New(s.runner.config, currentCycle, true, s.runner.verbose)
 				if err != nil {
 					log.WithField("error", err.Error()).Fatal("Failed to intialize payout.")
 				}
 				log.Infof("Adding payout for for cycle to queue: %d.", currentCycle)
 				s.queue.Enqueue(*payout)
-				log.Infof("New current cycle: %d.", block.Metadata.Level.Cycle)
+				log.Infof("New current cycle: %d.", b.Metadata.Level.Cycle)
 				currentCycle = block.Metadata.Level.Cycle
 			}
 		}
