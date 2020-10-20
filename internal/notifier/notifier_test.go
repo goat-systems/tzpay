@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/goat-systems/go-tezos/v3/rpc"
-	"github.com/goat-systems/tzpay/v2/internal/test"
+	"github.com/goat-systems/tzpay/v3/internal/test"
 	"github.com/stretchr/testify/assert"
 )
 

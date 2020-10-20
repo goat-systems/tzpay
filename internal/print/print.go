@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	gotezos "github.com/goat-systems/go-tezos/v2"
-	"github.com/goat-systems/tzpay/v2/internal/tzkt"
+	"github.com/goat-systems/tzpay/v3/internal/tzkt"
 	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"

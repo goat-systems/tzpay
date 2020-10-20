@@ -3,9 +3,9 @@ package cmd
 import (
 	"strconv"
 
-	"github.com/goat-systems/tzpay/v2/internal/config"
-	"github.com/goat-systems/tzpay/v2/internal/payout"
-	"github.com/goat-systems/tzpay/v2/internal/print"
+	"github.com/goat-systems/tzpay/v3/internal/config"
+	"github.com/goat-systems/tzpay/v3/internal/payout"
+	"github.com/goat-systems/tzpay/v3/internal/print"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )

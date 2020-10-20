@@ -1,4 +1,4 @@
-module github.com/goat-systems/tzpay/v2
+module github.com/goat-systems/tzpay/v3
 
 go 1.13
 

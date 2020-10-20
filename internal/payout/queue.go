@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/goat-systems/tzpay/v2/internal/notifier"
-	"github.com/goat-systems/tzpay/v2/internal/print"
+	"github.com/goat-systems/tzpay/v3/internal/notifier"
+	"github.com/goat-systems/tzpay/v3/internal/print"
 	"github.com/sirupsen/logrus"
 )
 
@@ -19,6 +19,7 @@ type Queue struct {
 func NewQueue(notifier notifier.PayoutNotifier) Queue {
 	return Queue{
 		notifier: notifier,
+		mu:       &sync.Mutex{},
 	}
 }
 

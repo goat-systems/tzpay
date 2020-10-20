@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/goat-systems/tzpay/v2/internal/cmd"
+	"github.com/goat-systems/tzpay/v3/internal/cmd"
 	"github.com/spf13/cobra"
 )
 
