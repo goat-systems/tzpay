@@ -25,13 +25,13 @@ spec:
             cpu: "500m"
         env:
           - name: TZPAY_BAKER_FEE
-            value: ""
+            value: "TODO"
           - name: TZPAY_BAKER
-            value: ""
+            value: "TODO"
           - name: TZPAY_BAKER_EARNINGS_ONLY
-            value: ""
+            value: "TODO"
           - name: TZPAY_BAKER_MINIMUM_PAYMENT
-            value: ""
+            value: "TODO"
           - name: TZPAY_WALLET_ESK
             valueFrom:
               secretKeyRef:
