@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tzpay
+  namespace: tzpay
+spec:
+  selector:
+    matchLabels:
+      app: tzpay
+  template:
+    metadata:
+      labels:
+        app: tzpay
+    spec:
+      containers:
+      - name: tzpay
+        imagePullPolicy: Always
+        image: goatsystems/tzpay:v3.0.0
+        command:
+            - "tzpay"
+            - "serv"
+        resources:
+          limits:
+            memory: "1000Mi"
+            cpu: "500m"
+        env:
+          - name: TZPAY_BAKER_FEE
+            value: ""
+          - name: TZPAY_BAKER
+            value: ""
+          - name: TZPAY_BAKER_EARNINGS_ONLY
+            value: ""
+          - name: TZPAY_BAKER_MINIMUM_PAYMENT
+            value: ""
+          - name: TZPAY_WALLET_ESK
+            valueFrom:
+              secretKeyRef:
+                name: secret-config
+                key: wallet-esk
+          - name: TZPAY_WALLET_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: secret-config
+                key: wallet-pass
+          - name: TZPAY_TWITTER_CONSUMER_KEY
+            valueFrom:
+              secretKeyRef:
+                name: secret-config
+                key: twitter-consumer-key
+          - name: TZPAY_TWITTER_CONSUMER_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: secret-config
+                key: twitter-consumer-secret
+          - name: TZPAY_TWITTER_ACCESS_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: secret-config
+                key: twitter-access-token
+          - name: TZPAY_TWITTER_ACCESS_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: secret-config
+                key: twitter-access-secret
+          - name: TZPAY_TWILIO_ACCOUNT_SID
+            valueFrom:
+              secretKeyRef:
+                name: secret-config
+                key: twilio-account-sid
+          - name: TZPAY_TWILIO_AUTH_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: secret-config
+                key: twilio-auth-token
+          - name: TZPAY_TWILIO_FROM
+            valueFrom:
+              secretKeyRef:
+                name: secret-config
+                key: twilio-from
+          - name: TZPAY_TWILIO_TO
+            valueFrom:
+              secretKeyRef:
+                name: secret-config
+                key: twilio-to

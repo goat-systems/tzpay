@@ -3,46 +3,47 @@ package cmd
 import (
 	"strconv"
 
-	gotezos "github.com/goat-systems/go-tezos/v2"
-	"github.com/goat-systems/tzpay/v2/internal/enviroment"
-	"github.com/goat-systems/tzpay/v2/internal/payout"
-	"github.com/goat-systems/tzpay/v2/internal/print"
+	"github.com/goat-systems/tzpay/v3/internal/config"
+	"github.com/goat-systems/tzpay/v3/internal/payout"
+	"github.com/goat-systems/tzpay/v3/internal/print"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
-// DryRun configures and exposes functions to allow tzpay to simulate a payout without injecting it into the network.
+// DryRun -
 type DryRun struct {
-	gt             gotezos.IFace
-	bakersFee      float64
-	delegate       string
-	gasLimit       int
-	minimumPayment int
-	networkFee     int
-	blackList      []string
+	payout payout.IFace
+	config config.Config
+	cycle  int
+	table  bool
 }
 
-// DryRunInput is the input for NewDryRun
-type DryRunInput struct {
-	GoTezos        gotezos.IFace
-	BakersFee      float64
-	Delegate       string
-	GasLimit       int
-	MinimumPayment int
-	NetworkFee     int
-	BlackList      []string
-}
+// NewDryRun returns a new dryrun
+func NewDryRun(cycle string, table bool) DryRun {
+	config, err := config.New()
+	if err != nil {
+		log.WithField("error", err.Error()).Fatal("Failed to load config.")
+	}
 
-// NewDryRun returns a pointer to a DryRun
-func NewDryRun(input DryRunInput) *DryRun {
-	return &DryRun{
-		gt:             input.GoTezos,
-		bakersFee:      input.BakersFee,
-		delegate:       input.Delegate,
-		gasLimit:       input.GasLimit,
-		minimumPayment: input.MinimumPayment,
-		networkFee:     input.NetworkFee,
-		blackList:      input.BlackList,
+	// Clear sensitive data if loaded
+	config.Key.Password = ""
+	config.Key.Esk = ""
+
+	c, err := strconv.Atoi(cycle)
+	if err != nil {
+		log.WithField("error", err.Error()).Fatal("Failed to parse cycle argument into integer.")
+	}
+
+	payout, err := payout.New(config, c, false, false)
+	if err != nil {
+		log.WithField("error", err.Error()).Fatal("Failed to intialize payout.")
+	}
+
+	return DryRun{
+		payout: payout,
+		config: config,
+		cycle:  c,
+		table:  table,
 	}
 }
 
@@ -60,49 +61,27 @@ func DryRunCommand() *cobra.Command {
 				log.Fatal("Missing cycle as argument.")
 			}
 
-			env, err := enviroment.NewDryRunEnviroment()
-			if err != nil {
-				log.WithField("error", err.Error()).Fatal("Failed to load enviroment.")
-			}
-
-			NewDryRun(DryRunInput{
-				GoTezos:        env.GoTezos,
-				BakersFee:      env.BakersFee,
-				Delegate:       env.Delegate,
-				GasLimit:       env.GasLimit,
-				MinimumPayment: env.MinimumPayment,
-				NetworkFee:     env.NetworkFee,
-				BlackList:      env.BlackList,
-			}).execute(args[0], table)
+			dryrun := NewDryRun(args[0], table)
+			dryrun.execute()
 		},
 	}
-
 	dryrun.PersistentFlags().BoolVarP(&table, "table", "t", false, "formats result into a table (Default: json)")
 
 	return dryrun
 }
 
-func (d *DryRun) execute(arg string, table bool) {
-	cycle, err := strconv.Atoi(arg)
+func (d *DryRun) execute() {
+	rewardsSplit, err := d.payout.Execute()
 	if err != nil {
-		log.Fatal("Failed to parse cycle argument into integer.")
+		log.WithField("error", err.Error()).Fatal("Failed to execute payout.")
 	}
 
-	report, err := payout.NewPayout(payout.NewPayoutInput{
-		GoTezos:    d.gt,
-		Cycle:      cycle,
-		Delegate:   d.delegate,
-		BakerFee:   d.bakersFee,
-		MinPayment: d.minimumPayment,
-		BlackList:  d.blackList,
-		BatchSize:  125,
-		NetworkFee: d.networkFee,
-		GasLimit:   d.gasLimit,
-	}).Execute()
-
-	if table {
-		print.Table(d.delegate, "", report)
+	if d.table {
+		print.Table(d.cycle, d.config.Baker.Address, rewardsSplit)
 	} else {
-		print.JSON(report)
+		err := print.JSON(rewardsSplit)
+		if err != nil {
+			log.WithField("error", err.Error()).Fatal("Failed to print JSON report.")
+		}
 	}
 }

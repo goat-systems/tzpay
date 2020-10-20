@@ -1,182 +1,29 @@
 package payout
 
 import (
-	"math/big"
-	"sort"
+	"errors"
 	"testing"
 	"time"
 
-	gotezos "github.com/goat-systems/go-tezos/v2"
-	"github.com/goat-systems/tzpay/v2/internal/test"
+	"github.com/goat-systems/go-tezos/v3/keys"
+	"github.com/goat-systems/go-tezos/v3/rpc"
+	"github.com/goat-systems/tzpay/v3/internal/config"
+	"github.com/goat-systems/tzpay/v3/internal/test"
+	"github.com/goat-systems/tzpay/v3/internal/tzkt"
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_PayoutsSort(t *testing.T) {
-	delegationEarnings := DelegationEarnings{}
-	delegationEarnings = append(delegationEarnings,
-		[]DelegationEarning{
-			{
-				Address: "tz1c",
-			},
-			{
-				Address: "tz1a",
-			},
-			{
-				Address: "tz1b",
-			},
-		}...,
-	)
-	sort.Sort(&delegationEarnings)
-
-	want := DelegationEarnings{}
-	want = append(want,
-		[]DelegationEarning{
-			{
-				Address: "tz1a",
-			},
-			{
-				Address: "tz1b",
-			},
-			{
-				Address: "tz1c",
-			},
-		}...,
-	)
-
-	assert.Equal(t, want, delegationEarnings)
-}
-
 func Test_Execute(t *testing.T) {
-	type want struct {
-		err         bool
-		errContains string
-		report      Report
-	}
-
-	cases := []struct {
-		name  string
-		input gotezos.IFace
-		want  want
-	}{
-		{
-			"handles FrozenBalance failue",
-			&test.GoTezosMock{
-				FrozenBalanceErr: true,
-			},
-			want{
-				true,
-				"failed to get delegation earnings for cycle 0: failed to get frozen balance",
-				Report{},
-			},
-		},
-		{
-			"handles DelegatedContractsAtCycle failue",
-			&test.GoTezosMock{
-				DelegatedContractsErr: true,
-			},
-			want{
-				true,
-				"failed to get delegation earnings for cycle 0: failed to get delegated contracts at cycle",
-				Report{},
-			},
-		},
-		{
-			"handles Cycle failue",
-			&test.GoTezosMock{
-				CycleErr: true,
-			},
-			want{
-				true,
-				"failed to get delegation earnings for cycle 0: failed to get cycle",
-				Report{},
-			},
-		},
-		{
-			"handles StakingBalance failue",
-			&test.GoTezosMock{
-				StakingBalanceErr: true,
-			},
-			want{
-				true,
-				"failed to get delegation earnings for cycle 0: failed to get staking balance",
-				Report{},
-			},
-		},
-		{
-			"is successful",
-			&test.GoTezosMock{},
-			want{
-				false,
-				"",
-				Report{
-					DelegationEarnings: DelegationEarnings{
-						DelegationEarning{
-							Address:      "KT1GcSsQaTtMB2HvUKU9b6WRFUnGpGx9JwGk",
-							Fee:          big.NewInt(1750),
-							GrossRewards: big.NewInt(35000),
-							NetRewards:   big.NewInt(33250),
-							Share:        0.0005,
-						},
-						DelegationEarning{
-							Address:      "KT1K4xei3yozp7UP5rHV5wuoDzWwBXqCGRBt",
-							Fee:          big.NewInt(1750),
-							GrossRewards: big.NewInt(35000),
-							NetRewards:   big.NewInt(33250),
-							Share:        0.0005,
-						},
-						DelegationEarning{
-							Address:      "KT1LinsZAnyxajEv4eNFWtwHMdyhbJsGfvp3",
-							Fee:          big.NewInt(1750),
-							GrossRewards: big.NewInt(35000),
-							NetRewards:   big.NewInt(33250),
-							Share:        0.0005,
-						},
-					},
-					DelegateEarnings: DelegateEarnings{
-						Address: "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
-						Fees:    big.NewInt(5250),
-						Share:   0.0005,
-						Rewards: big.NewInt(35000),
-						Net:     big.NewInt(40250),
-					},
-					CycleHash:      "some_hash",
-					Cycle:          0,
-					FrozenBalance:  big.NewInt(70000000),
-					StakingBalance: big.NewInt(10000000000),
-					Operations:     nil,
-					OperationsLink: nil,
-				},
-			},
-		},
-	}
-
-	for _, tt := range cases {
-		t.Run(tt.name, func(t *testing.T) {
-			payout := &Payout{
-				gt: tt.input,
-				wallet: gotezos.Wallet{
-					Address: "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
-				},
-				batchSize: 2,
-				delegate:  "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
-				bakerFee:  0.05,
-			}
-			report, err := payout.Execute()
-			test.CheckErr(t, tt.want.err, tt.want.errContains, err)
-			assert.Equal(t, tt.want.report, report)
-		})
-	}
-}
-func Test_processDelegate(t *testing.T) {
 	type input struct {
-		gt            gotezos.IFace
-		delegateInput processDelegateInput
+		constructPayoutFunc func() (tzkt.RewardsSplit, error)
+		applyFunc           func(delegators tzkt.Delegators) ([]string, error)
+		inject              bool
 	}
 
 	type want struct {
-		err              bool
-		errContains      string
-		delegateEarnings DelegateEarnings
+		err          bool
+		contains     string
+		rewardsSplit tzkt.RewardsSplit
 	}
 
 	cases := []struct {
@@ -185,195 +32,302 @@ func Test_processDelegate(t *testing.T) {
 		want  want
 	}{
 		{
+			"handles failure to construct payout",
+			input{
+				constructPayoutFunc: func() (tzkt.RewardsSplit, error) {
+					return tzkt.RewardsSplit{}, errors.New("failed to construct")
+				},
+			},
+			want{
+				true,
+				"failed to construct",
+				tzkt.RewardsSplit{},
+			},
+		},
+		{
+			"handles failure to apply payout",
+			input{
+				constructPayoutFunc: func() (tzkt.RewardsSplit, error) {
+					return tzkt.RewardsSplit{}, nil
+				},
+				applyFunc: func(delegators tzkt.Delegators) ([]string, error) {
+					return []string{}, errors.New("failed to apply")
+				},
+				inject: true,
+			},
+			want{
+				true,
+				"failed to apply",
+				tzkt.RewardsSplit{},
+			},
+		},
+		{
 			"is successful",
 			input{
-				gt: &test.GoTezosMock{},
-				delegateInput: processDelegateInput{
-					delegate: "some_delegate",
-					delegations: []DelegationEarning{
-						{
-							Fee: big.NewInt(1000),
-						},
-						{
-							Fee: big.NewInt(1000),
-						},
-						{
-							Fee: big.NewInt(1000),
-						},
-					},
-					stakingBalance: big.NewInt(10000000),
-					frozenBalanceRewards: gotezos.FrozenBalance{
-						Rewards: gotezos.NewInt(700),
-					},
-					blockHash: "block_hash",
+				constructPayoutFunc: func() (tzkt.RewardsSplit, error) {
+					return tzkt.RewardsSplit{}, nil
 				},
+				applyFunc: func(delegators tzkt.Delegators) ([]string, error) {
+					return []string{}, nil
+				},
+				inject: true,
 			},
 			want{
 				false,
 				"",
-				DelegateEarnings{Address: "some_delegate", Fees: big.NewInt(3000), Share: 0.5, Rewards: big.NewInt(350), Net: big.NewInt(3350)},
+				tzkt.RewardsSplit{},
+			},
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			payout := Payout{
+				constructPayoutFunc: tt.input.constructPayoutFunc,
+				applyFunc:           tt.input.applyFunc,
+				inject:              tt.input.inject,
+			}
+			rewardsSplit, err := payout.Execute()
+			test.CheckErr(t, tt.want.err, tt.want.contains, err)
+			assert.Equal(t, tt.want.rewardsSplit, rewardsSplit)
+		})
+	}
+
+}
+
+func Test_constructPayout(t *testing.T) {
+	type input struct {
+		rpcClient                         rpc.IFace
+		tzktClient                        tzkt.IFace
+		constructDexterContractPayoutFunc func(delegator tzkt.Delegator) (tzkt.Delegator, error)
+		dexterOnly                        bool
+	}
+
+	type want struct {
+		err          bool
+		contains     string
+		rewardsSplit tzkt.RewardsSplit
+	}
+
+	cases := []struct {
+		name  string
+		input input
+		want  want
+	}{
+		{
+			"handles failure to get rewards split",
+			input{
+				rpcClient: &test.RPCMock{},
+				tzktClient: &test.TzktMock{
+					RewardsSplitErr: true,
+				},
+				constructDexterContractPayoutFunc: func(delegator tzkt.Delegator) (tzkt.Delegator, error) {
+					return delegator, nil
+				},
+			},
+			want{
+				true,
+				"failed to get rewards split",
+				tzkt.RewardsSplit{},
 			},
 		},
 		{
 			"handles failure to get balance",
 			input{
-				gt: &test.GoTezosMock{BalanceErr: true},
-				delegateInput: processDelegateInput{
-					delegate: "some_delegate",
-					delegations: []DelegationEarning{
-						{
-							Fee: big.NewInt(1000),
-						},
-						{
-							Fee: big.NewInt(1000),
-						},
-						{
-							Fee: big.NewInt(1000),
-						},
-					},
-					stakingBalance: big.NewInt(10000000),
-					frozenBalanceRewards: gotezos.FrozenBalance{
-						Rewards: gotezos.NewInt(700),
-					},
-					blockHash: "block_hash",
+				rpcClient: &test.RPCMock{
+					BalanceErr: true,
 				},
-			},
-			want{
-				true,
-				"failed to process delegate earnings",
-				DelegateEarnings{Address: "some_delegate", Fees: nil, Share: 0, Rewards: nil, Net: big.NewInt(0)},
-			},
-		},
-	}
-
-	for _, tt := range cases {
-		t.Run(tt.name, func(t *testing.T) {
-			payout := Payout{
-				gt: tt.input.gt,
-			}
-			delegateEarnings, err := payout.processDelegate(tt.input.delegateInput)
-			test.CheckErr(t, tt.want.err, tt.want.errContains, err)
-			assert.Equal(t, tt.want.delegateEarnings, delegateEarnings)
-		})
-	}
-}
-
-func Test_processDelegations(t *testing.T) {
-	type want struct {
-		err        bool
-		errcount   int
-		successful int
-	}
-
-	cases := []struct {
-		name  string
-		input processDelegationsInput
-		want  want
-	}{
-		{
-			"is successful",
-			processDelegationsInput{
-				delegations: []*string{
-					strToPointer("some_delegation"),
-					strToPointer("some_delegation1"),
-					strToPointer("some_delegation2"),
-				},
-				stakingBalance: big.NewInt(100000000000),
-				frozenBalanceRewards: gotezos.FrozenBalance{
-					Rewards: gotezos.NewInt(800000000),
-				},
-			},
-			want{
-				false,
-				0,
-				3,
-			},
-		},
-		{
-			"handles failure",
-			processDelegationsInput{
-				delegations: []*string{
-					strToPointer("some_delegation"),
-					strToPointer("some_delegation1"),
-					strToPointer("some_delegation2"),
-				},
-				stakingBalance: big.NewInt(100000000000),
-				frozenBalanceRewards: gotezos.FrozenBalance{
-					Rewards: gotezos.NewInt(800000000),
-				},
-			},
-			want{
-				true,
-				3,
-				0,
-			},
-		},
-	}
-
-	for _, tt := range cases {
-		t.Run(tt.name, func(t *testing.T) {
-			payout := &Payout{
-				gt: &test.GoTezosMock{
-					BalanceErr: tt.want.err,
-				},
-			}
-
-			out := payout.proccessDelegations(tt.input)
-			successful := 0
-			errcount := 0
-
-			for _, o := range out {
-				if o.err != nil {
-					errcount++
-				} else {
-					successful++
-				}
-			}
-
-			assert.Equal(t, tt.want.successful, successful)
-			assert.Equal(t, tt.want.errcount, errcount)
-		})
-	}
-}
-
-func Test_processDelegation(t *testing.T) {
-	type want struct {
-		err                bool
-		errContains        string
-		delegationEarnings *DelegationEarning
-	}
-
-	cases := []struct {
-		name  string
-		input processDelegationInput
-		want  want
-	}{
-		{
-			"is successful",
-			processDelegationInput{
-				stakingBalance: big.NewInt(100000000000),
-				frozenBalanceRewards: gotezos.FrozenBalance{
-					Rewards: gotezos.NewInt(800000000),
-				},
-			},
-			want{
-				false,
-				"",
-				&DelegationEarning{Fee: big.NewInt(2000), GrossRewards: big.NewInt(40000), NetRewards: big.NewInt(38000), Share: 5e-05},
-			},
-		},
-		{
-			"handles failure",
-			processDelegationInput{
-				stakingBalance: big.NewInt(100000000000),
-				frozenBalanceRewards: gotezos.FrozenBalance{
-					Rewards: gotezos.NewInt(800000000),
+				tzktClient: &test.TzktMock{},
+				constructDexterContractPayoutFunc: func(delegator tzkt.Delegator) (tzkt.Delegator, error) {
+					return delegator, nil
 				},
 			},
 			want{
 				true,
 				"failed to get balance",
-				nil,
+				tzkt.RewardsSplit{
+					Cycle:                    270,
+					StakingBalance:           740613513605,
+					DelegatedBalance:         555430526884,
+					NumDelegators:            107,
+					ExpectedBlocks:           4.43,
+					ExpectedEndorsements:     141.71,
+					OwnBlocks:                5,
+					OwnBlockRewards:          191250000,
+					MissedOwnBlocks:          2,
+					MissedOwnBlockRewards:    77500000,
+					BlockDeposits:            2560000000,
+					Endorsements:             126,
+					EndorsementRewards:       157500000,
+					MissedEndorsements:       16,
+					MissedEndorsementRewards: 20000000,
+					EndorsementDeposits:      8064000000,
+					OwnBlockFees:             47180,
+					MissedOwnBlockFees:       54607,
+					Delegators: tzkt.Delegators{
+						tzkt.Delegator{
+							Address:        "tz1icdoLr8vof5oXiEKCFSyrVoouGiKDQ3Gd",
+							Balance:        60545965782,
+							CurrentBalance: 60739073316,
+						},
+						tzkt.Delegator{
+							Address:        "KT1FPyY6mAhnzyVGP8ApGvuRyF7SKcT9TDWy",
+							Balance:        60075572992,
+							CurrentBalance: 60267312348,
+						},
+						tzkt.Delegator{
+							Address:        "KT1LgkGigaMrnim3TonQWfwDHnM3fHkF1jMv",
+							Balance:        57461165021,
+							CurrentBalance: 57644560137,
+						}, tzkt.Delegator{
+							Address:        "KT1C8S2vLYbzgQHhdC8MBehunhcp1Q9hj6MC",
+							Balance:        55305195039,
+							CurrentBalance: 176566401,
+						},
+					},
+				},
+			},
+		},
+		{
+			"handles failure to contruct payout for dexter contract",
+			input{
+				rpcClient:  &test.RPCMock{},
+				tzktClient: &test.TzktMock{},
+				constructDexterContractPayoutFunc: func(delegator tzkt.Delegator) (tzkt.Delegator, error) {
+					return delegator, errors.New("failed to contruct dexter")
+				},
+			},
+			want{
+				true,
+				"failed to contruct dexter",
+				tzkt.RewardsSplit{},
+			},
+		},
+		{
+			"is successful",
+			input{
+				rpcClient:  &test.RPCMock{},
+				tzktClient: &test.TzktMock{},
+				constructDexterContractPayoutFunc: func(delegator tzkt.Delegator) (tzkt.Delegator, error) {
+					return delegator, nil
+				},
+			},
+			want{
+				false,
+				"",
+				tzkt.RewardsSplit{
+					Cycle:                    270,
+					StakingBalance:           740613513605,
+					DelegatedBalance:         555430526884,
+					NumDelegators:            107,
+					ExpectedBlocks:           4.43,
+					ExpectedEndorsements:     141.71,
+					OwnBlocks:                5,
+					OwnBlockRewards:          191250000,
+					MissedOwnBlocks:          2,
+					MissedOwnBlockRewards:    77500000,
+					BlockDeposits:            2560000000,
+					Endorsements:             126,
+					EndorsementRewards:       157500000,
+					MissedEndorsements:       16,
+					MissedEndorsementRewards: 20000000,
+					EndorsementDeposits:      8064000000,
+					OwnBlockFees:             47180,
+					MissedOwnBlockFees:       54607,
+					Delegators: tzkt.Delegators{
+						tzkt.Delegator{
+							Address:        "tz1icdoLr8vof5oXiEKCFSyrVoouGiKDQ3Gd",
+							Balance:        60545965782,
+							CurrentBalance: 60739073316,
+							NetRewards:     34665260,
+							GrossRewards:   36489747,
+							Share:          0.08175109509855863,
+							Fee:            1824487,
+						}, tzkt.Delegator{
+							Address:        "KT1FPyY6mAhnzyVGP8ApGvuRyF7SKcT9TDWy",
+							Balance:        60075572992,
+							CurrentBalance: 60267312348,
+							NetRewards:     34395939,
+							GrossRewards:   36206251,
+							Share:          0.08111595574266121,
+							Fee:            1810312,
+						}, tzkt.Delegator{
+							Address:        "KT1LgkGigaMrnim3TonQWfwDHnM3fHkF1jMv",
+							Balance:        57461165021,
+							CurrentBalance: 57644560137, NetRewards: 32899074,
+							GrossRewards: 34630604,
+							Share:        0.07758589867109342,
+							Fee:          1731530,
+						}, tzkt.Delegator{
+							Address:        "KT1C8S2vLYbzgQHhdC8MBehunhcp1Q9hj6MC",
+							Balance:        55305195039,
+							CurrentBalance: 176566401,
+							NetRewards:     31664685,
+							GrossRewards:   33331247,
+							Share:          0.07467483920161976,
+							Fee:            1666562,
+						},
+					},
+					BakerRewards:       3013,
+					BakerShare:         6.751159556435947e-06,
+					BakerCollectedFees: 7032891,
+				},
+			},
+		},
+		{
+			"is successful dexter only",
+			input{
+				rpcClient:  &test.RPCMock{},
+				tzktClient: &test.TzktMock{},
+				constructDexterContractPayoutFunc: func(delegator tzkt.Delegator) (tzkt.Delegator, error) {
+					return delegator, nil
+				},
+				dexterOnly: true,
+			},
+			want{
+				false,
+				"",
+				tzkt.RewardsSplit{
+					Cycle:                    270,
+					StakingBalance:           740613513605,
+					DelegatedBalance:         555430526884,
+					NumDelegators:            107,
+					ExpectedBlocks:           4.43,
+					ExpectedEndorsements:     141.71,
+					OwnBlocks:                5,
+					OwnBlockRewards:          191250000,
+					MissedOwnBlocks:          2,
+					MissedOwnBlockRewards:    77500000,
+					BlockDeposits:            2560000000,
+					Endorsements:             126,
+					EndorsementRewards:       157500000,
+					MissedEndorsements:       16,
+					MissedEndorsementRewards: 20000000,
+					EndorsementDeposits:      8064000000,
+					OwnBlockFees:             47180,
+					MissedOwnBlockFees:       54607,
+					Delegators: tzkt.Delegators{
+						tzkt.Delegator{
+							Address:        "KT1LgkGigaMrnim3TonQWfwDHnM3fHkF1jMv",
+							Balance:        57461165021,
+							CurrentBalance: 57644560137, NetRewards: 32899074,
+							GrossRewards: 34630604,
+							Share:        0.07758589867109342,
+							Fee:          1731530,
+						}, tzkt.Delegator{
+							Address:        "KT1C8S2vLYbzgQHhdC8MBehunhcp1Q9hj6MC",
+							Balance:        55305195039,
+							CurrentBalance: 176566401,
+							NetRewards:     31664685,
+							GrossRewards:   33331247,
+							Share:          0.07467483920161976,
+							Fee:            1666562,
+						},
+					},
+					BakerRewards:       3013,
+					BakerShare:         6.751159556435947e-06,
+					BakerCollectedFees: 3398092,
+				},
 			},
 		},
 	}
@@ -381,29 +335,38 @@ func Test_processDelegation(t *testing.T) {
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
 			payout := &Payout{
-				gt: &test.GoTezosMock{
-					BalanceErr: tt.want.err,
+				rpc:  tt.input.rpcClient,
+				tzkt: tt.input.tzktClient,
+				config: config.Config{
+					Baker: config.Baker{
+						DexterLiquidityContracts: []string{
+							"KT1LgkGigaMrnim3TonQWfwDHnM3fHkF1jMv",
+							"KT1C8S2vLYbzgQHhdC8MBehunhcp1Q9hj6MC",
+						},
+						Fee:                          0.05,
+						DexterLiquidityContractsOnly: tt.input.dexterOnly,
+					},
 				},
-				bakerFee: 0.05,
+				constructDexterContractPayoutFunc: tt.input.constructDexterContractPayoutFunc,
 			}
-			out, err := payout.processDelegation(tt.input)
-			test.CheckErr(t, tt.want.err, tt.want.errContains, err)
-			assert.Equal(t, tt.want.delegationEarnings, out)
+			rewardsSplit, err := payout.constructPayout()
+			test.CheckErr(t, tt.want.err, tt.want.contains, err)
+			assert.Equal(t, tt.want.rewardsSplit, rewardsSplit)
 		})
 	}
 }
 
-func Test_getOperationHexStrings(t *testing.T) {
+func Test_splitDelegationsAndDexterContracts(t *testing.T) {
 	type input struct {
-		gt                 gotezos.IFace
-		delegationEarnings DelegationEarnings
+		cfg     config.Config
+		rewards tzkt.RewardsSplit
 	}
 
 	type want struct {
-		err         bool
-		errContains string
-		ophexes     []string
+		delegations tzkt.Delegators
+		contracts   tzkt.Delegators
 	}
+
 	cases := []struct {
 		name  string
 		input input
@@ -412,127 +375,212 @@ func Test_getOperationHexStrings(t *testing.T) {
 		{
 			"is successful",
 			input{
-				&test.GoTezosMock{},
-				DelegationEarnings{
-					DelegationEarning{
-						Address:      "tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
-						GrossRewards: big.NewInt(1000000),
-						NetRewards:   big.NewInt(900000),
+				config.Config{
+					Baker: config.Baker{
+						DexterLiquidityContracts: []string{
+							"KT1a",
+							"KT1b",
+						},
 					},
-					DelegationEarning{
-						Address:      "tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
-						GrossRewards: big.NewInt(1000000),
-						NetRewards:   big.NewInt(950000),
+				},
+				tzkt.RewardsSplit{
+					Delegators: tzkt.Delegators{
+						{
+							Address: "KT1a",
+						},
+						{
+							Address: "KT1b",
+						},
+						{
+							Address: "tz1",
+						},
+						{
+							Address: "tz2",
+						},
 					},
 				},
 			},
 			want{
+				delegations: tzkt.Delegators{
+					{
+						Address: "tz1",
+					},
+					{
+						Address: "tz2",
+					},
+				},
+				contracts: tzkt.Delegators{
+					{
+						Address: "KT1a",
+					},
+					{
+						Address: "KT1b",
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			payout := &Payout{
+				config: tt.input.cfg,
+			}
+			delegations, contracts := payout.splitDelegationsAndDexterContracts(tt.input.rewards)
+			assert.Equal(t, tt.want.delegations, delegations)
+			assert.Equal(t, tt.want.contracts, contracts)
+		})
+	}
+}
+
+func Test_constructDelegation(t *testing.T) {
+	type input struct {
+		delegator      tzkt.Delegator
+		totalRewards   int
+		stakingBalance int
+	}
+
+	cases := []struct {
+		name  string
+		input input
+		want  tzkt.Delegator
+	}{
+		{
+			"handles blacklist marking",
+			input{
+				tzkt.Delegator{
+					Address: "some_blacklisted_address",
+					Balance: 5000000,
+				},
+				10000000,
+				1000000000,
+			},
+			tzkt.Delegator{
+				Address:      "some_blacklisted_address",
+				Balance:      5000000,
+				NetRewards:   47500,
+				GrossRewards: 50000,
+				Share:        0.005,
+				Fee:          2500,
+				BlackListed:  true,
+			},
+		},
+		{
+			"is successful",
+			input{
+				tzkt.Delegator{
+					Address: "some_address",
+					Balance: 5000000,
+				},
+				10000000,
+				1000000000,
+			},
+			tzkt.Delegator{
+				Address:      "some_address",
+				Balance:      5000000,
+				NetRewards:   47500,
+				GrossRewards: 50000,
+				Share:        0.005,
+				Fee:          2500,
+				BlackListed:  false,
+			},
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			payout := &Payout{
+				config: config.Config{
+					Baker: config.Baker{
+						Blacklist: []string{
+							"some_blacklisted_address",
+						},
+						Fee: 0.05,
+					},
+				},
+			}
+			delegation := payout.constructDelegation(tt.input.delegator, tt.input.totalRewards, tt.input.stakingBalance)
+			assert.Equal(t, tt.want, delegation)
+		})
+	}
+}
+
+func Test_calculateTotals(t *testing.T) {
+	type input struct {
+		earningsOnly bool
+		rewardsSplit tzkt.RewardsSplit
+	}
+
+	cases := []struct {
+		name  string
+		input input
+		want  int
+	}{
+		{
+			"handles earnings only",
+			input{
+				true,
+				tzkt.RewardsSplit{
+					EndorsementRewards:       1000,
+					RevelationRewards:        1012,
+					OwnBlockFees:             213441,
+					OwnBlockRewards:          24124321,
+					ExtraBlockFees:           32321,
+					ExtraBlockRewards:        234123,
+					MissedEndorsementRewards: 2134423,
+					MissedOwnBlockFees:       21234,
+					MissedOwnBlockRewards:    3214312,
+				},
+			},
+			24606218,
+		},
+		{
+			"handles earnings only false",
+			input{
 				false,
-				"",
-				[]string{
-					"7cc601d2729c90b267e6a79d902f8b048d37fd990f2f7447efefb0cfb2f8e8a46c004b04ad1e57c2f13b61b3d2c95b3073d961a4132b00650000a0f7360000056a59972593bdc74a5295671c8f5d43c21348da006c004b04ad1e57c2f13b61b3d2c95b3073d961a4132b00660000f0fd390000056a59972593bdc74a5295671c8f5d43c21348da00",
+				tzkt.RewardsSplit{
+					EndorsementRewards:       1000,
+					RevelationRewards:        1012,
+					OwnBlockFees:             213441,
+					OwnBlockRewards:          24124321,
+					ExtraBlockFees:           32321,
+					ExtraBlockRewards:        234123,
+					MissedEndorsementRewards: 2134423,
+					MissedOwnBlockFees:       21234,
+					MissedOwnBlockRewards:    3214312,
 				},
 			},
-		},
-		{
-			"handles failure to get head",
-			input{
-				&test.GoTezosMock{HeadErr: true},
-				DelegationEarnings{
-					DelegationEarning{
-						Address:      "tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
-						GrossRewards: big.NewInt(1000000),
-						NetRewards:   big.NewInt(900000),
-					},
-					DelegationEarning{
-						Address:      "tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
-						GrossRewards: big.NewInt(1000000),
-						NetRewards:   big.NewInt(950000),
-					},
-				},
-			},
-			want{
-				true,
-				"failed to get operation hex string: failed to get block",
-				nil,
-			},
-		},
-		{
-			"handles failure to get counter",
-			input{
-				&test.GoTezosMock{CounterErr: true},
-				DelegationEarnings{
-					DelegationEarning{
-						Address:      "tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
-						GrossRewards: big.NewInt(1000000),
-						NetRewards:   big.NewInt(900000),
-					},
-					DelegationEarning{
-						Address:      "tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
-						GrossRewards: big.NewInt(1000000),
-						NetRewards:   big.NewInt(950000),
-					},
-				},
-			},
-			want{
-				true,
-				"failed to get operation hex string: failed to get counter",
-				nil,
-			},
-		},
-		{
-			"handles failure to forge",
-			input{
-				&test.GoTezosMock{},
-				DelegationEarnings{
-					DelegationEarning{
-						Address:      "invalid_addr",
-						GrossRewards: big.NewInt(1000000),
-						NetRewards:   big.NewInt(900000),
-					},
-					DelegationEarning{
-						Address:      "tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
-						GrossRewards: big.NewInt(1000000),
-						NetRewards:   big.NewInt(950000),
-					},
-				},
-			},
-			want{
-				true,
-				"failed to get operation hex string: failed to forge payout",
-				nil,
-			},
+			29976187,
 		},
 	}
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
 			payout := Payout{
-				gt:        tt.input.gt,
-				batchSize: 10,
-				wallet: gotezos.Wallet{
-					Address: "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+				config: config.Config{
+					Baker: config.Baker{
+						EarningsOnly: tt.input.earningsOnly,
+					},
 				},
 			}
-			ophexes, err := payout.getOperationHexStrings(tt.input.delegationEarnings)
-			test.CheckErr(t, tt.want.err, tt.want.errContains, err)
-			assert.Equal(t, tt.want.ophexes, ophexes)
+
+			total := payout.calculateTotals(tt.input.rewardsSplit)
+			assert.Equal(t, tt.want, total)
 		})
 	}
+
 }
 
-func Test_forgeOperation(t *testing.T) {
+func Test_apply(t *testing.T) {
 	type input struct {
-		counter            int
-		delegationEarnings DelegationEarnings
-		gt                 gotezos.IFace
+		rpcClient  rpc.IFace
+		delegators tzkt.Delegators
 	}
 
 	type want struct {
-		err         bool
-		errContains string
-		ophash      string
-		counter     int
+		err        bool
+		contains   string
+		operations []string
 	}
 
 	cases := []struct {
@@ -541,145 +589,302 @@ func Test_forgeOperation(t *testing.T) {
 		want  want
 	}{
 		{
-			"is successful",
-			input{
-				5,
-				DelegationEarnings{
-					DelegationEarning{
-						Address:      "tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
-						GrossRewards: big.NewInt(1000000),
-						NetRewards:   big.NewInt(900000),
-					},
-					DelegationEarning{
-						Address:      "tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
-						GrossRewards: big.NewInt(1000000),
-						NetRewards:   big.NewInt(950000),
-					},
-				},
-				&test.GoTezosMock{},
-			},
-			want{
-				err:         false,
-				errContains: "",
-				ophash:      "7cc601d2729c90b267e6a79d902f8b048d37fd990f2f7447efefb0cfb2f8e8a46c004b04ad1e57c2f13b61b3d2c95b3073d961a4132b00060000a0f7360000056a59972593bdc74a5295671c8f5d43c21348da006c004b04ad1e57c2f13b61b3d2c95b3073d961a4132b00070000f0fd390000056a59972593bdc74a5295671c8f5d43c21348da00",
-				counter:     7,
-			},
-		},
-		{
 			"handles failure to get head",
 			input{
-				5,
-				DelegationEarnings{
-					DelegationEarning{
-						Address:      "tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
-						GrossRewards: big.NewInt(1000000),
-						NetRewards:   big.NewInt(900000),
-					},
-					DelegationEarning{
-						Address:      "tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
-						GrossRewards: big.NewInt(1000000),
-						NetRewards:   big.NewInt(950000),
-					},
+				rpcClient: &test.RPCMock{
+					HeadErr: true,
 				},
-				&test.GoTezosMock{HeadErr: true},
+				delegators: tzkt.Delegators{},
 			},
 			want{
-				err:         true,
-				errContains: "failed to forge payout: failed to get block",
-				ophash:      "",
-				counter:     5,
+				true,
+				"failed to get block",
+				[]string{},
 			},
 		},
 		{
-			"handles failure to forge",
+			"handles failure to contruct transaction batches",
 			input{
-				5,
-				DelegationEarnings{
-					DelegationEarning{
-						Address:      "invalid_addr",
-						GrossRewards: big.NewInt(1000000),
-						NetRewards:   big.NewInt(900000),
-					},
-					DelegationEarning{
-						Address:      "tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
-						GrossRewards: big.NewInt(1000000),
-						NetRewards:   big.NewInt(950000),
-					},
+				rpcClient: &test.RPCMock{
+					CounterErr: true,
 				},
-				&test.GoTezosMock{},
+				delegators: tzkt.Delegators{},
 			},
 			want{
-				err:         true,
-				errContains: "failed to forge payout: failed to forge operation",
-				ophash:      "",
-				counter:     7,
+				true,
+				"failed to get counter",
+				[]string{},
+			},
+		},
+		{
+			"handles failure forge",
+			input{
+				rpcClient: &test.RPCMock{},
+				delegators: tzkt.Delegators{
+					{
+						Address:      "somedelegation",
+						GrossRewards: 1000000,
+						NetRewards:   900000,
+					},
+					{
+						Address:      "someotherdelegation",
+						GrossRewards: 1000000,
+						NetRewards:   950000,
+					},
+					{
+						Address:      "delegation_dexter",
+						GrossRewards: 1000000,
+						NetRewards:   950000,
+						LiquidityProviders: []tzkt.LiquidityProvider{
+							{
+								Address:      "liquidity_provider",
+								GrossRewards: 1000000,
+								NetRewards:   950000,
+							},
+							{
+								Address:      "liquidity_provider1",
+								GrossRewards: 1000000,
+								NetRewards:   950000,
+							},
+						},
+					},
+				},
+			},
+			want{
+				true,
+				"failed to forge",
+				[]string{},
+			},
+		},
+		{
+			"handles failure to inject",
+			input{
+				rpcClient: &test.RPCMock{
+					InjectionOperationErr: true,
+				},
+				delegators: tzkt.Delegators{
+					{
+						Address:      "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+						GrossRewards: 1000000,
+						NetRewards:   900000,
+					},
+					{
+						Address:      "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+						GrossRewards: 1000000,
+						NetRewards:   950000,
+					},
+					{
+						Address:      "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+						GrossRewards: 1000000,
+						NetRewards:   950000,
+						LiquidityProviders: []tzkt.LiquidityProvider{
+							{
+								Address:      "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+								GrossRewards: 1000000,
+								NetRewards:   950000,
+							},
+							{
+								Address:      "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+								GrossRewards: 1000000,
+								NetRewards:   950000,
+							},
+						},
+					},
+				},
+			},
+			want{
+				true,
+				"failed to inject operation",
+				[]string{},
+			},
+		},
+		{
+			"is successful",
+			input{
+				rpcClient: &test.RPCMock{},
+				delegators: tzkt.Delegators{
+					{
+						Address:      "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+						GrossRewards: 1000000,
+						NetRewards:   900000,
+					},
+					{
+						Address:      "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+						GrossRewards: 1000000,
+						NetRewards:   950000,
+					},
+					{
+						Address:      "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+						GrossRewards: 1000000,
+						NetRewards:   950000,
+						LiquidityProviders: []tzkt.LiquidityProvider{
+							{
+								Address:      "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+								GrossRewards: 1000000,
+								NetRewards:   950000,
+							},
+							{
+								Address:      "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+								GrossRewards: 1000000,
+								NetRewards:   950000,
+							},
+						},
+					},
+				},
+			},
+			want{
+				false,
+				"",
+				[]string{"ooYympR9wfV98X4MUHtE78NjXYRDeMTAD4ei7zEZDqoHv2rfb1M"},
 			},
 		},
 	}
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			payout := &Payout{
-				gt: tt.input.gt,
-				wallet: gotezos.Wallet{
-					Address: "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+			key, err := keys.NewKey(keys.NewKeyInput{
+				Esk:      "edesk1fddn27MaLcQVEdZpAYiyGQNm6UjtWiBfNP2ZenTy3CFsoSVJgeHM9pP9cvLJ2r5Xp2quQ5mYexW1LRKee2",
+				Password: "password12345##",
+				Kind:     keys.Ed25519,
+			})
+			assert.Nil(t, err)
+
+			payout := Payout{
+				rpc: tt.input.rpcClient,
+				config: config.Config{
+					Operations: config.Operations{
+						GasLimit:   10000,
+						NetworkFee: 3000,
+						BatchSize:  100,
+					},
 				},
+				key: key,
 			}
-			ophash, counter, err := payout.forgeOperation(tt.input.counter, tt.input.delegationEarnings)
-			test.CheckErr(t, tt.want.err, tt.want.errContains, err)
-			assert.Equal(t, tt.want.counter, counter)
-			assert.Equal(t, tt.want.ophash, ophash)
+
+			ops, err := payout.apply(tt.input.delegators)
+			test.CheckErr(t, tt.want.err, tt.want.contains, err)
+			assert.Equal(t, tt.want.operations, ops)
+
 		})
 	}
-
 }
 
-func Test_constructPayoutContents(t *testing.T) {
+func Test_constructTransactionBatches(t *testing.T) {
 	type input struct {
-		counter            int
-		delegationEarnings DelegationEarnings
+		counter    int
+		rpcClient  rpc.IFace
+		delegators tzkt.Delegators
+	}
+
+	type want struct {
+		err      bool
+		contains string
+		contents []rpc.Contents
 	}
 
 	cases := []struct {
 		name  string
 		input input
-		want  []gotezos.ForgeTransactionOperationInput
+		want  want
 	}{
+		{
+			"handles cycle error",
+			input{
+				100,
+				&test.RPCMock{
+					CounterErr: true,
+				},
+				tzkt.Delegators{},
+			},
+			want{
+				true,
+				"failed to",
+				nil,
+			},
+		},
 		{
 			"is successful",
 			input{
 				100,
-				DelegationEarnings{
-					DelegationEarning{
+				&test.RPCMock{
+					CounterErr: false,
+				},
+				tzkt.Delegators{
+					{
 						Address:      "somedelegation",
-						GrossRewards: big.NewInt(1000000),
-						NetRewards:   big.NewInt(900000),
+						GrossRewards: 1000000,
+						NetRewards:   900000,
 					},
-					DelegationEarning{
+					{
 						Address:      "someotherdelegation",
-						GrossRewards: big.NewInt(1000000),
-						NetRewards:   big.NewInt(950000),
+						GrossRewards: 1000000,
+						NetRewards:   950000,
+					},
+					{
+						Address:      "delegation_dexter",
+						GrossRewards: 1000000,
+						NetRewards:   950000,
+						LiquidityProviders: []tzkt.LiquidityProvider{
+							{
+								Address:      "liquidity_provider",
+								GrossRewards: 1000000,
+								NetRewards:   950000,
+							},
+							{
+								Address:      "liquidity_provider1",
+								GrossRewards: 1000000,
+								NetRewards:   950000,
+							},
+						},
 					},
 				},
 			},
-			[]gotezos.ForgeTransactionOperationInput{
-				{
-					Source:       "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
-					Fee:          gotezos.NewInt(0),
-					Counter:      101,
-					GasLimit:     gotezos.NewInt(0),
-					StorageLimit: gotezos.NewInt(0),
-					Amount:       gotezos.NewInt(900000),
-					Destination:  "somedelegation",
-				},
-				{
-					Source:       "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
-					Fee:          gotezos.NewInt(0),
-					Counter:      102,
-					GasLimit:     gotezos.NewInt(0),
-					StorageLimit: gotezos.NewInt(0),
-					Amount:       gotezos.NewInt(950000),
-					Destination:  "someotherdelegation",
+			want{
+				false,
+				"",
+				[]rpc.Contents{
+					{
+						{
+							Kind:         rpc.TRANSACTION,
+							Source:       "tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
+							Fee:          0,
+							Counter:      101,
+							GasLimit:     0,
+							StorageLimit: 0,
+							Amount:       900000,
+							Destination:  "somedelegation",
+						},
+						{
+							Kind:         rpc.TRANSACTION,
+							Source:       "tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
+							Fee:          0,
+							Counter:      102,
+							GasLimit:     0,
+							StorageLimit: 0,
+							Amount:       950000,
+							Destination:  "someotherdelegation",
+						},
+						{
+							Kind:         rpc.TRANSACTION,
+							Source:       "tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
+							Fee:          0,
+							Counter:      103,
+							GasLimit:     0,
+							StorageLimit: 0,
+							Amount:       950000,
+							Destination:  "liquidity_provider",
+						},
+						{
+							Kind:         rpc.TRANSACTION,
+							Source:       "tz1L8fUQLuwRuywTZUP5JUw9LL3kJa8LMfoo",
+							Fee:          0,
+							Counter:      104,
+							GasLimit:     0,
+							StorageLimit: 0,
+							Amount:       950000,
+							Destination:  "liquidity_provider1",
+						},
+					},
 				},
 			},
 		},
@@ -687,13 +892,24 @@ func Test_constructPayoutContents(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
+			key, err := keys.NewKey(keys.NewKeyInput{
+				Esk:      "edesk1fddn27MaLcQVEdZpAYiyGQNm6UjtWiBfNP2ZenTy3CFsoSVJgeHM9pP9cvLJ2r5Xp2quQ5mYexW1LRKee2",
+				Password: "password12345##",
+				Kind:     keys.Ed25519,
+			})
+			assert.Nil(t, err)
 			payout := &Payout{
-				wallet: gotezos.Wallet{
-					Address: "tz1SUgyRB8T5jXgXAwS33pgRHAKrafyg87Yc",
+				config: config.Config{
+					Operations: config.Operations{
+						BatchSize: 100,
+					},
 				},
+				rpc: tt.input.rpcClient,
+				key: key,
 			}
-			contents, _ := payout.constructPayoutContents(tt.input.counter, tt.input.delegationEarnings)
-			assert.Equal(t, tt.want, contents)
+			contents, err := payout.constructTransactionBatches("some_hash", tt.input.delegators)
+			test.CheckErr(t, tt.want.err, tt.want.contains, err)
+			assert.Equal(t, tt.want.contents, contents)
 		})
 	}
 }
@@ -701,41 +917,41 @@ func Test_constructPayoutContents(t *testing.T) {
 func Test_batch(t *testing.T) {
 	cases := []struct {
 		name  string
-		input DelegationEarnings
-		want  []DelegationEarnings
+		input tzkt.Delegators
+		want  []tzkt.Delegators
 	}{
 		{
 			"is successful with multiple batches",
-			DelegationEarnings{
-				DelegationEarning{Address: "some_addr"},
-				DelegationEarning{Address: "some_addr1"},
-				DelegationEarning{Address: "some_addr2"},
-				DelegationEarning{Address: "some_addr3"},
-				DelegationEarning{Address: "some_addr4"},
+			tzkt.Delegators{
+				{Address: "some_addr"},
+				{Address: "some_addr1"},
+				{Address: "some_addr2"},
+				{Address: "some_addr3"},
+				{Address: "some_addr4"},
 			},
-			[]DelegationEarnings{
+			[]tzkt.Delegators{
 				{
-					DelegationEarning{Address: "some_addr"},
-					DelegationEarning{Address: "some_addr1"},
+					{Address: "some_addr"},
+					{Address: "some_addr1"},
 				},
 				{
-					DelegationEarning{Address: "some_addr2"},
-					DelegationEarning{Address: "some_addr3"}},
+					{Address: "some_addr2"},
+					{Address: "some_addr3"}},
 				{
-					DelegationEarning{Address: "some_addr4"},
+					{Address: "some_addr4"},
 				},
 			},
 		},
 		{
 			"is successful with one batch",
-			DelegationEarnings{
-				DelegationEarning{Address: "some_addr"},
-				DelegationEarning{Address: "some_addr1"},
+			tzkt.Delegators{
+				{Address: "some_addr"},
+				{Address: "some_addr1"},
 			},
-			[]DelegationEarnings{
+			[]tzkt.Delegators{
 				{
-					DelegationEarning{Address: "some_addr"},
-					DelegationEarning{Address: "some_addr1"},
+					{Address: "some_addr"},
+					{Address: "some_addr1"},
 				},
 			},
 		},
@@ -743,9 +959,100 @@ func Test_batch(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			payout := Payout{batchSize: 2}
+			payout := Payout{
+				config: config.Config{
+					Operations: config.Operations{
+						BatchSize: 2,
+					},
+				},
+			}
 			batch := payout.batch(tt.input)
 			assert.Equal(t, tt.want, batch)
+		})
+	}
+}
+
+func Test_injectOperations(t *testing.T) {
+	type input struct {
+		rpcClient  rpc.IFace
+		operations []string
+	}
+
+	type want struct {
+		err      bool
+		contains string
+		ophashes []string
+	}
+
+	cases := []struct {
+		name  string
+		input input
+		want  want
+	}{
+		{
+			"handles failure to sign",
+			input{
+				rpcClient: &rpc.Client{},
+				operations: []string{
+					"non_hex_string",
+				},
+			},
+			want{
+				true,
+				"failed to hex decode message",
+				[]string{},
+			},
+		},
+		{
+			"handles failure to inject",
+			input{
+				rpcClient: &test.RPCMock{
+					InjectionOperationErr: true,
+				},
+				operations: []string{
+					"5aff622d53d32a8bae591627718c60a35b16737e301c57a13b6f1765483d88ff6c007fd82c06cf5a203f18faaf562447ed1efcc6c010830a07c350008090dfc04a0000a31e81ac3425310e3274a4698a793b2839dc0afa00",
+				},
+			},
+			want{
+				true,
+				"failed to inject operation",
+				[]string{},
+			},
+		},
+		{
+			"is successful",
+			input{
+				rpcClient: &test.RPCMock{},
+				operations: []string{
+					"5aff622d53d32a8bae591627718c60a35b16737e301c57a13b6f1765483d88ff6c007fd82c06cf5a203f18faaf562447ed1efcc6c010830a07c350008090dfc04a0000a31e81ac3425310e3274a4698a793b2839dc0afa00",
+				},
+			},
+			want{
+				false,
+				"",
+				[]string{"ooYympR9wfV98X4MUHtE78NjXYRDeMTAD4ei7zEZDqoHv2rfb1M"},
+			},
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			key, err := keys.NewKey(keys.NewKeyInput{
+				Esk:      "edesk1fddn27MaLcQVEdZpAYiyGQNm6UjtWiBfNP2ZenTy3CFsoSVJgeHM9pP9cvLJ2r5Xp2quQ5mYexW1LRKee2",
+				Password: "password12345##",
+				Kind:     keys.Ed25519,
+			})
+			assert.Nil(t, err)
+
+			payout := Payout{
+				rpc: tt.input.rpcClient,
+				key: key,
+			}
+
+			ophashes, err := payout.injectOperations(tt.input.operations)
+			test.CheckErr(t, tt.want.err, tt.want.contains, err)
+			assert.Equal(t, tt.want.ophashes, ophashes)
+
 		})
 	}
 }
@@ -753,7 +1060,7 @@ func Test_batch(t *testing.T) {
 func Test_confirmOperation(t *testing.T) {
 	type input struct {
 		operation string
-		gt        gotezos.IFace
+		rpcClient rpc.IFace
 	}
 	cases := []struct {
 		name  string
@@ -764,7 +1071,7 @@ func Test_confirmOperation(t *testing.T) {
 			"is successful",
 			input{
 				"ooYympR9wfV98X4MUHtE78NjXYRDeMTAD4ei7zEZDqoHv2rfb1M",
-				&test.GoTezosMock{},
+				&test.RPCMock{},
 			},
 			true,
 		},
@@ -772,7 +1079,7 @@ func Test_confirmOperation(t *testing.T) {
 			"handles timeout",
 			input{
 				"ooYympR9wfV98X4MUHtE78NjXYRDeMTAD4ei7zEZDqoHv2safdj",
-				&test.GoTezosMock{OperationHashesErr: true},
+				&test.RPCMock{OperationHashesErr: true},
 			},
 			false,
 		},
@@ -784,7 +1091,7 @@ func Test_confirmOperation(t *testing.T) {
 			confirmationTimoutInterval = time.Second * 1
 
 			payout := Payout{
-				gt: tt.input.gt,
+				rpc: tt.input.rpcClient,
 			}
 
 			ok := payout.confirmOperation(tt.input.operation)
@@ -813,12 +1120,55 @@ func Test_isInBlacklist(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			payout := Payout{blacklist: []string{
-				"some_addr",
-				"some_addr_1",
-			}}
+			payout := Payout{
+				config: config.Config{
+					Baker: config.Baker{
+						Blacklist: []string{
+							"some_addr",
+							"some_addr_1",
+						},
+					},
+				},
+			}
 
 			actual := payout.isInBlacklist(tt.input)
+			assert.Equal(t, tt.want, actual)
+		})
+	}
+}
+
+func Test_isDexterContract(t *testing.T) {
+	cases := []struct {
+		name  string
+		input string
+		want  bool
+	}{
+		{
+			"finds dexter contract",
+			"some_addr",
+			true,
+		},
+		{
+			"does not find dexter contract",
+			"some_other_addr",
+			false,
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			payout := Payout{
+				config: config.Config{
+					Baker: config.Baker{
+						DexterLiquidityContracts: []string{
+							"some_addr",
+							"some_addr_1",
+						},
+					},
+				},
+			}
+
+			actual := payout.isDexterContract(tt.input)
 			assert.Equal(t, tt.want, actual)
 		})
 	}

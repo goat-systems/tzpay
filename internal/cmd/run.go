@@ -1,58 +1,67 @@
 package cmd
 
 import (
+	"fmt"
 	"strconv"
 
-	gotezos "github.com/goat-systems/go-tezos/v2"
-	"github.com/goat-systems/tzpay/v2/internal/enviroment"
-	"github.com/goat-systems/tzpay/v2/internal/payout"
-	"github.com/goat-systems/tzpay/v2/internal/print"
+	"github.com/goat-systems/tzpay/v3/internal/config"
+	"github.com/goat-systems/tzpay/v3/internal/notifier"
+	"github.com/goat-systems/tzpay/v3/internal/notifier/twilio"
+	"github.com/goat-systems/tzpay/v3/internal/notifier/twitter"
+	"github.com/goat-systems/tzpay/v3/internal/payout"
+	"github.com/goat-systems/tzpay/v3/internal/print"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
-// Run configures and exposes functions to allow tzpay inject a payout into the tezos network.
+// Run -
 type Run struct {
-	gt             gotezos.IFace
-	bakersFee      float64
-	delegate       string
-	gasLimit       int
-	minimumPayment int
-	networkFee     int
-	blackList      []string
-	wallet         gotezos.Wallet
+	config   config.Config
+	table    bool
+	verbose  bool
+	notifier notifier.PayoutNotifier
 }
 
-// RunInput is the input for NewDryRun
-type RunInput struct {
-	GoTezos        gotezos.IFace
-	BakersFee      float64
-	Delegate       string
-	GasLimit       int
-	MinimumPayment int
-	NetworkFee     int
-	BlackList      []string
-	Wallet         gotezos.Wallet
-}
+// NewRun returns a new Run
+func NewRun(table bool, verbose bool) Run {
+	config, err := config.New()
+	if err != nil {
+		log.WithField("error", err.Error()).Fatal("Failed to load config.")
+	}
 
-// NewRun returns a pointer to a Run
-func NewRun(input RunInput) *Run {
-	return &Run{
-		gt:             input.GoTezos,
-		bakersFee:      input.BakersFee,
-		delegate:       input.Delegate,
-		gasLimit:       input.GasLimit,
-		minimumPayment: input.MinimumPayment,
-		networkFee:     input.NetworkFee,
-		blackList:      input.BlackList,
-		wallet:         input.Wallet,
+	var messengers []notifier.ClientIFace
+	if config.Notifications.Twilio.AccountSID != "" && config.Notifications.Twilio.AuthToken != "" &&
+		config.Notifications.Twilio.From != "" && config.Notifications.Twilio.To != nil {
+		messengers = append(messengers, twilio.New(twilio.Client{
+			AccountSID: config.Notifications.Twilio.AccountSID,
+			AuthToken:  config.Notifications.Twilio.AuthToken,
+			From:       config.Notifications.Twilio.From,
+			To:         config.Notifications.Twilio.To,
+		}))
+	}
+
+	if config.Notifications.Twitter.ConsumerKey != "" && config.Notifications.Twitter.ConsumerSecret != "" && config.Notifications.Twitter.AccessToken != "" && config.Notifications.Twitter.AccessSecret != "" {
+		messengers = append(messengers, twitter.NewClient(
+			config.Notifications.Twitter.ConsumerKey,
+			config.Notifications.Twitter.ConsumerSecret,
+			config.Notifications.Twitter.AccessToken,
+			config.Notifications.Twitter.AccessSecret,
+		))
+	}
+
+	return Run{
+		config:  config,
+		table:   table,
+		verbose: verbose,
+		notifier: notifier.NewPayoutNotifier(notifier.PayoutNotifierInput{
+			Notifiers: messengers,
+		}),
 	}
 }
 
 // RunCommand returns a new run cobra command
 func RunCommand() *cobra.Command {
 	var table bool
-	var batchSize int
 	var verbose bool
 
 	var run = &cobra.Command{
@@ -65,55 +74,44 @@ func RunCommand() *cobra.Command {
 				log.Fatal("Missing cycle as argument.")
 			}
 
-			env, err := enviroment.NewRunEnviroment()
+			cycle, err := strconv.Atoi(args[0])
 			if err != nil {
-				log.WithField("error", err.Error()).Fatal("Failed to load enviroment.")
+				log.WithField("error", err.Error()).Fatal("Failed to parse cycle argument into integer.")
 			}
 
-			NewRun(RunInput{
-				GoTezos:        env.GoTezos,
-				BakersFee:      env.BakersFee,
-				Delegate:       env.Delegate,
-				GasLimit:       env.GasLimit,
-				MinimumPayment: env.MinimumPayment,
-				NetworkFee:     env.NetworkFee,
-				BlackList:      env.BlackList,
-				Wallet:         env.Wallet,
-			}).execute(args[0], batchSize, verbose, table)
+			run := NewRun(table, verbose)
+			run.execute(cycle)
 		},
 	}
 
 	run.PersistentFlags().BoolVarP(&table, "table", "t", false, "formats result into a table (Default: json)")
-	run.PersistentFlags().IntVarP(&batchSize, "batch-size", "b", 125, "changes the size of the payout batches (too large may result in failure).")
 	run.PersistentFlags().BoolVarP(&verbose, "verbose", "v", true, "will print confirmations in between injections.")
 
 	return run
 }
 
-func (r *Run) execute(arg string, batchSize int, verbose, table bool) {
-	cycle, err := strconv.Atoi(arg)
+func (r *Run) execute(cycle int) {
+	payout, err := payout.New(r.config, cycle, true, r.verbose)
 	if err != nil {
-		log.WithField("error", err.Error()).Fatal("Failed to parse cycle argument into integer.")
+		log.WithField("error", err.Error()).Fatal("Failed to intialize payout.")
 	}
 
-	report, err := payout.NewPayout(payout.NewPayoutInput{
-		GoTezos:    r.gt,
-		Cycle:      cycle,
-		Delegate:   r.delegate,
-		BakerFee:   r.bakersFee,
-		MinPayment: r.minimumPayment,
-		BlackList:  r.blackList,
-		BatchSize:  batchSize,
-		NetworkFee: r.networkFee,
-		GasLimit:   r.gasLimit,
-		Inject:     true,
-		Verbose:    verbose,
-		Wallet:     r.wallet,
-	}).Execute()
+	rewardsSplit, err := payout.Execute()
+	if err != nil {
+		log.WithField("error", err.Error()).Fatal("Failed to execute payout.")
+	}
 
-	if table {
-		print.Table(r.delegate, r.wallet.Address, report)
+	err = r.notifier.Notify(fmt.Sprintf("[TZPAY] payout for cycle %d: \n%s\n #tezos #blockchain", cycle, rewardsSplit.OperationLink))
+	if err != nil {
+		log.WithField("error", err.Error()).Error("Failed to notify.")
+	}
+
+	if r.table {
+		print.Table(cycle, r.config.Baker.Address, rewardsSplit)
 	} else {
-		print.JSON(report)
+		err := print.JSON(rewardsSplit)
+		if err != nil {
+			log.WithField("error", err.Error()).Fatal("Failed to print JSON report.")
+		}
 	}
 }
