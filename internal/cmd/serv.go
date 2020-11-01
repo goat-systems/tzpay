@@ -30,7 +30,7 @@ func newServer(verbose bool) (server, error) {
 	}
 
 	runner := NewRun(false, verbose)
-	queue := payout.NewQueue(runner.notifier)
+	queue := payout.NewQueue(&runner.notifier)
 	queue.Start()
 
 	return server{
@@ -74,17 +74,20 @@ func (s *server) start() {
 	go func() {
 		currentCycle := block.Metadata.Level.Cycle
 		log.Infof("Current cycle: %d.", currentCycle)
-		ticker := time.NewTicker(time.Minute)
+		ticker := time.NewTicker(time.Second * 30)
 		for range ticker.C {
 			b, err := s.rpcClient.Head()
 			if err != nil {
 				log.WithField("error", err.Error()).Error("Server failed to get current cycle.")
+				continue
 			}
+			log.WithField("level", b.Metadata.Level).Info("Found a new block.")
 
 			if currentCycle < b.Metadata.Level.Cycle {
 				payout, err := payout.New(s.runner.config, currentCycle, true, s.runner.verbose)
 				if err != nil {
 					log.WithField("error", err.Error()).Fatal("Failed to intialize payout.")
+					continue
 				}
 				log.Infof("Adding payout for for cycle to queue: %d.", currentCycle)
 				s.queue.Enqueue(*payout)

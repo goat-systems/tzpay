@@ -11,15 +11,19 @@ import (
 )
 
 type Queue struct {
-	notifier notifier.PayoutNotifier
-	payouts  []Payout
-	mu       *sync.Mutex
+	notifier       *notifier.PayoutNotifier
+	payouts        []Payout
+	mu             *sync.Mutex
+	logger         *logrus.Logger
+	tickerDuration time.Duration
 }
 
-func NewQueue(notifier notifier.PayoutNotifier) Queue {
+func NewQueue(notifier *notifier.PayoutNotifier) Queue {
 	return Queue{
-		notifier: notifier,
-		mu:       &sync.Mutex{},
+		notifier:       notifier,
+		mu:             &sync.Mutex{},
+		tickerDuration: time.Minute,
+		logger:         logrus.New(),
 	}
 }
 
@@ -57,37 +61,41 @@ func (q *Queue) Empty() bool {
 }
 
 func (q *Queue) Start() {
-	logrus.Info("Starting payout queue.")
+	q.logger.Info("Starting payout queue.")
 	go func() {
-		ticker := time.NewTicker(1 * time.Minute)
+		ticker := time.NewTicker(q.tickerDuration)
 		for range ticker.C {
-			logrus.Info("Popping off payout queue.")
+			q.logger.Info("Popping off payout queue.")
 			payout, err := q.Front()
 			if err != nil {
-				logrus.Info("Payout Queue is empty.")
+				q.logger.Info("Payout Queue is empty.")
 				continue
 			}
 
 			err = q.Dequeue()
 			if err != nil {
-				logrus.WithField("error", err.Error()).Error("failed to dequeue payout in queue")
+				q.logger.WithFields(logrus.Fields{"error": err.Error(), "cycle": payout.cycle}).Error("failed to dequeue payout in queue")
 				continue
 			}
 			rewardsSplit, err := payout.Execute()
 			if err != nil {
-				logrus.WithField("error", err.Error()).Error("failed to execute payout in queue")
+				q.logger.WithFields(logrus.Fields{"error": err.Error(), "cycle": payout.cycle}).Error("failed to execute payout in queue")
 				q.Enqueue(payout)
 				continue
 			}
 
-			err = q.notifier.Notify(fmt.Sprintf("[TZPAY] payout for cycle %d: \n%s\n #tezos #pos", payout.cycle, rewardsSplit.OperationLink))
-			if err != nil {
-				logrus.WithField("error", err.Error()).Error("Failed to notify.")
+			q.logger.WithField("cycle", payout.cycle).Info("Payout successfully executed.")
+
+			if q.notifier != nil {
+				err = q.notifier.Notify(fmt.Sprintf("[TZPAY] payout for cycle %d: \n%s\n #tezos #pos", payout.cycle, rewardsSplit.OperationLink))
+				if err != nil {
+					q.logger.WithField("error", err.Error()).Error("Failed to notify.")
+				}
 			}
 
 			err = print.JSON(rewardsSplit)
 			if err != nil {
-				logrus.WithField("error", err.Error()).Fatal("Failed to print JSON report.")
+				q.logger.WithField("error", err.Error()).Fatal("Failed to print JSON report.")
 			}
 
 		}
