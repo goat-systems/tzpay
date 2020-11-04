@@ -1,7 +1,7 @@
 version: '3'
 services:
   tzpay:
-     image: goatsystems/tzpay:v3.0.1
+     image: goatsystems/tzpay:v3.0.2
      container_name: tzpay
      restart: always
      command: tzpay serv

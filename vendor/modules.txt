@@ -4,20 +4,41 @@ github.com/Messer4/base58check
 github.com/btcsuite/btcutil/base58
 # github.com/caarlos0/env/v6 v6.2.1
 github.com/caarlos0/env/v6
+# github.com/cenkalti/backoff v2.1.1+incompatible
+github.com/cenkalti/backoff
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
+# github.com/dghubble/go-twitter v0.0.0-20200725221434-4bc8ad7ad1b4
+github.com/dghubble/go-twitter/twitter
+# github.com/dghubble/oauth1 v0.6.0
+github.com/dghubble/oauth1
+# github.com/dghubble/sling v1.3.0
+github.com/dghubble/sling
+# github.com/dgrijalva/jwt-go v3.2.0+incompatible
+github.com/dgrijalva/jwt-go
 # github.com/go-playground/locales v0.13.0
 github.com/go-playground/locales
 github.com/go-playground/locales/currency
 # github.com/go-playground/universal-translator v0.17.0
 github.com/go-playground/universal-translator
+# github.com/go-playground/validator v9.31.0+incompatible
+github.com/go-playground/validator
 # github.com/go-playground/validator/v10 v10.2.0
 github.com/go-playground/validator/v10
-# github.com/goat-systems/go-tezos/v2 v2.7.0-alpha
+# github.com/goat-systems/go-tezos/v2 v2.0.0
 github.com/goat-systems/go-tezos/v2
+# github.com/goat-systems/go-tezos/v3 v3.0.0-20200913230314-15c03bad0ffa
+github.com/goat-systems/go-tezos/v3/forge
+github.com/goat-systems/go-tezos/v3/internal/crypto
+github.com/goat-systems/go-tezos/v3/keys
+github.com/goat-systems/go-tezos/v3/rpc
+# github.com/google/go-querystring v1.0.0
+github.com/google/go-querystring/query
+# github.com/gorilla/schema v1.1.0
+github.com/gorilla/schema
 # github.com/inconshreveable/mousetrap v1.0.0
 github.com/inconshreveable/mousetrap
-# github.com/konsorten/go-windows-terminal-sequences v1.0.2
+# github.com/konsorten/go-windows-terminal-sequences v1.0.3
 github.com/konsorten/go-windows-terminal-sequences
 # github.com/leodido/go-urn v1.2.0
 github.com/leodido/go-urn
@@ -29,15 +50,24 @@ github.com/olekukonko/tablewriter
 github.com/pkg/errors
 # github.com/pmezard/go-difflib v1.0.0
 github.com/pmezard/go-difflib/difflib
-# github.com/sirupsen/logrus v1.4.2
+# github.com/sfreiberg/gotwilio v0.0.0-20200424172909-47a95c1c632a
+github.com/sfreiberg/gotwilio
+# github.com/sirupsen/logrus v1.6.0
 github.com/sirupsen/logrus
-# github.com/spf13/cobra v0.0.6
+github.com/sirupsen/logrus/hooks/test
+# github.com/spf13/cobra v1.0.0
 github.com/spf13/cobra
 # github.com/spf13/pflag v1.0.5
 github.com/spf13/pflag
-# github.com/stretchr/testify v1.5.1
+# github.com/stretchr/testify v1.6.1
 github.com/stretchr/testify/assert
-# golang.org/x/crypto v0.0.0-20200427165652-729f1e841bcc
+# github.com/tyler-smith/go-bip39 v1.0.2
+github.com/tyler-smith/go-bip39
+github.com/tyler-smith/go-bip39/wordlists
+# github.com/valyala/fastjson v1.5.4
+github.com/valyala/fastjson
+github.com/valyala/fastjson/fastfloat
+# golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a
 golang.org/x/crypto/blake2b
 golang.org/x/crypto/ed25519
 golang.org/x/crypto/ed25519/internal/edwards25519
@@ -46,8 +76,13 @@ golang.org/x/crypto/nacl/secretbox
 golang.org/x/crypto/pbkdf2
 golang.org/x/crypto/poly1305
 golang.org/x/crypto/salsa20/salsa
-# golang.org/x/sys v0.0.0-20200427175716-29b57079015a
+# golang.org/x/sys v0.0.0-20200828194041-157a740278f4
 golang.org/x/sys/cpu
+golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
-# gopkg.in/yaml.v2 v2.2.4
-gopkg.in/yaml.v2
+# gopkg.in/alexcesaro/quotedprintable.v3 v3.0.0-20150716171945-2caba252f4dc
+gopkg.in/alexcesaro/quotedprintable.v3
+# gopkg.in/gomail.v2 v2.0.0-20160411212932-81ebce5c23df
+gopkg.in/gomail.v2
+# gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c
+gopkg.in/yaml.v3

@@ -7,11 +7,11 @@ require (
 	github.com/dghubble/go-twitter v0.0.0-20200725221434-4bc8ad7ad1b4
 	github.com/dghubble/oauth1 v0.6.0
 	github.com/go-playground/validator v9.31.0+incompatible
-	github.com/go-playground/validator/v10 v10.2.0
+	github.com/go-playground/validator/v10 v10.2.0 // indirect
 	github.com/goat-systems/go-tezos/v2 v2.0.0
 	github.com/goat-systems/go-tezos/v3 v3.0.0-20200913230314-15c03bad0ffa
 	github.com/gomodule/oauth1 v0.0.0-20181215000758-9a59ed3b0a84 // indirect
-	github.com/magiconair/properties v1.8.1
+	github.com/magiconair/properties v1.8.1 // indirect
 	github.com/mattn/go-runewidth v0.0.8 // indirect
 	github.com/olekukonko/tablewriter v0.0.4
 	github.com/pkg/errors v0.9.1

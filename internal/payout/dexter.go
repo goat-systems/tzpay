@@ -113,6 +113,22 @@ func (p *Payout) getLiquidityProvidersEarnings(contract tzkt.Delegator) (tzkt.De
 	return contract, nil
 }
 
+// func (p *Payout) constructLiquidityProvider(delegator tzkt.LiquidityProvider, totalRewards, stakingBalance int) tzkt.Delegator {
+// 	if p.isInBlacklist(delegator.Address) {
+// 		delegator.BlackListed = true
+// 	}
+
+// 	delegator.Share = float64(delegator.Balance) / float64(stakingBalance)
+// 	if p.config.Baker.EarningsOnly {
+// 		delegator.GrossRewards = int(delegator.Share * float64(totalRewards))
+// 	} else {
+// 		delegator.GrossRewards = int(delegator.Share * float64(totalRewards))
+// 	}
+// 	delegator.Fee = int(float64(delegator.GrossRewards) * p.config.Baker.Fee)
+// 	delegator.NetRewards = int(delegator.GrossRewards - delegator.Fee)
+// 	return delegator
+// }
+
 func (p *Payout) getLiquidityProvidersList(target string) ([]string, error) {
 	transactions, err := p.tzkt.GetTransactions([]tzkt.URLParameters{
 		{
@@ -123,8 +139,12 @@ func (p *Payout) getLiquidityProvidersList(target string) ([]string, error) {
 			Key:   "target",
 			Value: target,
 		},
+		{
+			Key:   "limit",
+			Value: "10000",
+		},
 	}...)
-	if err != nil {
+	if err != nil || len(transactions) >= 10000 {
 		return []string{}, errors.Wrapf(err, "failed to get list of liquidity providers for '%s'", target)
 	}
 
@@ -152,11 +172,12 @@ func (p *Payout) getBalanceFromBigMap(key string, bigMapID int, blockhash string
 		BigMapID:         bigMapID,
 		ScriptExpression: scriptExp,
 	})
+
 	if err != nil {
+		if len(bigMapResp) == 0 {
+			return 0, errors.Wrapf(err, "key '%s' not found in big map", key)
+		}
 		return 0, errors.Wrapf(err, "failed to get balance from big_map for '%s'", key)
-	}
-	if len(bigMapResp) == 0 {
-		return 0, errors.Wrapf(err, "key '%s' not found in big map", key)
 	}
 
 	var bigmap BigMapV1

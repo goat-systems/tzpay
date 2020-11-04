@@ -33,8 +33,28 @@ func Table(cycle int, delegate string, rewards tzkt.RewardsSplit) {
 	table = tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{"Delegation", "Share", "Gross", "Net", "Fee"})
 
-	var net, fee float64
+	liquidityProviderTable := tablewriter.NewWriter(os.Stdout)
+	liquidityProviderTable.SetHeader([]string{"Liquidiy Provider", "Contract", "Share", "Gross", "Net", "Fee"})
+
+	var net, fee, liquidityNet, liquidityFee, gross, share float64
+
 	for _, delegation := range rewards.Delegators {
+		for _, lp := range delegation.LiquidityProviders {
+			liquidityProviderTable.Append([]string{
+				lp.Address,
+				delegation.Address,
+				fmt.Sprintf("%.6f", lp.Share),
+				fmt.Sprintf("%.6f", float64(lp.GrossRewards)/float64(gotezos.MUTEZ)),
+				fmt.Sprintf("%.6f", float64(lp.NetRewards)/float64(gotezos.MUTEZ)),
+				fmt.Sprintf("%.6f", float64(lp.Fee)/float64(gotezos.MUTEZ)),
+			})
+
+			liquidityNet += float64(lp.NetRewards) / float64(gotezos.MUTEZ)
+			liquidityFee += float64(lp.Fee) / float64(gotezos.MUTEZ)
+			gross += float64(lp.GrossRewards) / float64(gotezos.MUTEZ)
+			share += lp.Share
+		}
+
 		table.Append([]string{
 			delegation.Address,
 			fmt.Sprintf("%.6f", delegation.Share),
@@ -47,8 +67,13 @@ func Table(cycle int, delegate string, rewards tzkt.RewardsSplit) {
 	}
 
 	table.SetFooter([]string{"", "", "TOTAL", fmt.Sprintf("%.6f", net), fmt.Sprintf("%.6f", fee)}) // Add Footer
+	liquidityProviderTable.SetFooter([]string{"", "TOTAL", fmt.Sprintf("%.6f", share), fmt.Sprintf("%.6f", gross), fmt.Sprintf("%.6f", liquidityNet), fmt.Sprintf("%.6f", liquidityFee)})
 
 	table.Render()
+
+	if liquidityProviderTable.NumLines() > 0 {
+		liquidityProviderTable.Render()
+	}
 }
 
 // JSON prints a payout to json
