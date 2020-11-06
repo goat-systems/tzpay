@@ -15,14 +15,14 @@ spec:
       containers:
       - name: tzpay
         imagePullPolicy: Always
-        image: goatsystems/tzpay:v3.0.2
+        image: goatsystems/tzpay:v3.0.3
         command:
             - "tzpay"
             - "serv"
         resources:
           limits:
-            memory: "1000Mi"
-            cpu: "500m"
+            memory: "100Mi"
+            cpu: "200m"
         env:
           - name: TZPAY_BAKER_FEE
             value: "TODO"

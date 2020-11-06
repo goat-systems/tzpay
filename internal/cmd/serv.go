@@ -81,17 +81,17 @@ func (s *server) start() {
 				log.WithField("error", err.Error()).Error("Server failed to get current cycle.")
 				continue
 			}
-			log.WithField("level", b.Metadata.Level).Info("Found a new block.")
+			log.WithField("level", b.Header.Level).Debug("Found a new block.")
 
 			if currentCycle < b.Metadata.Level.Cycle {
+				log.WithField("cycle", currentCycle).Info("New current cycle found.", b.Metadata.Level.Cycle)
 				payout, err := payout.New(s.runner.config, currentCycle, true, s.runner.verbose)
 				if err != nil {
-					log.WithField("error", err.Error()).Fatal("Failed to intialize payout.")
+					log.WithField("error", err.Error()).Error("Failed to intialize payout.")
 					continue
 				}
-				log.Infof("Adding payout for for cycle to queue: %d.", currentCycle)
+				log.WithField("cycle", currentCycle).Info("Adding payout to queue.")
 				s.queue.Enqueue(*payout)
-				log.Infof("New current cycle: %d.", b.Metadata.Level.Cycle)
 				currentCycle = block.Metadata.Level.Cycle
 			}
 		}

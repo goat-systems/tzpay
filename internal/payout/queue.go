@@ -65,21 +65,22 @@ func (q *Queue) Start() {
 	go func() {
 		ticker := time.NewTicker(q.tickerDuration)
 		for range ticker.C {
-			q.logger.Info("Popping off payout queue.")
+			q.logger.Debug("Popping off payout queue.")
 			payout, err := q.Front()
 			if err != nil {
-				q.logger.Info("Payout Queue is empty.")
+				q.logger.Debug("Payout Queue is empty.")
 				continue
 			}
 
+			q.logger.WithField("cycle", payout.cycle).Info("Found payout in queue.")
 			err = q.Dequeue()
 			if err != nil {
-				q.logger.WithFields(logrus.Fields{"error": err.Error(), "cycle": payout.cycle}).Error("failed to dequeue payout in queue")
+				q.logger.WithFields(logrus.Fields{"error": err.Error(), "cycle": payout.cycle}).Error("Failed to dequeue payout in queue.")
 				continue
 			}
 			rewardsSplit, err := payout.Execute()
 			if err != nil {
-				q.logger.WithFields(logrus.Fields{"error": err.Error(), "cycle": payout.cycle}).Error("failed to execute payout in queue")
+				q.logger.WithFields(logrus.Fields{"error": err.Error(), "cycle": payout.cycle}).Error("Failed to execute payout in queue.")
 				q.Enqueue(payout)
 				continue
 			}
