@@ -92,7 +92,7 @@ func (s *server) start() {
 				}
 				log.WithField("cycle", currentCycle).Info("Adding payout to queue.")
 				s.queue.Enqueue(*payout)
-				currentCycle = block.Metadata.Level.Cycle
+				currentCycle = b.Metadata.Level.Cycle
 			}
 		}
 	}()
