@@ -436,14 +436,21 @@ func Test_splitDelegationsAndDexterContracts(t *testing.T) {
 func Test_constructDelegation(t *testing.T) {
 	type input struct {
 		delegator      tzkt.Delegator
+		r              rpc.IFace
 		totalRewards   int
 		stakingBalance int
+	}
+
+	type want struct {
+		delegator   tzkt.Delegator
+		err         bool
+		errContains string
 	}
 
 	cases := []struct {
 		name  string
 		input input
-		want  tzkt.Delegator
+		want  want
 	}{
 		{
 			"handles blacklist marking",
@@ -452,17 +459,24 @@ func Test_constructDelegation(t *testing.T) {
 					Address: "some_blacklisted_address",
 					Balance: 5000000,
 				},
+				&test.RPCMock{
+					BalanceErr: false,
+				},
 				10000000,
 				1000000000,
 			},
-			tzkt.Delegator{
-				Address:      "some_blacklisted_address",
-				Balance:      5000000,
-				NetRewards:   47500,
-				GrossRewards: 50000,
-				Share:        0.005,
-				Fee:          2500,
-				BlackListed:  true,
+			want{
+				tzkt.Delegator{
+					Address:      "some_blacklisted_address",
+					Balance:      5000000,
+					NetRewards:   47500,
+					GrossRewards: 50000,
+					Share:        0.005,
+					Fee:          2500,
+					BlackListed:  true,
+				},
+				false,
+				"",
 			},
 		},
 		{
@@ -472,17 +486,24 @@ func Test_constructDelegation(t *testing.T) {
 					Address: "some_address",
 					Balance: 5000000,
 				},
+				&test.RPCMock{
+					BalanceErr: false,
+				},
 				10000000,
 				1000000000,
 			},
-			tzkt.Delegator{
-				Address:      "some_address",
-				Balance:      5000000,
-				NetRewards:   47500,
-				GrossRewards: 50000,
-				Share:        0.005,
-				Fee:          2500,
-				BlackListed:  false,
+			want{
+				tzkt.Delegator{
+					Address:      "some_address",
+					Balance:      5000000,
+					NetRewards:   47500,
+					GrossRewards: 50000,
+					Share:        0.005,
+					Fee:          2500,
+					BlackListed:  false,
+				},
+				false,
+				"",
 			},
 		},
 	}
@@ -498,9 +519,11 @@ func Test_constructDelegation(t *testing.T) {
 						Fee: 0.05,
 					},
 				},
+				rpc: tt.input.r,
 			}
-			delegation := payout.constructDelegation(tt.input.delegator, tt.input.totalRewards, tt.input.stakingBalance)
-			assert.Equal(t, tt.want, delegation)
+			delegation, err := payout.constructDelegation(tt.input.delegator, tt.input.totalRewards, tt.input.stakingBalance)
+			test.CheckErr(t, tt.want.err, tt.want.errContains, err)
+			assert.Equal(t, tt.want.delegator, delegation)
 		})
 	}
 }

@@ -26,6 +26,7 @@ docker run --rm -ti goatsystems/tzpay:latest tzpay [command] \
 | TZPAY_BAKER_MINIMUM_PAYMENT          | Amounts below this amount will not be paid (MUTEZ)   | N/A                           | False    |
 | TZPAY_BAKER_EARNINGS_ONLY            | Baker will not pay for missed endorsements or blocks | False                         | False    |
 | TZPAY_BAKER_BLACK_LIST               | Baker will not pay addresses in blacklist            | N/A                           | False    |
+| TZPAY_REWARDS_UNFROZEN_WAIT          | Baker pays out when rewards are unfrozen (tzpay serv)| False                         | False    |
 | TZPAY_BAKER_LIQUIDITY_CONTRACTS_ONLY | Pays only liquidity providers                        | N/A                           | False    |
 | TZPAY_BAKER_LIQUIDITY_CONTRACTS      | Pays liquidity providers in listed dexter contracts  | N/A                           | False    |
 | TZPAY_API_TZKT                       | URL to a [tzkt api](api.tzkt.io)                     | https://api.tzkt.io           | False    |

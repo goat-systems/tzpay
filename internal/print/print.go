@@ -31,10 +31,10 @@ func Table(cycle int, delegate string, rewards tzkt.RewardsSplit) {
 	table.Render()
 
 	table = tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Delegation", "Share", "Gross", "Net", "Fee"})
+	table.SetHeader([]string{"Delegation", "Blacklisted", "Share", "Gross", "Net", "Fee"})
 
 	liquidityProviderTable := tablewriter.NewWriter(os.Stdout)
-	liquidityProviderTable.SetHeader([]string{"Liquidiy Provider", "Contract", "Share", "Gross", "Net", "Fee"})
+	liquidityProviderTable.SetHeader([]string{"Liquidiy Provider", "Contract", "Blacklisted", "Share", "Gross", "Net", "Fee"})
 
 	var net, fee, liquidityNet, liquidityFee, gross, share float64
 
@@ -43,6 +43,7 @@ func Table(cycle int, delegate string, rewards tzkt.RewardsSplit) {
 			liquidityProviderTable.Append([]string{
 				lp.Address,
 				delegation.Address,
+				fmt.Sprintf("%v", lp.BlackListed),
 				fmt.Sprintf("%.6f", lp.Share),
 				fmt.Sprintf("%.6f", float64(lp.GrossRewards)/float64(gotezos.MUTEZ)),
 				fmt.Sprintf("%.6f", float64(lp.NetRewards)/float64(gotezos.MUTEZ)),
@@ -57,6 +58,7 @@ func Table(cycle int, delegate string, rewards tzkt.RewardsSplit) {
 
 		table.Append([]string{
 			delegation.Address,
+			fmt.Sprintf("%v", delegation.BlackListed),
 			fmt.Sprintf("%.6f", delegation.Share),
 			fmt.Sprintf("%.6f", float64(delegation.GrossRewards)/float64(gotezos.MUTEZ)),
 			fmt.Sprintf("%.6f", float64(delegation.NetRewards)/float64(gotezos.MUTEZ)),
@@ -66,8 +68,8 @@ func Table(cycle int, delegate string, rewards tzkt.RewardsSplit) {
 		fee += float64(delegation.Fee) / float64(gotezos.MUTEZ)
 	}
 
-	table.SetFooter([]string{"", "", "TOTAL", fmt.Sprintf("%.6f", net), fmt.Sprintf("%.6f", fee)}) // Add Footer
-	liquidityProviderTable.SetFooter([]string{"", "TOTAL", fmt.Sprintf("%.6f", share), fmt.Sprintf("%.6f", gross), fmt.Sprintf("%.6f", liquidityNet), fmt.Sprintf("%.6f", liquidityFee)})
+	table.SetFooter([]string{"", "", "", "TOTAL", fmt.Sprintf("%.6f", net), fmt.Sprintf("%.6f", fee)}) // Add Footer
+	liquidityProviderTable.SetFooter([]string{"", "", "TOTAL", fmt.Sprintf("%.6f", share), fmt.Sprintf("%.6f", gross), fmt.Sprintf("%.6f", liquidityNet), fmt.Sprintf("%.6f", liquidityFee)})
 
 	table.Render()
 

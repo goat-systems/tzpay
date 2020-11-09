@@ -26,6 +26,8 @@ type Baker struct {
 	DexterLiquidityContractsOnly bool     `env:"TZPAY_BAKER_LIQUIDITY_CONTRACTS_ONLY"`
 	Blacklist                    []string `env:"TZPAY_BAKER_BLACK_LIST" envSeparator:","`
 	DexterLiquidityContracts     []string `env:"TZPAY_BAKER_LIQUIDITY_CONTRACTS" envSeparator:","`
+	BakerPaysBurnFees            bool     `env:"TZPAY_BAKER_PAYS_BURN_FEES"`
+	PayoutWhenRewardsUnfrozen    bool     `env:"TZPAY_REWARDS_UNFROZEN_WAIT"`
 }
 
 // API contains configurations for the tzkt API and a tezos node

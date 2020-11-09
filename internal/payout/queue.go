@@ -18,8 +18,8 @@ type Queue struct {
 	tickerDuration time.Duration
 }
 
-func NewQueue(notifier *notifier.PayoutNotifier) Queue {
-	return Queue{
+func NewQueue(notifier *notifier.PayoutNotifier) *Queue {
+	return &Queue{
 		notifier:       notifier,
 		mu:             &sync.Mutex{},
 		tickerDuration: time.Minute,
@@ -72,23 +72,24 @@ func (q *Queue) Start() {
 				continue
 			}
 
-			q.logger.WithField("cycle", payout.cycle).Info("Found payout in queue.")
+			q.logger.WithField("payout-cycle", payout.cycle).Info("Found payout in queue.")
 			err = q.Dequeue()
 			if err != nil {
-				q.logger.WithFields(logrus.Fields{"error": err.Error(), "cycle": payout.cycle}).Error("Failed to dequeue payout in queue.")
+				q.logger.WithFields(logrus.Fields{"error": err.Error(), "payout-cycle": payout.cycle}).Error("Failed to dequeue payout in queue.")
 				continue
 			}
 			rewardsSplit, err := payout.Execute()
 			if err != nil {
-				q.logger.WithFields(logrus.Fields{"error": err.Error(), "cycle": payout.cycle}).Error("Failed to execute payout in queue.")
+				q.logger.WithFields(logrus.Fields{"error": err.Error(), "payout-cycle": payout.cycle}).Error("Failed to execute payout in queue.")
+				q.logger.WithField("payout-cycle", payout.cycle).Info("Adding payout back in queue.")
 				q.Enqueue(payout)
 				continue
 			}
 
-			q.logger.WithField("cycle", payout.cycle).Info("Payout successfully executed.")
+			q.logger.WithField("payout-cycle", payout.cycle).Info("Payout successfully executed.")
 
 			if q.notifier != nil {
-				err = q.notifier.Notify(fmt.Sprintf("[TZPAY] payout for cycle %d: \n%s\n #tezos #pos", payout.cycle, rewardsSplit.OperationLink))
+				err = q.notifier.Notify(fmt.Sprintf("[TZPAY] payout for cycle %d: \n%s\n #tezos #blockchain", payout.cycle, rewardsSplit.OperationLink))
 				if err != nil {
 					q.logger.WithField("error", err.Error()).Error("Failed to notify.")
 				}

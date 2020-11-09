@@ -105,6 +105,16 @@ func (p *Payout) getLiquidityProvidersEarnings(contract tzkt.Delegator) (tzkt.De
 				lp.BlackListed = true
 			}
 
+			if !p.config.Baker.BakerPaysBurnFees {
+				requiresBurnFee, err := p.requiresBurnFee(lp.Address)
+				if err != nil {
+					return contract, errors.Wrapf(err, "failed to get earnings for liquidity providers for contract '%s'", contract.Address)
+				}
+				if requiresBurnFee {
+					lp.BlackListed = true
+				}
+			}
+
 			liquidityProviders = append(liquidityProviders, lp)
 		}
 	}

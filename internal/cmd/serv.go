@@ -12,7 +12,7 @@ import (
 )
 
 type server struct {
-	queue     payout.Queue
+	queue     *payout.Queue
 	rpcClient rpc.IFace
 	cfg       config.Config
 	runner    Run
@@ -31,6 +31,8 @@ func newServer(verbose bool) (server, error) {
 
 	runner := NewRun(false, verbose)
 	queue := payout.NewQueue(&runner.notifier)
+
+	log.Info("Starting tzpay payout server.")
 	queue.Start()
 
 	return server{
@@ -64,33 +66,43 @@ func ServCommand() *cobra.Command {
 
 func (s *server) start() {
 	quit := make(chan struct{})
-	log.Info("Starting tzpay payout server.")
 
 	block, err := s.rpcClient.Head()
 	if err != nil {
-		log.WithField("error", err.Error()).Error("Server failed to get current cycle.")
+		log.WithField("error", err.Error()).Fatal("Server failed to starting cycle.")
+	}
+
+	constants, err := s.rpcClient.Constants(block.Hash)
+	if err != nil {
+		log.WithField("error", err.Error()).Fatal("Server failed to get network constants used for cycle math.")
 	}
 
 	go func() {
 		currentCycle := block.Metadata.Level.Cycle
-		log.Infof("Current cycle: %d.", currentCycle)
+		log.WithField("current-cycle", currentCycle).Info("Current cycle.")
 		ticker := time.NewTicker(time.Second * 30)
 		for range ticker.C {
 			b, err := s.rpcClient.Head()
 			if err != nil {
-				log.WithField("error", err.Error()).Error("Server failed to get current cycle.")
+				log.WithField("error", err.Error()).Warn("Server failed to get current cycle.")
 				continue
 			}
 			log.WithField("level", b.Header.Level).Debug("Found a new block.")
 
 			if currentCycle < b.Metadata.Level.Cycle {
-				log.WithField("cycle", currentCycle).Info("New current cycle found.", b.Metadata.Level.Cycle)
-				payout, err := payout.New(s.runner.config, currentCycle, true, s.runner.verbose)
+				log.WithFields(log.Fields{"current-cycle": b.Metadata.Level.Cycle, "last-cycle": currentCycle}).Info("New current cycle found.")
+
+				cycleToPayoutFor := currentCycle
+				if s.runner.config.Baker.PayoutWhenRewardsUnfrozen {
+					cycleToPayoutFor = b.Metadata.Level.Cycle - constants.PreservedCycles
+				}
+
+				payout, err := payout.New(s.runner.config, cycleToPayoutFor, true, s.runner.verbose)
 				if err != nil {
-					log.WithField("error", err.Error()).Error("Failed to intialize payout.")
+					log.WithFields(log.Fields{"error": err.Error(), "payout-cycle": cycleToPayoutFor}).Error("Failed to intialize payout.")
 					continue
 				}
-				log.WithField("cycle", currentCycle).Info("Adding payout to queue.")
+				log.WithField("payout-cycle", cycleToPayoutFor).Info("Adding payout to queue.")
 				s.queue.Enqueue(*payout)
 				currentCycle = b.Metadata.Level.Cycle
 			}

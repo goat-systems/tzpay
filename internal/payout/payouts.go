@@ -119,14 +119,20 @@ func (p *Payout) constructPayout() (tzkt.RewardsSplit, error) {
 
 	if !p.config.Baker.DexterLiquidityContractsOnly {
 		for _, delegation := range delegations {
-			delegation = p.constructDelegation(delegation, totalRewards, rewardsSplit.StakingBalance)
+			delegation, err = p.constructDelegation(delegation, totalRewards, rewardsSplit.StakingBalance)
+			if err != nil {
+				return rewardsSplit, errors.Wrap(err, "failed to contruct payout")
+			}
 			rewardsSplit.BakerCollectedFees += delegation.Fee
 			rewardsSplit.Delegators = append(rewardsSplit.Delegators, delegation)
 		}
 	}
 
 	for _, contract := range dexterContracts {
-		contract = p.constructDelegation(contract, totalRewards, rewardsSplit.StakingBalance)
+		contract, err = p.constructDelegation(contract, totalRewards, rewardsSplit.StakingBalance)
+		if err != nil {
+			return rewardsSplit, errors.Wrap(err, "failed to contruct payout")
+		}
 		rewardsSplit.BakerCollectedFees += contract.Fee
 
 		var err error
@@ -154,9 +160,19 @@ func (p *Payout) splitDelegationsAndDexterContracts(rewardsSplit tzkt.RewardsSpl
 	return delegations, dexterContracts
 }
 
-func (p *Payout) constructDelegation(delegator tzkt.Delegator, totalRewards, stakingBalance int) tzkt.Delegator {
+func (p *Payout) constructDelegation(delegator tzkt.Delegator, totalRewards, stakingBalance int) (tzkt.Delegator, error) {
 	if p.isInBlacklist(delegator.Address) {
 		delegator.BlackListed = true
+	}
+
+	if !p.config.Baker.BakerPaysBurnFees {
+		requiresBurnFee, err := p.requiresBurnFee(delegator.Address)
+		if err != nil {
+			return delegator, errors.Wrap(err, "failed to contruct delegation")
+		}
+		if requiresBurnFee {
+			delegator.BlackListed = true
+		}
 	}
 
 	delegator.Share = float64(delegator.Balance) / float64(stakingBalance)
@@ -167,7 +183,7 @@ func (p *Payout) constructDelegation(delegator tzkt.Delegator, totalRewards, sta
 	}
 	delegator.Fee = int(float64(delegator.GrossRewards) * p.config.Baker.Fee)
 	delegator.NetRewards = int(delegator.GrossRewards - delegator.Fee)
-	return delegator
+	return delegator, nil
 }
 
 func (p *Payout) calculateTotals(rewards tzkt.RewardsSplit) int {
@@ -226,6 +242,11 @@ func (p *Payout) constructTransactionBatches(blockhash string, delegators tzkt.D
 		return nil, err
 	}
 
+	var storageLimit int64
+	if p.config.Baker.BakerPaysBurnFees {
+		storageLimit = 257000
+	}
+
 	for _, batch := range p.batch(delegators) {
 		var transactions rpc.Contents
 		for _, delegation := range batch {
@@ -241,7 +262,7 @@ func (p *Payout) constructTransactionBatches(blockhash string, delegators tzkt.D
 							Fee:          int64(p.config.Operations.NetworkFee),
 							GasLimit:     int64(p.config.Operations.GasLimit),
 							Counter:      counter,
-							StorageLimit: int64(0),
+							StorageLimit: storageLimit,
 						})
 					}
 				}
@@ -256,7 +277,7 @@ func (p *Payout) constructTransactionBatches(blockhash string, delegators tzkt.D
 						Fee:          int64(p.config.Operations.NetworkFee),
 						GasLimit:     int64(p.config.Operations.GasLimit),
 						Counter:      counter,
-						StorageLimit: int64(0),
+						StorageLimit: storageLimit,
 					})
 				}
 			}
@@ -358,6 +379,23 @@ func (p *Payout) isInBlacklist(delegation string) bool {
 	}
 
 	return false
+}
+
+// checks if the account needs a burn fee - accounts that do will be skipped
+func (p *Payout) requiresBurnFee(delegation string) (bool, error) {
+	balance, err := p.rpc.Balance(rpc.BalanceInput{
+		Blockhash: "head",
+		Address:   delegation,
+	})
+	if err != nil {
+		return true, errors.Wrapf(err, "failed to check if delegation '%s' needs burn fee", delegation)
+	}
+
+	if balance == 0 {
+		return true, nil
+	}
+
+	return false, nil
 }
 
 func (p *Payout) isDexterContract(address string) bool {
