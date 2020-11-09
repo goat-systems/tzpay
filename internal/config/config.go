@@ -21,7 +21,7 @@ type Config struct {
 type Baker struct {
 	Address                      string   `env:"TZPAY_BAKER" validate:"required"`
 	Fee                          float64  `env:"TZPAY_BAKER_FEE" validate:"required"`
-	MinimumPayment               int      `env:"TZPAY_BAKER_MINIMUM_PAYMENT"`
+	MinimumPayment               int      `env:"TZPAY_BAKER_MINIMUM_PAYMENT" envDefault:"1"`
 	EarningsOnly                 bool     `env:"TZPAY_BAKER_EARNINGS_ONLY"`
 	DexterLiquidityContractsOnly bool     `env:"TZPAY_BAKER_LIQUIDITY_CONTRACTS_ONLY"`
 	Blacklist                    []string `env:"TZPAY_BAKER_BLACK_LIST" envSeparator:","`

@@ -101,6 +101,10 @@ func (p *Payout) getLiquidityProvidersEarnings(contract tzkt.Delegator) (tzkt.De
 			lp.Fee = int(float64(lp.GrossRewards) * p.config.Baker.Fee)
 			lp.NetRewards = lp.GrossRewards - lp.Fee
 
+			if lp.NetRewards < p.config.Baker.MinimumPayment {
+				lp.BlackListed = true
+			}
+
 			if p.isInBlacklist(lp.Address) {
 				lp.BlackListed = true
 			}

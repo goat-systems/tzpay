@@ -161,6 +161,15 @@ func (p *Payout) splitDelegationsAndDexterContracts(rewardsSplit tzkt.RewardsSpl
 }
 
 func (p *Payout) constructDelegation(delegator tzkt.Delegator, totalRewards, stakingBalance int) (tzkt.Delegator, error) {
+	delegator.Share = float64(delegator.Balance) / float64(stakingBalance)
+	if p.config.Baker.EarningsOnly {
+		delegator.GrossRewards = int(delegator.Share * float64(totalRewards))
+	} else {
+		delegator.GrossRewards = int(delegator.Share * float64(totalRewards))
+	}
+	delegator.Fee = int(float64(delegator.GrossRewards) * p.config.Baker.Fee)
+	delegator.NetRewards = int(delegator.GrossRewards - delegator.Fee)
+
 	if p.isInBlacklist(delegator.Address) {
 		delegator.BlackListed = true
 	}
@@ -175,14 +184,10 @@ func (p *Payout) constructDelegation(delegator tzkt.Delegator, totalRewards, sta
 		}
 	}
 
-	delegator.Share = float64(delegator.Balance) / float64(stakingBalance)
-	if p.config.Baker.EarningsOnly {
-		delegator.GrossRewards = int(delegator.Share * float64(totalRewards))
-	} else {
-		delegator.GrossRewards = int(delegator.Share * float64(totalRewards))
+	if delegator.NetRewards < p.config.Baker.MinimumPayment {
+		delegator.BlackListed = true
 	}
-	delegator.Fee = int(float64(delegator.GrossRewards) * p.config.Baker.Fee)
-	delegator.NetRewards = int(delegator.GrossRewards - delegator.Fee)
+
 	return delegator, nil
 }
 
@@ -252,7 +257,7 @@ func (p *Payout) constructTransactionBatches(blockhash string, delegators tzkt.D
 		for _, delegation := range batch {
 			if delegation.LiquidityProviders != nil {
 				for _, liquidityProvider := range delegation.LiquidityProviders {
-					if delegation.NetRewards >= p.config.Baker.MinimumPayment && !delegation.BlackListed { // don't payout to rewards smaller than minimal payment or that are blacklisted
+					if !delegation.BlackListed { // don't payout to rewards smaller than minimal payment or that are blacklisted
 						counter++
 						transactions = append(transactions, rpc.Content{
 							Kind:         rpc.TRANSACTION,
@@ -267,7 +272,7 @@ func (p *Payout) constructTransactionBatches(blockhash string, delegators tzkt.D
 					}
 				}
 			} else {
-				if delegation.NetRewards >= p.config.Baker.MinimumPayment && !delegation.BlackListed { // don't payout to rewards smaller than minimal payment or that are blacklisted
+				if !delegation.BlackListed { // don't payout to rewards smaller than minimal payment or that are blacklisted
 					counter++
 					transactions = append(transactions, rpc.Content{
 						Kind:         rpc.TRANSACTION,
