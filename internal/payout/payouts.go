@@ -249,7 +249,7 @@ func (p *Payout) constructTransactionBatches(blockhash string, delegators tzkt.D
 
 	var storageLimit int64
 	if p.config.Baker.BakerPaysBurnFees {
-		storageLimit = 257000
+		storageLimit = 257
 	}
 
 	for _, batch := range p.batch(delegators) {
