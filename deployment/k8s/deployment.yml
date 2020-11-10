@@ -15,7 +15,7 @@ spec:
       containers:
       - name: tzpay
         imagePullPolicy: Always
-        image: goatsystems/tzpay:v3.1.1
+        image: goatsystems/tzpay:v3.1.3
         command:
             - "tzpay"
             - "serv"

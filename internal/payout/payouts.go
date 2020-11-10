@@ -257,7 +257,7 @@ func (p *Payout) constructTransactionBatches(blockhash string, delegators tzkt.D
 		for _, delegation := range batch {
 			if delegation.LiquidityProviders != nil {
 				for _, liquidityProvider := range delegation.LiquidityProviders {
-					if !delegation.BlackListed { // don't payout to rewards smaller than minimal payment or that are blacklisted
+					if !liquidityProvider.BlackListed { // don't payout to rewards smaller than minimal payment or that are blacklisted
 						counter++
 						transactions = append(transactions, rpc.Content{
 							Kind:         rpc.TRANSACTION,
@@ -328,7 +328,6 @@ func (p *Payout) injectOperations(operations []string) ([]string, error) {
 		if err != nil {
 			return ophashes, errors.Wrap(err, "failed to inject operation")
 		}
-
 		ophashes = append(ophashes, ophash)
 
 		if p.verbose {
