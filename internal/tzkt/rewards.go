@@ -123,7 +123,7 @@ GetRewardsSplit -
 See: https://api.tzkt.io/#operation/Rewards_GetRewardSplit
 */
 func (t *Tzkt) GetRewardsSplit(delegate string, cycle int, options ...URLParameters) (RewardsSplit, error) {
-	resp, err := t.get(fmt.Sprintf("/v1/rewards/split/%s/%d", delegate, cycle), options...)
+	resp, err := t.get(fmt.Sprintf("/v1/rewards/split/%s/%d?limit=1000", delegate, cycle), options...)
 	if err != nil {
 		return RewardsSplit{}, errors.Wrapf(err, "failed to get reward split")
 	}
