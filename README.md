@@ -4,13 +4,16 @@ Payman is a golang driven payout tool for delegation services that is built upon
 
 ## Installation
 
-### Source 
+### Source
+
 ```
 go get github.com/DefinitelyNotAGoat/payman
 cd $GOPATH/github.com/DefinitelyNotAGoat/payman
 go build
 ```
+
 ### Linux
+
 ```
 wget https://github.com/DefinitelyNotAGoat/payman/releases/download/v1.0.4/payman_linux_amd64
 sudo mv payman_linux_amd64 /usr/local/bin/payman
@@ -18,6 +21,7 @@ sudo chmod a+x /usr/local/bin/payman
 ```
 
 ### MacOS
+
 ```
 wget https://github.com/DefinitelyNotAGoat/payman/releases/download/v1.0.4/payman_darwin_amd64
 sudo mv payman_linux_amd64 /usr/local/bin/payman
@@ -26,7 +30,9 @@ sudo chmod a+x /usr/local/bin/payman
 ```
 
 ## Payman Usage
+
 =======
+
 ## Standard Stake Capital Payout
 
 Simply insert the secret and password for the wallet:
@@ -67,6 +73,7 @@ Flags:
 ```
 
 #### Example
+
 ```
 payman report --delegate=tz1SF9wBoBQbFUF13agZ8EgihLCKM54G1ccV --cycle=184 --fee=0.05 --payout-min=5000
 
@@ -83,9 +90,11 @@ payman report --delegate=tz1SF9wBoBQbFUF13agZ8EgihLCKM54G1ccV --cycle=184 --fee=
 ```
 
 ### Payout
+
 #### Help
+
 ```
-payman payout --help                                                                                  
+payman payout --help
 Payout pays out rewards to delegations for the delegate passed.
 
 Usage:
@@ -112,7 +121,8 @@ Flags:
       --twitter-title string       pre title for the twitter bot to post (e.g. DefinitelyNotABot: -- will read DefinitelyNotABot: Payout for Cycle <cycle>)
 ```
 
-#### Generic Example 
+#### Generic Example
+
 ```
 payman payout --delegate=tz1SF9wBoBQbFUF13agZ8EgihLCKM54G1ccV --secret=edesk1Qx5JbctVnFVHL4A7BXgyExihHfcAHRYXoxkbSBmKqP2Sp92Gg1xcU8mqqu4Qi9TXkXwomMxAfy19sWAgCm --password=abcd1234 --cycle=184 --fee=0.05 --payout-min=5000
 
@@ -132,7 +142,9 @@ payman payout --delegate=tz1SF9wBoBQbFUF13agZ8EgihLCKM54G1ccV --secret=edesk1Qx5
 ```
 
 #### Override Payments Example
-This will override payman's calculations with your own by creating a file (e.g. payments.json) in the following format: 
+
+This will override payman's calculations with your own by creating a file (e.g. payments.json) in the following format:
+
 ```
 [
   {
@@ -155,12 +167,16 @@ payman payout --delegate=tz1SF9wBoBQbFUF13agZ8EgihLCKM54G1ccV --secret=edesk1Qx5
 ```
 
 #### Reddit Bot Example
+
 This feature is currently only functional with mainnet. If used with another network, the link in your reddit post will be broken (Future Fix)
+
 ```
 -r, --reddit string     example https://turnage.gitbooks.io/graw/content/chapter1.html
 --title string      example "MyService:"
 ```
-To post the results of your payout to reddit, create a [reddit.agent](https://turnage.gitbooks.io/graw/content/chapter1.html) file  containing your reddit client and secret. 
+
+To post the results of your payout to reddit, create a [reddit.agent](https://turnage.gitbooks.io/graw/content/chapter1.html) file containing your reddit client and secret.
+
 ```
 user_agent: "<platform>:<app ID>:<version string> (by /u/<reddit username>)"
 client_id: "client id (looks kind of like: sdkfbwi48rhijwsdn)"
@@ -169,27 +185,32 @@ username: "reddit username"
 password: "reddit password"
 ```
 
-Pass that file to the `--reddit` / `-r` flag. You may also include an option pre title using the `--reddit-title` flag. 
+Pass that file to the `--reddit` / `-r` flag. You may also include an option pre title using the `--reddit-title` flag.
+
 ```
-payman payout --delegate=tz1SF9wBoBQbFUF13agZ8EgihLCKM54G1ccV --secret=edesk1Qx5JbctVnFVHL4A7BXgyExihHfcAHRYXoxkbSBmKqP2Sp92Gg1xcU8mqqu4Qi9TXkXwomMxAfy19sWAgCm --password=abcd1234 --cycle=184 --fee=0.05 --payout-min=5000 --reddit=./reddit.agent --reddit-title=DefinitelyNotABot: 
+payman payout --delegate=tz1SF9wBoBQbFUF13agZ8EgihLCKM54G1ccV --secret=edesk1Qx5JbctVnFVHL4A7BXgyExihHfcAHRYXoxkbSBmKqP2Sp92Gg1xcU8mqqu4Qi9TXkXwomMxAfy19sWAgCm --password=abcd1234 --cycle=184 --fee=0.05 --payout-min=5000 --reddit=./reddit.agent --reddit-title=DefinitelyNotABot:
 
 ```
 
 Your reddit post will contain the title passed along with "Payout for Cycle (cycle)"
+
 ```
 DefinitelyNotATestBot: Payout for Cycle 100
 ```
+
 With a link to the tzscan operation related to the cycle.
 
-
 #### Twitter Bot Example
+
 This feature is currently only functional with mainnet. If used with another network, the link in your twitter post will be broken (Future Fix)
+
 ```
 -t, --twitter                turn on twitter bot, will look for api keys in twitter.yml in current dir or --twitter-path (e.g. --twitter)
       --twitter-path string    path to twitter.yml file containing API keys if not in current dir (e.g. path/to/my/file/)
       --twitter-title string   pre title for the twitter bot to post (e.g. DefinitelyNotABot: -- will read DefinitelyNotABot: Payout for Cycle <cycle>)
 ```
-Pass the `--twitter` flag to turn on the twitter bot, and  `--twitter-title` to add a custom title for your tweets. Payman will look for a twitter.yml file containing your api key, access token, and secrets. If this file is not in the directory of where payman is executed, you need to specify the path to find the file with `--twitter-path`.
+
+Pass the `--twitter` flag to turn on the twitter bot, and `--twitter-title` to add a custom title for your tweets. Payman will look for a twitter.yml file containing your api key, access token, and secrets. If this file is not in the directory of where payman is executed, you need to specify the path to find the file with `--twitter-path`.
 
 ```
 payman payout --delegate=tz1SF9wBoBQbFUF13agZ8EgihLCKM54G1ccV --secret=edesk1Qx5JbctVnFVHL4A7BXgyExihHfcAHRYXoxkbSBmKqP2Sp92Gg1xcU8mqqu4Qi9TXkXwomMxAfy19sWAgCm --password=abcd1234 --cycle=184 --fee=0.05 --payout-min=5000 --twitter --twitter-title="DefinitelyNotATestBot:" --twitter-path=./
@@ -197,6 +218,7 @@ payman payout --delegate=tz1SF9wBoBQbFUF13agZ8EgihLCKM54G1ccV --secret=edesk1Qx5
 ```
 
 Example twitter.yml
+
 ```
 consumerKey: "<key>"
 consumerKeySecret: "<key_secret>"
@@ -205,17 +227,19 @@ accessTokenSecret: "<access_token_secret>"
 ```
 
 Your tweet will contain the title passed along with "Payout for Cycle (cycle)"
+
 ```
 DefinitelyNotATestBot: Payout for Cycle 100
 ```
+
 With a link to the tzscan operation related to the cycle.
 
-
 ## Roadmap:
-* blacklist addresses
-* defer option that allows you to defer a percentage of your fee to another address
-* inlucde fiat price of XTZ in reports
-* tax reporting
+
+- blacklist addresses
+- defer option that allows you to defer a percentage of your fee to another address
+- inlucde fiat price of XTZ in reports
+- tax reporting
 
 ## License
 

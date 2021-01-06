@@ -4,6 +4,11 @@ Notable changes between releases.
 
 ## Latest
 
+## v1.3.0
+
+* Add Sling `ResponseDecoder` setter for receiving responses with a custom `ResponseDecoder` ([#49](https://github.com/dghubble/sling/pull/49))
+* Add Go module support (i.e. `go.mod`). Exclude `examples` (multi-module). ([#52](https://github.com/dghubble/sling/pull/52))
+
 ## v1.2.0
 
 * Add `Connect`, `Options`, and `Trace` HTTP methods ([c51967](https://github.com/dghubble/sling/commit/c519674860ff275e0ceb12caf5d87b31765c4e71))
