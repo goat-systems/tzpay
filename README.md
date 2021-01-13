@@ -33,6 +33,7 @@ docker run --rm -ti goatsystems/tzpay:latest tzpay [command] \
 | TZPAY_API_TEZOS                      | URL to a tezos RPC                                   | https://tezos.giganode.io/    | False    |
 | TZPAY_OPERATIONS_NETWORK_FEE         | The network fee used in each transfer operation      | 2941                          | False    |
 | TZPAY_OPERATIONS_GAS_LIMIT           | The gas limit used in each transfer operation        | 26283                         | False    |
+| TZPAY_BAKER_PAYS_BURN_FEES           | Burn Fees (If needed) will be covered by the baker   | False                         | False    |
 | TZPAY_OPERATIONS_BATCH_SIZE          | The amount of transfers to include in an operation   | 125                           | False    |
 | TZPAY_TWITTER_CONSUMER_KEY           | Twitter credentials for notifications                | N/A                           | False    |
 | TZPAY_TWITTER_CONSUMER_SECRET        | Twitter credentials for notifications                | N/A                           | False    |
@@ -302,6 +303,19 @@ Use "tzpay [command] --help" for more information about a command.
 |                                                     TOTAL   | 269.946543 | 14.207660 |
 +--------------------------------------+----------+-----------+------------+-----------+
 ```
+
+### API Calls
+| Name          | Path                                                    | Doc                                                                                       |
+|---------------|---------------------------------------------------------|-------------------------------------------------------------------------------------------|
+| Transactions  | /v1/operations/transactions                             | https://api.tzkt.io/#operation/Operations_GetTransactions                                 |
+| Rewards Split | /v1/rewards/split/{address}/{cycle}                     | https://api.tzkt.io/#operation/Rewards_GetRewardSplit                                     |
+| Block         | /chains/{chainID}/blocks/{blockId}                      | https://tezos.gitlab.io/007/rpc.html#get-block-id                                         |
+| Cycle         | /chains/%s/blocks/%s/context/raw/json/cycle/%d          | Not Documented.                                                                           |
+| BigMap        | /<block_id>/context/big_maps/<big_map_id>/<script_expr> | https://tezos.gitlab.io/007/rpc.html#get-block-id-context-big-maps-big-map-id-script-expr |
+| Storage       | /<block_id>/context/contracts/<contract_id>/storage     | https://tezos.gitlab.io/007/rpc.html#get-block-id-context-contracts-contract-id-storage   |
+| Balance       | /<block_id>/context/delegates/<pkh>/balance             | https://tezos.gitlab.io/007/rpc.html#get-block-id-context-delegates-pkh-balance           |
+| Injection     | /injection/operation                                    | https://tezos.gitlab.io/shell/rpc.html#post-injection-operation                           |
+| OperationHash | /chains/main/blocks/{blockId}/operation_hashes          | Not Documented.                                                                           |
 
 ## Roadmap:
 * inlucde fiat price of XTZ in reports
