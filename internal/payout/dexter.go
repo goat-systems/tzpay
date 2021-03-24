@@ -44,6 +44,17 @@ type ExchangeContractV1 struct {
 	} `json:"args"`
 }
 
+type ExchangeContractV15 struct {
+	Prim string `json:"prim"`
+	Args []Args `json:"args"`
+}
+
+type Args struct {
+	Int  string `json:"int,omitempty"`
+	Prim string `json:"prim,omitempty"`
+	Args []Args `json:"args,omitempty"`
+}
+
 // BigMapV1 represents a big_map for ExchangeContractV1
 type BigMapV1 struct {
 	Prim string          `json:"prim"`
@@ -65,14 +76,10 @@ func (p *Payout) getLiquidityProvidersEarnings(contract tzkt.Delegator) (tzkt.De
 		return contract, errors.Wrapf(err, "failed to get earnings for dexter liquidity providers")
 	}
 
-	exchangeContract, err := p.getContractStorage(cycle.BlockHash, contract.Address)
+	totalLiquidity, bigMap, err := p.processV1Contract(cycle.BlockHash, contract.Address)
 	if err != nil {
 		return contract, errors.Wrapf(err, "failed to get earnings for dexter liquidity providers")
 	}
-
-	// safe because the contract will fail to marshal if changed
-	totalLiquidity := exchangeContract.Args[1].Args[0].Args[1].Args[1].Int
-	bigMap := exchangeContract.Args[0].Int
 
 	liquidityProvidersAddresses, err := p.getLiquidityProvidersList(contract.Address)
 	if err != nil {
@@ -127,21 +134,93 @@ func (p *Payout) getLiquidityProvidersEarnings(contract tzkt.Delegator) (tzkt.De
 	return contract, nil
 }
 
-// func (p *Payout) constructLiquidityProvider(delegator tzkt.LiquidityProvider, totalRewards, stakingBalance int) tzkt.Delegator {
-// 	if p.isInBlacklist(delegator.Address) {
-// 		delegator.BlackListed = true
-// 	}
+func (p *Payout) processV15Contract(blockHash, address string) (int, int, error) {
+	contract, err := p.getContractStorageV15(blockHash, address)
+	if err != nil {
+		return 0, 0, errors.Wrapf(err, "failed to parse v1 contract")
+	}
 
-// 	delegator.Share = float64(delegator.Balance) / float64(stakingBalance)
-// 	if p.config.Baker.EarningsOnly {
-// 		delegator.GrossRewards = int(delegator.Share * float64(totalRewards))
-// 	} else {
-// 		delegator.GrossRewards = int(delegator.Share * float64(totalRewards))
-// 	}
-// 	delegator.Fee = int(float64(delegator.GrossRewards) * p.config.Baker.Fee)
-// 	delegator.NetRewards = int(delegator.GrossRewards - delegator.Fee)
-// 	return delegator
-// }
+	liquidity, err := getLiquidityV15(contract)
+	if err != nil {
+		return 0, 0, errors.Wrapf(err, "failed to parse v1 contract")
+	}
+
+	bigMap, err := getBigMapV15(contract)
+	if err != nil {
+		return liquidity, 0, errors.Wrapf(err, "failed to parse v1 contract")
+	}
+
+	return liquidity, bigMap, nil
+}
+
+func (p *Payout) processV1Contract(blockHash, address string) (int, int, error) {
+	contract, err := p.getContractStorageV1(blockHash, address)
+	if err != nil {
+		return 0, 0, errors.Wrapf(err, "failed to parse v1 contract")
+	}
+
+	liquidity, err := getLiquidityV1(contract)
+	if err != nil {
+		return 0, 0, errors.Wrapf(err, "failed to parse v1 contract")
+	}
+
+	bigMap, err := getBigMapV1(contract)
+	if err != nil {
+		return liquidity, 0, errors.Wrapf(err, "failed to parse v1 contract")
+	}
+
+	return liquidity, bigMap, nil
+}
+
+func getLiquidityV1(contract ExchangeContractV1) (int, error) {
+	if len(contract.Args) >= 2 {
+		if len(contract.Args[1].Args) >= 1 {
+			if len(contract.Args[1].Args[0].Args) >= 2 {
+				if len(contract.Args[1].Args[0].Args[1].Args) >= 2 {
+					if contract.Args[1].Args[0].Args[1].Args[1].Int == 0 {
+						return 0, errors.New("no liquidity")
+					}
+					return contract.Args[1].Args[0].Args[1].Args[1].Int, nil
+				}
+			}
+		}
+	}
+
+	return 0, errors.New("failed to get liquidity from v1 contract: contract may not be v1")
+}
+
+func getBigMapV1(contract ExchangeContractV1) (int, error) {
+	if len(contract.Args) >= 1 {
+		if contract.Args[0].Int == 0 {
+			return 0, errors.New("invalid big map id")
+		}
+
+		return contract.Args[0].Int, nil
+	}
+	return 0, errors.New("failed to get big_map from v1 contract: contract may not be v1")
+}
+
+func getLiquidityV15(contract ExchangeContractV15) (int, error) {
+	if len(contract.Args) >= 4 {
+		if contract.Args[3].Int == 0 {
+			return 0, errors.New("no liquidity")
+		}
+		return contract.Args[3].Int, nil
+	}
+
+	return 0, errors.New("failed to get liquidity from v1 contract: contract may not be v1")
+}
+
+func getBigMapV15(contract ExchangeContractV15) (int, error) {
+	if len(contract.Args) >= 1 {
+		if contract.Args[0].Int == 0 {
+			return 0, errors.New("invalid big map id")
+		}
+
+		return contract.Args[0].Int, nil
+	}
+	return 0, errors.New("failed to get big_map from v1 contract: contract may not be v1")
+}
 
 func (p *Payout) getLiquidityProvidersList(target string) ([]string, error) {
 	transactions, err := p.tzkt.GetTransactions([]tzkt.URLParameters{
@@ -207,7 +286,7 @@ func (p *Payout) getBalanceFromBigMap(key string, bigMapID int, blockhash string
 	return balance, nil
 }
 
-func (p *Payout) getContractStorage(blockhash string, address string) (ExchangeContractV1, error) {
+func (p *Payout) getContractStorageV1(blockhash string, address string) (ExchangeContractV1, error) {
 	storage, err := p.rpc.ContractStorage(blockhash, address) //CHANGE TO cycle.Blockhash later
 	if err != nil {
 		return ExchangeContractV1{}, errors.Wrapf(err, "failed to get storage for contract '%s'", address)
@@ -216,6 +295,20 @@ func (p *Payout) getContractStorage(blockhash string, address string) (ExchangeC
 	var exchangeContract ExchangeContractV1
 	if err := json.Unmarshal(storage, &exchangeContract); err != nil {
 		return ExchangeContractV1{}, errors.Wrapf(err, "failed to get storage contract '%s'", address)
+	}
+
+	return exchangeContract, nil
+}
+
+func (p *Payout) getContractStorageV15(blockhash string, address string) (ExchangeContractV15, error) {
+	storage, err := p.rpc.ContractStorage(blockhash, address) //CHANGE TO cycle.Blockhash later
+	if err != nil {
+		return ExchangeContractV15{}, errors.Wrapf(err, "failed to get storage for contract '%s'", address)
+	}
+
+	var exchangeContract ExchangeContractV15
+	if err := json.Unmarshal(storage, &exchangeContract); err != nil {
+		return ExchangeContractV15{}, errors.Wrapf(err, "failed to get storage contract '%s'", address)
 	}
 
 	return exchangeContract, nil
