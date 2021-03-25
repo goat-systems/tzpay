@@ -50,7 +50,7 @@ type ExchangeContractV15 struct {
 }
 
 type Args struct {
-	Int  string `json:"int,omitempty"`
+	Int  int    `json:"int,string,omitempty"`
 	Prim string `json:"prim,omitempty"`
 	Args []Args `json:"args,omitempty"`
 }
@@ -76,9 +76,9 @@ func (p *Payout) getLiquidityProvidersEarnings(contract tzkt.Delegator) (tzkt.De
 		return contract, errors.Wrapf(err, "failed to get earnings for dexter liquidity providers")
 	}
 
-	totalLiquidity, bigMap, err := p.processV1Contract(cycle.BlockHash, contract.Address)
+	totalLiquidity, bigMap, err := p.processContract(cycle.BlockHash, contract.Address)
 	if err != nil {
-		return contract, errors.Wrapf(err, "failed to get earnings for dexter liquidity providers")
+		return contract, err
 	}
 
 	liquidityProvidersAddresses, err := p.getLiquidityProvidersList(contract.Address)
@@ -132,6 +132,19 @@ func (p *Payout) getLiquidityProvidersEarnings(contract tzkt.Delegator) (tzkt.De
 	contract.LiquidityProviders = liquidityProviders
 
 	return contract, nil
+}
+
+func (p *Payout) processContract(blockHash, address string) (int, int, error) {
+	totalLiquidity, bigMap, err := p.processV1Contract(blockHash, address)
+	if err != nil {
+		var v15err error
+		totalLiquidity, bigMap, v15err = p.processV15Contract(blockHash, address)
+		if v15err != nil {
+			return 0, 0, errors.Wrap(errors.Wrap(err, v15err.Error()), "failed to get earnings for dexter liquidity providers")
+		}
+	}
+
+	return totalLiquidity, bigMap, nil
 }
 
 func (p *Payout) processV15Contract(blockHash, address string) (int, int, error) {
@@ -201,11 +214,14 @@ func getBigMapV1(contract ExchangeContractV1) (int, error) {
 }
 
 func getLiquidityV15(contract ExchangeContractV15) (int, error) {
-	if len(contract.Args) >= 4 {
-		if contract.Args[3].Int == 0 {
-			return 0, errors.New("no liquidity")
+	// {"prim":"Pair","args":[{"int":"541"},{"prim":"Pair","args":[{"prim":"False"},{"prim":"False"},{"int":"49707523463"}]},{"prim":"Pair","args":[{"string":"KT1B5VTw8ZSMnrjhy337CEvAm4tnT8Gu8Geu"},{"string":"KT1PWx2mnDueood7fEmfbBDKx1D9BAnnXitn"}]},{"int":"382997319"},{"int":"47813915032"}]}`)
+	if len(contract.Args) >= 5 {
+		if len(contract.Args[1].Args) == 3 {
+			if contract.Args[1].Args[2].Int == 0 {
+				return 0, errors.New("no liquidity")
+			}
 		}
-		return contract.Args[3].Int, nil
+		return contract.Args[1].Args[2].Int, nil
 	}
 
 	return 0, errors.New("failed to get liquidity from v1 contract: contract may not be v1")

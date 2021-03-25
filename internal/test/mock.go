@@ -63,6 +63,7 @@ type RPCMock struct {
 	OperationHashesErr    bool
 	ForgeOperationErr     bool
 	ContractStorageErr    bool
+	ContractStorageV15    bool
 	BigMapErr             bool
 	BakingRightsErr       bool
 	EndorsingRightsErr    bool
@@ -194,6 +195,9 @@ func (r *RPCMock) OperationHashes(blockhash string) ([][]string, error) {
 func (r *RPCMock) ContractStorage(blockhash string, KT1 string) ([]byte, error) {
 	if r.ContractStorageErr {
 		return nil, errors.New("failed to get contract storage")
+	}
+	if r.ContractStorageV15 {
+		return []byte(`{"prim":"Pair","args":[{"int":"541"},{"prim":"Pair","args":[{"prim":"False"},{"prim":"False"},{"int":"49707523463"}]},{"prim":"Pair","args":[{"string":"KT1B5VTw8ZSMnrjhy337CEvAm4tnT8Gu8Geu"},{"string":"KT1PWx2mnDueood7fEmfbBDKx1D9BAnnXitn"}]},{"int":"382997319"},{"int":"47813915032"}]}`), nil
 	}
 
 	return []byte(`{"prim":"Pair","args":[{"int":"16033"},{"prim":"Pair","args":[{"prim":"Pair","args":[{"prim":"False"},{"prim":"Pair","args":[{"prim":"False"},{"int":"23567891"}]}]},{"prim":"Pair","args":[{"prim":"Pair","args":[{"string":"tz1S82rGFZK8cVbNDpP1Hf9VhTUa4W8oc2WV"},{"string":"KT1GQcLae1ve1ZEPNfD9z1dyv5ev9ki39SNW"}]},{"prim":"Pair","args":[{"int":"123456"},{"int":"23567891"}]}]}]}]}`), nil
