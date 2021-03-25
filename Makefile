@@ -1,5 +1,5 @@
 PROJECT_NAME := "tzpay"
-VERSION := "v3.0.2"
+VERSION := "v3.1.0"
 PKG := "github.com/goat-systems/$(PROJECT_NAME)"
 PKG_LIST := $(shell go list ${PKG}/... | grep -v /vendor/)
 GO_FILES := $(shell find . -name '*.go' | grep -v /vendor/ | grep -v _test.go)

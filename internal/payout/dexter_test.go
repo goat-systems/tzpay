@@ -11,60 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// func Test_constructPayoutX(t *testing.T) {
-// 	tz := tzkt.NewTZKT("https://api.tzkt.io/")
-// 	r, err := rpc.New("https://mainnet-tezos.giganode.io")
-// 	assert.Nil(t, err)
-
-// 	payout := Payout{
-// 		rpc:   r,
-// 		tzkt:  tz,
-// 		cycle: 289,
-// 		config: config.Config{
-// 			Baker: config.Baker{
-// 				Fee: 0.05,
-// 				DexterLiquidityContracts: []string{
-// 					"KT1DrJV8vhkdLEj76h1H9Q4irZDqAkMPo1Qf",
-// 					"KT1Puc9St8wdNoGtLiD2WXaHbWU7styaxYhD",
-// 				},
-// 				Address: "tz1WCd2jm4uSt4vntk4vSuUWoZQGhLcDuR9q",
-// 			},
-// 		},
-// 	}
-// 	payout.constructDexterContractPayoutFunc = payout.constructDexterContractPayout
-
-// 	rewardsSplit, err := tz.GetRewardsSplit(payout.config.Baker.Address, payout.cycle)
-// 	assert.Nil(t, err)
-
-// 	totalRewards := payout.calculateTotals(rewardsSplit)
-
-// 	bakerBalance, err := payout.rpc.Balance(rpc.BalanceInput{
-// 		Cycle:   payout.cycle,
-// 		Address: payout.config.Baker.Address,
-// 	})
-// 	assert.Nil(t, err)
-
-// 	rewardsSplit.BakerShare = float64(bakerBalance) / float64(rewardsSplit.StakingBalance)
-// 	rewardsSplit.BakerRewards = int(rewardsSplit.BakerShare * float64(totalRewards))
-
-// 	_, dexterContracts := payout.splitDelegationsAndDexterContracts(rewardsSplit)
-// 	rewardsSplit.Delegators = tzkt.Delegators{}
-
-// 	for _, contract := range dexterContracts {
-// 		contract = payout.constructDelegation(contract, totalRewards, rewardsSplit.StakingBalance)
-// 		rewardsSplit.BakerCollectedFees += contract.Fee
-
-// 		var err error
-// 		contract, err = payout.constructDexterContractPayoutFunc(contract)
-// 		assert.Nil(t, err)
-// 		fmt.Println(contract)
-
-// 		rewardsSplit.Delegators = append(rewardsSplit.Delegators, contract)
-// 	}
-
-// 	t.Fail()
-// }
-
 func Test_constructDexterContractPayout(t *testing.T) {
 	type input struct {
 		payout   Payout
@@ -263,6 +209,36 @@ func Test_getLiquidityProvidersEarnings(t *testing.T) {
 					BlackListed: false},
 			},
 		},
+		{
+			"is successful with v1.5",
+			input{
+				rpc: &test.RPCMock{
+					ContractStorageV15: true,
+				},
+				tzkt: &test.TzktMock{},
+				contract: tzkt.Delegator{
+					GrossRewards: 149992399,
+				},
+			},
+			want{
+				false,
+				"",
+				tzkt.Delegator{
+					GrossRewards: 149992399,
+					LiquidityProviders: []tzkt.LiquidityProvider{
+						{
+							Address:      "tz1S82rGFZK8cVbNDpP1Hf9VhTUa4W8oc2WV",
+							Balance:      23567891,
+							NetRewards:   70236,
+							GrossRewards: 73932,
+							Share:        0.0004929086226096927,
+							Fee:          3696,
+							BlackListed:  false,
+						},
+					},
+					BlackListed: false},
+			},
+		},
 	}
 
 	for _, tt := range cases {
@@ -394,7 +370,7 @@ func Test_getBalanceFromBigMap(t *testing.T) {
 			},
 			want{
 				true,
-				"failed to get balance from big_map for 'tz1S82rGFZK8cVbNDpP1Hf9VhTUa4W8oc2WV'",
+				"key 'tz1S82rGFZK8cVbNDpP1Hf9VhTUa4W8oc2WV' not found in big map",
 				0,
 			},
 		},
@@ -412,7 +388,7 @@ func Test_getBalanceFromBigMap(t *testing.T) {
 	}
 }
 
-func Test_getContractStorage(t *testing.T) {
+func Test_getContractStorageV1(t *testing.T) {
 	storageJSON := []byte(`{"prim":"Pair","args":[{"int":"16033"},{"prim":"Pair","args":[{"prim":"Pair","args":[{"prim":"False"},{"prim":"Pair","args":[{"prim":"False"},{"int":"23567891"}]}]},{"prim":"Pair","args":[{"prim":"Pair","args":[{"string":"tz1S82rGFZK8cVbNDpP1Hf9VhTUa4W8oc2WV"},{"string":"KT1GQcLae1ve1ZEPNfD9z1dyv5ev9ki39SNW"}]},{"prim":"Pair","args":[{"int":"123456"},{"int":"23567891"}]}]}]}]}`)
 	var exchangeContractV1 ExchangeContractV1
 	err := json.Unmarshal(storageJSON, &exchangeContractV1)
@@ -466,11 +442,89 @@ func Test_getContractStorage(t *testing.T) {
 			payout := Payout{
 				rpc: tt.input.rpc,
 			}
-			exchangeContractV1, err := payout.getContractStorage("block_hash", "address")
+			exchangeContractV1, err := payout.getContractStorageV1("block_hash", "address")
 			test.CheckErr(t, tt.want.err, tt.want.errContains, err)
 			assert.Equal(t, tt.want.exchangeContractV1, exchangeContractV1)
 		})
 	}
+}
+
+func Test_getContractStorageV15(t *testing.T) {
+	storageJSON := []byte(`{"prim":"Pair","args":[{"int":"541"},{"prim":"Pair","args":[{"prim":"False"},{"prim":"False"},{"int":"49707523463"}]},{"prim":"Pair","args":[{"string":"KT1B5VTw8ZSMnrjhy337CEvAm4tnT8Gu8Geu"},{"string":"KT1PWx2mnDueood7fEmfbBDKx1D9BAnnXitn"}]},{"int":"382997319"},{"int":"47813915032"}]}`)
+	var exchangeContractV15 ExchangeContractV15
+	err := json.Unmarshal(storageJSON, &exchangeContractV15)
+	test.CheckErr(t, false, "", err)
+
+	type input struct {
+		rpc rpc.IFace
+	}
+
+	type want struct {
+		err                 bool
+		errContains         string
+		exchangeContractV15 ExchangeContractV15
+	}
+
+	cases := []struct {
+		name  string
+		input input
+		want  want
+	}{
+		{
+			"is successful",
+			input{
+				rpc: &test.RPCMock{
+					ContractStorageErr: false,
+					ContractStorageV15: true,
+				},
+			},
+			want{
+				false,
+				"",
+				exchangeContractV15,
+			},
+		},
+		{
+			"handles gotezos failure",
+			input{
+				rpc: &test.RPCMock{
+					ContractStorageErr: true,
+					ContractStorageV15: true,
+				},
+			},
+			want{
+				true,
+				"failed to get storage for contract 'address'",
+				ExchangeContractV15{},
+			},
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			payout := Payout{
+				rpc: tt.input.rpc,
+			}
+			exchangeContractV15, err := payout.getContractStorageV15("block_hash", "address")
+			test.CheckErr(t, tt.want.err, tt.want.errContains, err)
+			assert.Equal(t, tt.want.exchangeContractV15, exchangeContractV15)
+		})
+	}
+}
+
+func Test_Parse(t *testing.T) {
+	storageJSON := []byte(`{"prim":"Pair","args":[{"int":"541"},{"prim":"Pair","args":[{"prim":"False"},{"prim":"False"},{"int":"49707523463"}]},{"prim":"Pair","args":[{"string":"KT1B5VTw8ZSMnrjhy337CEvAm4tnT8Gu8Geu"},{"string":"KT1PWx2mnDueood7fEmfbBDKx1D9BAnnXitn"}]},{"int":"382997319"},{"int":"47813915032"}]}`)
+	var exchangeContractV15 ExchangeContractV15
+	err := json.Unmarshal(storageJSON, &exchangeContractV15)
+	test.CheckErr(t, false, "", err)
+
+	liquidity, err := getLiquidityV15(exchangeContractV15)
+	assert.Nil(t, err)
+	assert.Equal(t, 47813915032, liquidity)
+
+	bigMap, err := getBigMapV15(exchangeContractV15)
+	assert.Nil(t, err)
+	assert.Equal(t, 541, bigMap)
 }
 
 func Test_parseBigMapForBalance(t *testing.T) {
@@ -518,6 +572,69 @@ func Test_parseBigMapForBalance(t *testing.T) {
 			balance, err := parseBigMapForBalance(&tt.input.msg)
 			test.CheckErr(t, tt.want.err, tt.want.errContains, err)
 			assert.Equal(t, tt.want.balance, balance)
+		})
+	}
+}
+
+func Test_processContract(t *testing.T) {
+	storageJSONV15 := []byte(`{"prim":"Pair","args":[{"int":"541"},{"prim":"Pair","args":[{"prim":"False"},{"prim":"False"},{"int":"49707523463"}]},{"prim":"Pair","args":[{"string":"KT1B5VTw8ZSMnrjhy337CEvAm4tnT8Gu8Geu"},{"string":"KT1PWx2mnDueood7fEmfbBDKx1D9BAnnXitn"}]},{"int":"382997319"},{"int":"47813915032"}]}`)
+	var exchangeContractV15 ExchangeContractV15
+	err := json.Unmarshal(storageJSONV15, &exchangeContractV15)
+	test.CheckErr(t, false, "", err)
+
+	storageJSONV1 := []byte(`{"prim":"Pair","args":[{"int":"16033"},{"prim":"Pair","args":[{"prim":"Pair","args":[{"prim":"False"},{"prim":"Pair","args":[{"prim":"False"},{"int":"23567891"}]}]},{"prim":"Pair","args":[{"prim":"Pair","args":[{"string":"tz1S82rGFZK8cVbNDpP1Hf9VhTUa4W8oc2WV"},{"string":"KT1GQcLae1ve1ZEPNfD9z1dyv5ev9ki39SNW"}]},{"prim":"Pair","args":[{"int":"123456"},{"int":"23567891"}]}]}]}]}`)
+	var exchangeContractV1 ExchangeContractV1
+	err = json.Unmarshal(storageJSONV1, &exchangeContractV1)
+	test.CheckErr(t, false, "", err)
+
+	type input struct {
+		r rpc.IFace
+	}
+
+	type want struct {
+		liquidity int
+		bigmap    int
+	}
+
+	cases := []struct {
+		name  string
+		input input
+		want  want
+	}{
+		{
+			"handles v1 contract",
+			input{
+				&test.RPCMock{},
+			},
+			want{
+				23567891,
+				16033,
+			},
+		},
+		{
+			"handles v2 contract",
+			input{
+				&test.RPCMock{
+					ContractStorageV15: true,
+				},
+			},
+			want{
+				49707523463,
+				541,
+			},
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			payout := Payout{
+				rpc: tt.input.r,
+			}
+
+			liquidity, bigMap, err := payout.processContract("some_block_hash", "some_addr")
+			assert.Nil(t, err)
+			assert.Equal(t, tt.want.liquidity, liquidity)
+			assert.Equal(t, tt.want.bigmap, bigMap)
 		})
 	}
 }
