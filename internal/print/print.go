@@ -17,7 +17,7 @@ import (
 // Table prints a payout in table format
 func Table(cycle int, delegate string, rewards tzkt.RewardsSplit) {
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Cylce", "Baker", "Share", "Rewards", "Fees", "Total", "Operations"})
+	table.SetHeader([]string{"Cycle", "Baker", "Share", "Rewards", "Fees", "Total", "Operations"})
 	table.Append([]string{
 		strconv.Itoa(cycle),
 		delegate,
